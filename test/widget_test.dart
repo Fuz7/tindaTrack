@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import 'package:tinda_track/screens/intro_screen.dart';
 import 'package:tinda_track/screens/sign_in_screen.dart';
 import 'package:tinda_track/theme/app_theme.dart';
 
@@ -42,5 +43,45 @@ void main() {
 
     expect(find.byType(CircularProgressIndicator), findsNothing);
     expect(find.text('Sign in with Google'), findsOneWidget);
+  });
+
+  testWidgets('intro advances through the three slides and then finishes', (
+    tester,
+  ) async {
+    var done = 0;
+
+    await tester.pumpWidget(_wrap(IntroScreen(onDone: () => done++)));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Smart Calculation'), findsOneWidget);
+    expect(find.text('Next'), findsOneWidget);
+
+    await tester.tap(find.text('Next'));
+    await tester.pumpAndSettle();
+    expect(find.text('Inventory Control'), findsOneWidget);
+
+    await tester.tap(find.text('Next'));
+    await tester.pumpAndSettle();
+    expect(find.text('Profit Insights'), findsOneWidget);
+    expect(find.text('Get Started'), findsOneWidget);
+
+    await tester.tap(find.text('Get Started'));
+    await tester.pumpAndSettle();
+    expect(done, 1);
+  });
+
+  testWidgets('intro can be swiped and skipped', (tester) async {
+    var done = 0;
+
+    await tester.pumpWidget(_wrap(IntroScreen(onDone: () => done++)));
+    await tester.pumpAndSettle();
+
+    await tester.drag(find.byType(PageView), const Offset(-400, 0));
+    await tester.pumpAndSettle();
+    expect(find.text('Inventory Control'), findsOneWidget);
+
+    await tester.tap(find.text('SKIP'));
+    await tester.pumpAndSettle();
+    expect(done, 1);
   });
 }

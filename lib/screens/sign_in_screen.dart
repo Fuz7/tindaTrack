@@ -86,7 +86,7 @@ class _SignInScreenState extends State<SignInScreen>
                               mainAxisSize: MainAxisSize.max,
                               crossAxisAlignment: CrossAxisAlignment.stretch,
                               children: [
-                                const SizedBox(height: 32),
+                                const SizedBox(height: 40),
                                 _buildBrand(theme),
                                 const SizedBox(height: 48),
                                 _buildTagline(theme, colors),
@@ -175,27 +175,32 @@ class _SignInScreenState extends State<SignInScreen>
         height: AppSpacing.touchTarget,
         child: OutlinedButton(
           onPressed: _busy ? null : _handleSignIn,
-          style: OutlinedButton.styleFrom(
-            backgroundColor: AppColors.surfaceContainerLowest,
-            disabledBackgroundColor: AppColors.surfaceContainerLow,
-            foregroundColor: AppColors.onSurface,
-            side: const BorderSide(color: AppColors.outlineVariant),
-            padding: const EdgeInsets.symmetric(horizontal: AppSpacing.gutter),
-            shape: const RoundedRectangleBorder(
-              borderRadius: BorderRadius.all(Radius.circular(AppRadius.base)),
-            ),
-          ).copyWith(
-            // active:bg-surface-container-high / hover:bg-surface-container-low
-            overlayColor: WidgetStateProperty.resolveWith((states) {
-              if (states.contains(WidgetState.pressed)) {
-                return AppColors.surfaceContainerHigh;
-              }
-              if (states.contains(WidgetState.hovered)) {
-                return AppColors.surfaceContainerLow;
-              }
-              return null;
-            }),
-          ),
+          style:
+              OutlinedButton.styleFrom(
+                backgroundColor: AppColors.surfaceContainerLowest,
+                disabledBackgroundColor: AppColors.surfaceContainerLow,
+                foregroundColor: AppColors.onSurface,
+                side: const BorderSide(color: AppColors.outlineVariant),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: AppSpacing.gutter,
+                ),
+                shape: const RoundedRectangleBorder(
+                  borderRadius: BorderRadius.all(
+                    Radius.circular(AppRadius.base),
+                  ),
+                ),
+              ).copyWith(
+                // active:bg-surface-container-high / hover:bg-surface-container-low
+                overlayColor: WidgetStateProperty.resolveWith((states) {
+                  if (states.contains(WidgetState.pressed)) {
+                    return AppColors.surfaceContainerHigh;
+                  }
+                  if (states.contains(WidgetState.hovered)) {
+                    return AppColors.surfaceContainerLow;
+                  }
+                  return null;
+                }),
+              ),
           child: _busy
               ? const SizedBox.square(
                   dimension: 20,
