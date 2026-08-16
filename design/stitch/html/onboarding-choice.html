@@ -1,0 +1,144 @@
+<!DOCTYPE html><html class="light" lang="en"><head>
+<meta charset="utf-8">
+<meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" name="viewport">
+<title>Get Started - TindaTrack</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "surface-tint": "#006c4a",
+                    "primary": "#006948",
+                    "surface-container-low": "#eff5ef",
+                    "on-tertiary-fixed-variant": "#7f2928",
+                    "on-primary-container": "#f5fff7",
+                    "surface-tonal": "#F8FAFC",
+                    "surface-container-high": "#e4eae4",
+                    "secondary-fixed": "#dae2fd",
+                    "on-primary": "#ffffff",
+                    "surface-dim": "#d5dcd6",
+                    "tertiary-fixed-dim": "#ffb3ae",
+                    "on-tertiary-fixed": "#410004",
+                    "background": "#f5fbf5",
+                    "tertiary-container": "#ba5551",
+                    "surface-border": "#E2E8F0",
+                    "status-low-stock": "#F59E0B",
+                    "on-primary-fixed-variant": "#005137",
+                    "status-in-stock": "#10B981",
+                    "on-secondary-fixed": "#131b2e",
+                    "on-primary-fixed": "#002114",
+                    "surface-container-lowest": "#ffffff",
+                    "on-background": "#171d19",
+                    "error": "#ba1a1a",
+                    "tertiary-fixed": "#ffdad7",
+                    "surface-container-highest": "#dee4de",
+                    "inverse-on-surface": "#ecf2ec",
+                    "surface-variant": "#dee4de",
+                    "surface-container": "#e9efe9",
+                    "on-secondary-fixed-variant": "#3f465c",
+                    "on-secondary": "#ffffff",
+                    "on-secondary-container": "#5c647a",
+                    "outline-variant": "#bccac0",
+                    "surface-bright": "#f5fbf5",
+                    "error-container": "#ffdad6",
+                    "action-destructive": "#B91C1C",
+                    "status-out-of-stock": "#EF4444",
+                    "primary-container": "#00855d",
+                    "tertiary": "#9b3e3b",
+                    "secondary": "#565e74",
+                    "on-surface": "#171d19",
+                    "on-tertiary": "#ffffff",
+                    "inverse-primary": "#68dba9",
+                    "on-tertiary-container": "#fffbff",
+                    "secondary-fixed-dim": "#bec6e0",
+                    "secondary-container": "#dae2fd",
+                    "inverse-surface": "#2c322e",
+                    "surface": "#f5fbf5",
+                    "on-surface-variant": "#3d4a42",
+                    "on-error": "#ffffff",
+                    "on-error-container": "#93000a",
+                    "primary-fixed": "#85f8c4",
+                    "primary-fixed-dim": "#68dba9",
+                    "outline": "#6d7a72"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.25rem",
+                    "lg": "0.5rem",
+                    "xl": "0.75rem",
+                    "full": "9999px"
+            },
+            "spacing": {
+                    "container-margin": "1rem",
+                    "stack-sm": "0.5rem",
+                    "touch-target": "3rem",
+                    "gutter": "1rem",
+                    "stack-md": "1rem"
+            },
+            "fontFamily": {
+                    "body-sm": ["Inter"],
+                    "display-price": ["Inter"],
+                    "headline-lg": ["Inter"],
+                    "label-caps": ["Inter"],
+                    "body-lg": ["Inter"],
+                    "headline-md": ["Inter"],
+                    "numeric-keypad": ["Inter"]
+            },
+            "fontSize": {
+                    "body-sm": ["14px", {"lineHeight": "20px", "fontWeight": "400"}],
+                    "display-price": ["48px", {"lineHeight": "56px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                    "headline-lg": ["24px", {"lineHeight": "32px", "fontWeight": "700"}],
+                    "label-caps": ["12px", {"lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "700"}],
+                    "body-lg": ["16px", {"lineHeight": "24px", "fontWeight": "500"}],
+                    "headline-md": ["20px", {"lineHeight": "28px", "fontWeight": "600"}],
+                    "numeric-keypad": ["24px", {"lineHeight": "24px", "fontWeight": "500"}]
+            }
+          },
+        },
+      }
+    </script>
+<style>
+        body {
+            -webkit-tap-highlight-color: transparent;
+        }
+    </style>
+</head>
+<body class="bg-surface text-on-surface antialiased min-h-screen flex flex-col items-center justify-center p-container-margin md:p-8">
+<main class="w-full max-w-md bg-surface-container-lowest rounded-xl shadow-sm border border-surface-border p-6 md:p-8 flex flex-col gap-8">
+<!-- Header Section -->
+<header class="text-center flex flex-col gap-stack-sm items-center">
+<div class="w-16 h-16 bg-primary-container rounded-lg flex items-center justify-center mb-2">
+<span class="material-symbols-outlined text-[32px] text-on-primary-container" data-icon="storefront" style="font-variation-settings: 'FILL' 1;">storefront</span>
+</div>
+<h1 class="font-headline-lg text-headline-lg text-on-surface">Get Started</h1>
+<p class="font-body-sm text-body-sm text-on-surface-variant max-w-[280px]">Set up your own store or join an existing one to collaborate.</p>
+</header>
+<!-- Options Section -->
+<div class="flex flex-col gap-stack-md">
+<!-- Option 1: Create New -->
+<button class="w-full text-left group bg-primary hover:bg-primary-container active:bg-surface-tint transition-colors duration-150 rounded-lg p-6 border border-primary relative overflow-hidden flex flex-col gap-2">
+<div class="flex items-center gap-3 w-full">
+<span class="material-symbols-outlined text-on-primary" data-icon="add_business">add_business</span>
+<h2 class="font-headline-md text-headline-md text-on-primary flex-1">Create a New Tindahan</h2>
+</div>
+<p class="font-body-sm text-body-sm text-on-primary/90 pl-9">
+                    Start fresh. Register your store details and begin tracking your inventory and sales immediately.
+                </p>
+</button>
+<!-- Option 2: Join Existing -->
+<button class="w-full text-left group bg-surface-container-lowest hover:bg-surface-container-low active:bg-surface-container-high transition-colors duration-150 rounded-lg p-6 border border-outline relative overflow-hidden flex flex-col gap-2">
+<div class="flex items-center gap-3 w-full">
+<span class="material-symbols-outlined text-primary" data-icon="group_add">group_add</span>
+<h2 class="font-headline-md text-headline-md text-primary flex-1">Join a Tindahan</h2>
+</div>
+<p class="font-body-sm text-body-sm text-on-surface-variant pl-9">Authorized as a collaborator? Sign in with your registered email to access a store's inventory and start logging sales.</p>
+</button>
+</div>
+</main>
+
+
+</body></html>

@@ -1,0 +1,46 @@
+{
+  "project_info": {
+    "project_number": "930423513347",
+    "project_id": "tindatrack-73678",
+    "storage_bucket": "tindatrack-73678.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:930423513347:android:1fa9ad2179c424f6f3c936",
+        "android_client_info": {
+          "package_name": "com.tindatrack.tinda_track"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "930423513347-8mls8p0173r1bftabgivt2r5j475kde2.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBrfnWucrCKTMYivm4_j4go1OgtLl9M_Ks"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "930423513347-8mls8p0173r1bftabgivt2r5j475kde2.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "930423513347-rrljr35462879nrvi41nr563j9s0rb8p.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.example.flutterApplication1"
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

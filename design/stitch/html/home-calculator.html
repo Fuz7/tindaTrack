@@ -1,0 +1,360 @@
+<!DOCTYPE html><html class="light" lang="en"><head>
+<meta charset="utf-8">
+<meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" name="viewport">
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "on-primary-fixed-variant": "#005137",
+                    "on-surface-variant": "#3d4a42",
+                    "error-container": "#ffdad6",
+                    "surface-container-high": "#e4eae4",
+                    "on-primary-fixed": "#002114",
+                    "error": "#ba1a1a",
+                    "tertiary-container": "#ba5551",
+                    "surface-container-highest": "#dee4de",
+                    "outline-variant": "#bccac0",
+                    "on-secondary-fixed": "#131b2e",
+                    "on-error": "#ffffff",
+                    "status-in-stock": "#10B981",
+                    "on-tertiary-fixed": "#410004",
+                    "on-primary": "#ffffff",
+                    "on-secondary-fixed-variant": "#3f465c",
+                    "tertiary-fixed": "#ffdad7",
+                    "on-primary-container": "#f5fff7",
+                    "inverse-surface": "#2c322e",
+                    "primary-container": "#00855d",
+                    "status-out-of-stock": "#EF4444",
+                    "surface-tint": "#006c4a",
+                    "primary-fixed": "#85f8c4",
+                    "inverse-on-surface": "#ecf2ec",
+                    "surface-tonal": "#F8FAFC",
+                    "secondary": "#565e74",
+                    "on-background": "#171d19",
+                    "on-tertiary": "#ffffff",
+                    "status-low-stock": "#F59E0B",
+                    "inverse-primary": "#68dba9",
+                    "surface-variant": "#dee4de",
+                    "surface-dim": "#d5dcd6",
+                    "on-tertiary-container": "#fffbff",
+                    "surface": "#f5fbf5",
+                    "tertiary": "#9b3e3b",
+                    "surface-bright": "#f5fbf5",
+                    "secondary-fixed-dim": "#bec6e0",
+                    "action-destructive": "#B91C1C",
+                    "primary": "#006948",
+                    "surface-container-lowest": "#ffffff",
+                    "background": "#f5fbf5",
+                    "on-tertiary-fixed-variant": "#7f2928",
+                    "secondary-container": "#dae2fd",
+                    "tertiary-fixed-dim": "#ffb3ae",
+                    "surface-container": "#e9efe9",
+                    "surface-container-low": "#eff5ef",
+                    "primary-fixed-dim": "#68dba9",
+                    "on-surface": "#171d19",
+                    "on-secondary-container": "#5c647a",
+                    "secondary-fixed": "#dae2fd",
+                    "on-error-container": "#93000a",
+                    "on-secondary": "#ffffff",
+                    "outline": "#6d7a72",
+                    "surface-border": "#E2E8F0"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.25rem",
+                    "lg": "0.5rem",
+                    "xl": "0.75rem",
+                    "full": "9999px"
+            },
+            "spacing": {
+                    "stack-md": "1rem",
+                    "stack-sm": "0.5rem",
+                    "gutter": "1rem",
+                    "container-margin": "1rem",
+                    "touch-target": "3rem"
+            },
+            "fontFamily": {
+                    "body-lg": ["Inter"],
+                    "numeric-keypad": ["Inter"],
+                    "headline-md": ["Inter"],
+                    "headline-lg": ["Inter"],
+                    "label-caps": ["Inter"],
+                    "display-price": ["Inter"],
+                    "body-sm": ["Inter"]
+            },
+            "fontSize": {
+                    "body-lg": ["16px", {"lineHeight": "24px", "fontWeight": "500"}],
+                    "numeric-keypad": ["24px", {"lineHeight": "24px", "fontWeight": "500"}],
+                    "headline-md": ["20px", {"lineHeight": "28px", "fontWeight": "600"}],
+                    "headline-md-mobile": ["18px", {"lineHeight": "24px", "fontWeight": "600"}],
+                    "headline-lg": ["24px", {"lineHeight": "32px", "fontWeight": "700"}],
+                    "label-caps": ["12px", {"lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "700"}],
+                    "display-price": ["48px", {"lineHeight": "56px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                    "body-sm": ["14px", {"lineHeight": "20px", "fontWeight": "400"}]
+            }
+          },
+        },
+      }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .active-press:active {
+            background-color: #e2e8f0;
+            transform: scale(0.98);
+        }
+        .keypad-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 1px;
+            background-color: #e2e8f0;
+        }
+        .keypad-button {
+            background-color: #ffffff;
+            height: 4.5rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: background-color 0.1s ease;
+        }
+        .keypad-button:active {
+            background-color: #eff5ef;
+        }
+        ::-webkit-scrollbar {
+            width: 4px;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #bccac0;
+            border-radius: 10px;
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background text-on-surface font-body-lg overflow-hidden flex flex-col h-screen">
+<!-- TopAppBar -->
+<header class="bg-surface dark:bg-surface-dim border-b border-outline-variant dark:border-outline w-full top-0 sticky z-50 flex justify-between items-center px-gutter h-touch-target">
+<div class="flex items-center gap-3">
+<div class="w-8 h-8 rounded-full bg-primary-container flex items-center justify-center overflow-hidden">
+<img class="w-full h-full object-cover" data-alt="A professional, clean studio portrait of a friendly local store owner, captured with high-end photography. The lighting is soft and natural, emphasizing a trustworthy and efficient business persona. The background is a minimalist, blurred shop interior with a clean, light-mode aesthetic dominated by whites and soft greens to match the TindaTrack brand colors." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAGxsoUWQ_Dvi340GrDK4PJhNo1K9D3f-QmFCAyP8s7sJRLtByVXxvtLrn6zyNGwyIpo8sKL4fR463qKRrHuT5lqAYBcM6E8Rn7aTlPaQph2nvsxgt_Lw9twtarwkEC-WbG6lZupPgLCpp0ZNIZ83rQBkmCkkNTmg1jY-alLMnk0ExI1B32rZBnulMQ52GEoCZQH9aXT9Hd8GTFqFoC3bK7eCxbLf3ayLiNeBW8smuVN0O7MtVjQqHoxiLjIhdN7ksvU5G125wGE6Kl">
+</div>
+<h1 class="text-headline-md-mobile font-headline-md text-primary dark:text-primary-fixed-dim tracking-tight">TindaTrack</h1>
+</div>
+<button class="w-10 h-10 flex items-center justify-center rounded-full hover:bg-surface-container-high transition-colors active:bg-surface-container-highest">
+<span class="material-symbols-outlined text-on-surface-variant" data-icon="settings">settings</span>
+</button>
+</header>
+<main class="flex-1 flex flex-col md:flex-row overflow-hidden pb-16">
+<!-- Left: Sales Display & Keypad -->
+<div class="w-full md:w-7/12 flex flex-col border-r border-outline-variant">
+<!-- Price Display Area -->
+<div class="p-6 flex flex-col justify-end items-end bg-surface-container-lowest h-32 border-b border-outline-variant">
+<span class="text-label-caps font-label-caps text-on-surface-variant uppercase mb-1">Current Entry</span>
+<div class="flex items-baseline gap-2">
+<span class="text-headline-lg font-headline-lg text-primary">₱</span>
+<span class="text-display-price font-display-price text-on-surface" id="price-display">0.00</span>
+</div>
+</div>
+<!-- Search Bar -->
+<div class="px-gutter py-3 bg-surface-container-low border-b border-outline-variant">
+<div class="relative flex items-center">
+<span class="material-symbols-outlined absolute left-3 text-on-surface-variant" data-icon="search">search</span>
+<input class="w-full pl-10 pr-4 py-2 bg-white border border-outline-variant rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent outline-none text-body-sm font-body-sm" placeholder="Search products..." type="text">
+</div>
+</div>
+<!-- Smart Keypad -->
+<div class="flex-1 bg-surface-container-low overflow-hidden">
+<div class="keypad-grid h-full">
+<button class="keypad-button text-numeric-keypad font-numeric-keypad" onclick="appendDigit('7')">7</button>
+<button class="keypad-button text-numeric-keypad font-numeric-keypad" onclick="appendDigit('8')">8</button>
+<button class="keypad-button text-numeric-keypad font-numeric-keypad" onclick="appendDigit('9')">9</button>
+<button class="keypad-button text-numeric-keypad font-numeric-keypad" onclick="appendDigit('4')">4</button>
+<button class="keypad-button text-numeric-keypad font-numeric-keypad" onclick="appendDigit('5')">5</button>
+<button class="keypad-button text-numeric-keypad font-numeric-keypad" onclick="appendDigit('6')">6</button>
+<button class="keypad-button text-numeric-keypad font-numeric-keypad" onclick="appendDigit('1')">1</button>
+<button class="keypad-button text-numeric-keypad font-numeric-keypad" onclick="appendDigit('2')">2</button>
+<button class="keypad-button text-numeric-keypad font-numeric-keypad" onclick="appendDigit('3')">3</button>
+<button class="keypad-button text-numeric-keypad font-numeric-keypad text-error" onclick="clearEntry()">C</button>
+<button class="keypad-button text-numeric-keypad font-numeric-keypad" onclick="appendDigit('0')">0</button>
+<button class="keypad-button bg-primary-container text-on-primary-container text-numeric-keypad font-numeric-keypad active:scale-95 transition-transform" onclick="addToCart()">
+<span class="material-symbols-outlined" data-icon="add_shopping_cart">add_shopping_cart</span>
+</button>
+</div>
+</div>
+</div>
+<!-- Right: Active Cart -->
+<div class="w-full md:w-5/12 bg-white flex flex-col shadow-sm">
+<div class="p-4 border-b border-outline-variant flex justify-between items-center bg-surface-container-low">
+<h2 class="text-headline-md font-headline-md text-on-surface">Active Cart</h2>
+<span class="px-2 py-1 bg-secondary-container text-on-secondary-container rounded-lg text-label-caps font-label-caps" id="item-count">3 ITEMS</span>
+</div>
+<!-- Cart Items List -->
+<div class="flex-1 overflow-y-auto px-4 divide-y divide-outline-variant" id="cart-items">
+<!-- Item 1 -->
+<div class="py-4 flex items-center justify-between">
+<div class="flex items-center gap-3">
+<div class="w-12 h-12 rounded bg-surface-container-high overflow-hidden border border-outline-variant">
+<img class="w-full h-full object-cover" data-alt="Close-up macro shot of professional consumer product packaging for a premium beverage. The image is bright and high-contrast, showcasing clean typography and vibrant colors. The background is a soft-focus retail environment with neutral tones to maintain the monolith craft aesthetic of the TindaTrack interface." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDpOCf_0PMAcqRZZ3CfXT8PoM01tGBP4ZrIr-4svIspAQ812MMr02t6w1zf26up1st62el3IHCv8ZLe7PKNaoJBLG0qsEjg_vHjYYdwes-znJIrKjB08a_ZeRvvjAvdGbEnwW2mEzcFTwHwBSdK88yH9ctN_Ytbfi3z6v1OmoT1t3YxwiHfn37UWMWadBHVJAMd6MD0YaBusijQjqkoKsuL7NYh8sU8rfhYWRn9lAo5pCC5BnizjFk_jrvAWdHSi4qEsITzAkyZW9QB">
+</div>
+<div>
+<p class="font-body-lg text-on-surface">Kopiko Lucky Day</p>
+<p class="text-body-sm text-on-surface-variant">Qty: 1 × ₱25.00</p>
+</div>
+</div>
+<div class="flex flex-col items-end gap-1">
+<span class="font-body-lg text-on-surface">₱25.00</span>
+<button class="text-error active:scale-90 transition-transform">
+<span class="material-symbols-outlined text-sm" data-icon="delete">delete</span>
+</button>
+</div>
+</div>
+<!-- Item 2 -->
+<div class="py-4 flex items-center justify-between">
+<div class="flex items-center gap-3">
+<div class="w-12 h-12 rounded bg-surface-container-high overflow-hidden border border-outline-variant">
+<img class="w-full h-full object-cover" data-alt="High-contrast studio product shot of a popular snack brand package. The lighting is crisp, emphasizing the texture and bold branding. The visual style follows a professional, high-density aesthetic with a focus on commercial clarity, set against a pristine, slightly cool-toned grey background." src="https://lh3.googleusercontent.com/aida-public/AB6AXuA9ITywj3FKOpeWHuGxwFpasHPHaPcWonkMFRHTqIqxnx_xYgFjKAhpyXMQyqkkVOSTxV3XZZhL_8JqAOtSruMiQnB76Nz4OUKYbMfkSO-RJCccVh-eie0hAAwNp2-5f2GiydUBgl1UC7Zp6_ns7Yzx-36TBVT8bQhs-rkTzDiUoh1mzot3pOOx4fGrWatZV8PjOl-PqoGZCAMvbC8cLqtP7gfT-oVPkPccouMA_jZnq91su7Olq26UBaGf7WnDx13H2q5QL7Uxr6L1">
+</div>
+<div>
+<p class="font-body-lg text-on-surface">Piattos Roast Beef</p>
+<p class="text-body-sm text-on-surface-variant">Qty: 2 × ₱18.00</p>
+</div>
+</div>
+<div class="flex flex-col items-end gap-1">
+<span class="font-body-lg text-on-surface">₱36.00</span>
+<button class="text-error active:scale-90 transition-transform">
+<span class="material-symbols-outlined text-sm" data-icon="delete">delete</span>
+</button>
+</div>
+</div>
+<!-- Item 3 -->
+<div class="py-4 flex items-center justify-between">
+<div class="flex items-center gap-3">
+<div class="w-12 h-12 rounded bg-surface-container-high overflow-hidden border border-outline-variant">
+<img class="w-full h-full object-cover" data-alt="Commercial lifestyle shot of a modern plastic container for a household essential. The lighting is bright and industrial, emphasizing durability and precision. The aesthetic is clean and institutional, fitting for a business management tool like TindaTrack. High contrast and minimalist composition." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDirsSIqVIuKx04AX5FfgbsgzlbMAfNwlZP1KEkPuKLImO7rPQw8aYcldr8HCYWirZAyFrBpSuHCo90ZlU3XJHggRCSqVrJFyHsrYIGSNKN6ZtZBJ5m1Xo1CtiYSFU4WFtupip9dyEBIJ2QwaGsGqnUw_ToObHb3VURwgoxNODXxT-xAb6qwFxihgBXdGsqgS_Bju0ChDPpxiZNl0zhhHeLi9VNiaAmqP_Wc0KDyAvXYS87jWx2t3g1pkLj62WWBMgPq6P6QHW720NY">
+</div>
+<div>
+<p class="font-body-lg text-on-surface">Manual Entry</p>
+<p class="text-body-sm text-on-surface-variant">Qty: 1 × ₱150.00</p>
+</div>
+</div>
+<div class="flex flex-col items-end gap-1">
+<span class="font-body-lg text-on-surface">₱150.00</span>
+<button class="text-error active:scale-90 transition-transform">
+<span class="material-symbols-outlined text-sm" data-icon="delete">delete</span>
+</button>
+</div>
+</div>
+</div>
+<!-- Cart Footer Summary -->
+<div class="p-gutter bg-surface-container-high border-t border-outline-variant space-y-4">
+<div class="flex justify-between items-center">
+<span class="text-label-caps font-label-caps text-on-surface-variant">TOTAL AMOUNT</span>
+<span class="text-headline-lg font-headline-lg text-primary">₱211.00</span>
+</div>
+<div class="flex gap-3">
+<button class="flex-1 py-4 bg-outline-variant text-on-surface font-label-caps text-label-caps rounded-xl active:scale-95 transition-transform" onclick="clearCart()">
+                        CLEAR CART
+                    </button>
+<button class="flex-[2] py-4 bg-primary text-on-primary font-headline-md text-headline-md-mobile rounded-xl shadow-lg active:scale-95 transition-transform flex items-center justify-center gap-2">
+<span class="material-symbols-outlined" data-icon="check_circle" style="font-variation-settings: 'FILL' 1;">check_circle</span>
+                        COMPLETE SALE
+                    </button>
+</div>
+</div>
+</div>
+</main>
+<!-- BottomNavBar -->
+<nav class="fixed bottom-0 left-0 w-full flex justify-around items-center px-container-margin pb-safe bg-surface dark:bg-surface-dim border-t border-outline-variant dark:border-outline shadow-lg h-16 z-50">
+<div class="flex flex-col items-center justify-center bg-primary-container text-on-primary-container rounded-xl p-2 active:scale-95 duration-100">
+<span class="material-symbols-outlined" data-icon="home" style="font-variation-settings: 'FILL' 1;">home</span>
+</div>
+<div class="flex flex-col items-center justify-center text-on-secondary-fixed-variant p-2 hover:bg-surface-container-low transition-all active:scale-95 duration-100">
+<span class="material-symbols-outlined" data-icon="inventory_2">inventory_2</span>
+</div>
+<div class="flex flex-col items-center justify-center text-on-secondary-fixed-variant p-2 hover:bg-surface-container-low transition-all active:scale-95 duration-100">
+<span class="material-symbols-outlined" data-icon="receipt_long">receipt_long</span>
+</div>
+<div class="flex flex-col items-center justify-center text-on-secondary-fixed-variant p-2 hover:bg-surface-container-low transition-all active:scale-95 duration-100">
+<span class="material-symbols-outlined" data-icon="analytics">analytics</span>
+</div>
+</nav>
+<script>
+        let currentEntry = "0.00";
+        const display = document.getElementById('price-display');
+
+        function appendDigit(digit) {
+            if (currentEntry === "0.00") {
+                currentEntry = digit;
+            } else {
+                currentEntry += digit;
+            }
+            updateDisplay();
+        }
+
+        function clearEntry() {
+            currentEntry = "0.00";
+            updateDisplay();
+        }
+
+        function updateDisplay() {
+            // Basic formatting for currency entry simulation
+            let numeric = parseFloat(currentEntry);
+            if (currentEntry.includes('.')) {
+                display.innerText = currentEntry;
+            } else {
+                display.innerText = (numeric).toFixed(2);
+            }
+        }
+
+        function addToCart() {
+            if (currentEntry === "0.00") return;
+            
+            const cart = document.getElementById('cart-items');
+            const newPrice = parseFloat(currentEntry).toFixed(2);
+            
+            const itemHTML = `
+                <div class="py-4 flex items-center justify-between animate-in fade-in slide-in-from-right-4 duration-300">
+                    <div class="flex items-center gap-3">
+                        <div class="w-12 h-12 rounded bg-surface-container-high flex items-center justify-center border border-outline-variant">
+                            <span class="material-symbols-outlined text-primary" data-icon="sell">sell</span>
+                        </div>
+                        <div>
+                            <p class="font-body-lg text-on-surface">Manual Entry</p>
+                            <p class="text-body-sm text-on-surface-variant">Qty: 1 × ₱${newPrice}</p>
+                        </div>
+                    </div>
+                    <div class="flex flex-col items-end gap-1">
+                        <span class="font-body-lg text-on-surface">₱${newPrice}</span>
+                        <button class="text-error active:scale-90 transition-transform" onclick="this.closest('.py-4').remove()">
+                            <span class="material-symbols-outlined text-sm" data-icon="delete">delete</span>
+                        </button>
+                    </div>
+                </div>
+            `;
+            cart.insertAdjacentHTML('afterbegin', itemHTML);
+            clearEntry();
+        }
+
+        function clearCart() {
+            if(confirm('Are you sure you want to clear the current cart?')) {
+                document.getElementById('cart-items').innerHTML = '';
+            }
+        }
+
+        // Haptic feel - numeric keypad interactions
+        document.querySelectorAll('.keypad-button').forEach(btn => {
+            btn.addEventListener('touchstart', () => {
+                if (window.navigator.vibrate) window.navigator.vibrate(10);
+            });
+        });
+    </script>
+</body></html>

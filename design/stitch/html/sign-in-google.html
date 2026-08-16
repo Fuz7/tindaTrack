@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+
+<html lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>TindaTrack - Sign In</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+          darkMode: "class",
+          theme: {
+            extend: {
+              "colors": {
+                      "surface-tint": "#006c4a",
+                      "primary": "#006948",
+                      "surface-container-low": "#eff5ef",
+                      "on-tertiary-fixed-variant": "#7f2928",
+                      "on-primary-container": "#f5fff7",
+                      "surface-tonal": "#F8FAFC",
+                      "surface-container-high": "#e4eae4",
+                      "secondary-fixed": "#dae2fd",
+                      "on-primary": "#ffffff",
+                      "surface-dim": "#d5dcd6",
+                      "tertiary-fixed-dim": "#ffb3ae",
+                      "on-tertiary-fixed": "#410004",
+                      "background": "#f5fbf5",
+                      "tertiary-container": "#ba5551",
+                      "surface-border": "#E2E8F0",
+                      "status-low-stock": "#F59E0B",
+                      "on-primary-fixed-variant": "#005137",
+                      "status-in-stock": "#10B981",
+                      "on-secondary-fixed": "#131b2e",
+                      "on-primary-fixed": "#002114",
+                      "surface-container-lowest": "#ffffff",
+                      "on-background": "#171d19",
+                      "error": "#ba1a1a",
+                      "tertiary-fixed": "#ffdad7",
+                      "surface-container-highest": "#dee4de",
+                      "inverse-on-surface": "#ecf2ec",
+                      "surface-variant": "#dee4de",
+                      "surface-container": "#e9efe9",
+                      "on-secondary-fixed-variant": "#3f465c",
+                      "on-secondary": "#ffffff",
+                      "on-secondary-container": "#5c647a",
+                      "outline-variant": "#bccac0",
+                      "surface-bright": "#f5fbf5",
+                      "error-container": "#ffdad6",
+                      "action-destructive": "#B91C1C",
+                      "status-out-of-stock": "#EF4444",
+                      "primary-container": "#00855d",
+                      "tertiary": "#9b3e3b",
+                      "secondary": "#565e74",
+                      "on-surface": "#171d19",
+                      "on-tertiary": "#ffffff",
+                      "inverse-primary": "#68dba9",
+                      "on-tertiary-container": "#fffbff",
+                      "secondary-fixed-dim": "#bec6e0",
+                      "secondary-container": "#dae2fd",
+                      "inverse-surface": "#2c322e",
+                      "surface": "#f5fbf5",
+                      "on-surface-variant": "#3d4a42",
+                      "on-error": "#ffffff",
+                      "on-error-container": "#93000a",
+                      "primary-fixed": "#85f8c4",
+                      "primary-fixed-dim": "#68dba9",
+                      "outline": "#6d7a72"
+              },
+              "borderRadius": {
+                      "DEFAULT": "0.25rem",
+                      "lg": "0.5rem",
+                      "xl": "0.75rem",
+                      "full": "9999px"
+              },
+              "spacing": {
+                      "container-margin": "1rem",
+                      "stack-sm": "0.5rem",
+                      "touch-target": "3rem",
+                      "gutter": "1rem",
+                      "stack-md": "1rem"
+              },
+              "fontFamily": {
+                      "body-sm": ["Inter"],
+                      "display-price": ["Inter"],
+                      "headline-lg": ["Inter"],
+                      "label-caps": ["Inter"],
+                      "body-lg": ["Inter"],
+                      "headline-md": ["Inter"],
+                      "numeric-keypad": ["Inter"]
+              },
+              "fontSize": {
+                      "body-sm": ["14px", {"lineHeight": "20px", "fontWeight": "400"}],
+                      "display-price": ["48px", {"lineHeight": "56px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                      "headline-lg": ["24px", {"lineHeight": "32px", "fontWeight": "700"}],
+                      "label-caps": ["12px", {"lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "700"}],
+                      "body-lg": ["16px", {"lineHeight": "24px", "fontWeight": "500"}],
+                      "headline-md": ["20px", {"lineHeight": "28px", "fontWeight": "600"}],
+                      "numeric-keypad": ["24px", {"lineHeight": "24px", "fontWeight": "500"}]
+              }
+            }
+          }
+        }
+    </script>
+</head>
+<body class="bg-background text-on-background font-body-lg min-h-screen flex flex-col items-center justify-center p-container-margin antialiased">
+<!-- Main Container -->
+<main class="w-full max-w-md mx-auto flex flex-col items-center justify-center h-full min-h-[100dvh]">
+<!-- Logo Section -->
+<div class="mb-8 flex flex-col items-center animate-fade-in-up">
+<div class="w-24 h-24 mb-4 rounded-xl shadow-sm border border-outline-variant bg-surface-container-lowest flex items-center justify-center p-2">
+<img alt="TindaTrack Logo" class="w-full h-full object-contain rounded-lg" src="https://lh3.googleusercontent.com/aida/AP1WRLuqKhfoLcPt77ZU6t6bVj54_JPCBdkHT_U9gR4bzpohPH6lIFyLv75jN39jWWgCA6U9nM1mKpanUV-kQi46B9ly1OvV7r9ga9qwuiwEDNf5zoEhAjbSaL7-uxObDM8fC1HM9MlTUmUWsP-vcga7fwWf5IzR82JojI-2t81DAHxJgfId0f0xpRue6LogTPFiXbKo7RzThRj1cTH-YSbPCmzGBo5DZX22F6AUw66uNBDwMQ7FvVm5jXiYTAQW"/>
+</div>
+<h1 class="font-headline-lg text-headline-lg text-primary tracking-tight text-center">TindaTrack</h1>
+</div>
+<!-- Tagline -->
+<div class="mb-12 text-center px-4">
+<p class="font-headline-md text-headline-md text-on-surface-variant mb-2">Track your store, grow your business</p>
+<p class="font-body-sm text-body-sm text-outline">The professional tool for sari-sari store owners.</p>
+</div>
+<!-- Action Section -->
+<div class="w-full flex flex-col gap-4 mt-auto md:mt-0 px-4">
+<!-- Google Sign In Button -->
+<button class="w-full h-touch-target flex items-center justify-center gap-3 bg-surface-container-lowest border border-outline-variant rounded-lg text-on-surface font-body-lg text-body-lg hover:bg-surface-container-low active:bg-surface-container-high transition-colors shadow-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent">
+<!-- SVG Google Icon -->
+<svg class="w-5 h-5" viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+<path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"></path>
+<path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"></path>
+<path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"></path>
+<path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"></path>
+</svg>
+                Sign in with Google
+            </button>
+<!-- Terms -->
+<p class="text-center font-body-sm text-body-sm text-outline mt-4">
+                By signing in, you agree to our <br/>
+<a class="text-primary hover:underline underline-offset-2" href="#">Terms of Service</a> and <a class="text-primary hover:underline underline-offset-2" href="#">Privacy Policy</a>
+</p>
+</div>
+</main>
+<style>
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        .animate-fade-in-up {
+            animation: fadeInUp 0.6s ease-out forwards;
+        }
+    </style>
+</body></html>

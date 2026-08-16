@@ -1,0 +1,270 @@
+<!DOCTYPE html><html class="light" lang="en"><head>
+<meta charset="utf-8">
+<meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" name="viewport">
+<title>Add New Product - TindaTrack</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "outline-variant": "#bccac0",
+                    "surface-container-lowest": "#ffffff",
+                    "surface-container-high": "#e4eae4",
+                    "surface-bright": "#f5fbf5",
+                    "error": "#ba1a1a",
+                    "surface": "#f5fbf5",
+                    "on-error": "#ffffff",
+                    "surface-border": "#E2E8F0",
+                    "on-background": "#171d19",
+                    "tertiary-fixed": "#ffdad7",
+                    "on-secondary-fixed": "#131b2e",
+                    "surface-tonal": "#F8FAFC",
+                    "secondary-fixed": "#dae2fd",
+                    "secondary-container": "#dae2fd",
+                    "on-surface": "#171d19",
+                    "action-destructive": "#B91C1C",
+                    "primary-fixed": "#85f8c4",
+                    "on-tertiary-container": "#fffbff",
+                    "primary-container": "#00855d",
+                    "on-tertiary-fixed-variant": "#7f2928",
+                    "primary-fixed-dim": "#68dba9",
+                    "inverse-primary": "#68dba9",
+                    "surface-dim": "#d5dcd6",
+                    "on-secondary-container": "#5c647a",
+                    "surface-container": "#e9efe9",
+                    "tertiary-container": "#ba5551",
+                    "status-out-of-stock": "#EF4444",
+                    "on-tertiary-fixed": "#410004",
+                    "on-secondary": "#ffffff",
+                    "on-primary-fixed-variant": "#005137",
+                    "outline": "#6d7a72",
+                    "background": "#f5fbf5",
+                    "on-primary-fixed": "#002114",
+                    "inverse-surface": "#2c322e",
+                    "tertiary": "#9b3e3b",
+                    "tertiary-fixed-dim": "#ffb3ae",
+                    "primary": "#006948",
+                    "on-surface-variant": "#3d4a42",
+                    "surface-container-low": "#eff5ef",
+                    "on-primary": "#ffffff",
+                    "secondary-fixed-dim": "#bec6e0",
+                    "surface-tint": "#006c4a",
+                    "on-primary-container": "#f5fff7",
+                    "on-error-container": "#93000a",
+                    "error-container": "#ffdad6",
+                    "on-tertiary": "#ffffff",
+                    "status-in-stock": "#10B981",
+                    "surface-variant": "#dee4de",
+                    "secondary": "#565e74",
+                    "on-secondary-fixed-variant": "#3f465c",
+                    "surface-container-highest": "#dee4de",
+                    "status-low-stock": "#F59E0B",
+                    "inverse-on-surface": "#ecf2ec"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.25rem",
+                    "lg": "0.5rem",
+                    "xl": "0.75rem",
+                    "full": "9999px"
+            },
+            "spacing": {
+                    "gutter": "1rem",
+                    "touch-target": "3rem",
+                    "stack-sm": "0.5rem",
+                    "stack-md": "1rem",
+                    "container-margin": "1rem"
+            },
+            "fontFamily": {
+                    "display-price": ["Inter"],
+                    "body-lg": ["Inter"],
+                    "numeric-keypad": ["Inter"],
+                    "headline-md": ["Inter"],
+                    "label-caps": ["Inter"],
+                    "headline-lg": ["Inter"],
+                    "body-sm": ["Inter"]
+            },
+            "fontSize": {
+                    "display-price": ["48px", {"lineHeight": "56px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                    "body-lg": ["16px", {"lineHeight": "24px", "fontWeight": "500"}],
+                    "numeric-keypad": ["24px", {"lineHeight": "24px", "fontWeight": "500"}],
+                    "headline-md": ["20px", {"lineHeight": "28px", "fontWeight": "600"}],
+                    "label-caps": ["12px", {"lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "700"}],
+                    "headline-lg": ["24px", {"lineHeight": "32px", "fontWeight": "700"}],
+                    "body-sm": ["14px", {"lineHeight": "20px", "fontWeight": "400"}]
+            }
+          },
+        },
+      }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+            display: inline-block;
+            line-height: 1;
+            text-transform: none;
+            letter-spacing: normal;
+            word-wrap: normal;
+            white-space: nowrap;
+            direction: ltr;
+        }
+        body {
+            background-color: #f5fbf5;
+            font-family: 'Inter', sans-serif;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .form-input-focus:focus-within {
+            border-color: #006948;
+            border-width: 2px;
+        }
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 4px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #dee4de;
+            border-radius: 2px;
+        }
+    </style>
+</head>
+<body class="flex flex-col min-h-screen text-on-surface">
+<!-- TopAppBar -->
+<header class="fixed top-0 w-full z-50 bg-surface dark:bg-on-background border-b border-surface-border dark:border-outline flex justify-between items-center px-gutter h-touch-target">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-primary dark:text-primary-fixed-dim" data-icon="storefront">storefront</span>
+<h1 class="font-headline-lg text-headline-lg text-primary dark:text-primary-fixed-dim tracking-tight">TindaTrack</h1>
+</div>
+<div class="flex items-center">
+<button class="p-2 hover:bg-surface-container-low dark:hover:bg-surface-variant transition-colors duration-150 rounded-full">
+<span class="material-symbols-outlined text-on-surface-variant dark:text-on-surface-variant" data-icon="settings">settings</span>
+</button>
+</div>
+</header>
+<!-- Main Content -->
+<main class="flex-grow pt-16 pb-32 px-gutter max-w-md mx-auto w-full overflow-y-auto">
+<!-- Header Section -->
+<section class="py-6">
+<h2 class="font-headline-md text-headline-md text-on-surface">Add New Product</h2>
+<p class="font-body-sm text-body-sm text-on-surface-variant mt-1">Register a new item to your store inventory.</p>
+</section>
+<!-- Product Image Upload -->
+<section class="mb-8">
+<div class="w-full aspect-square bg-white border-2 border-dashed border-outline-variant rounded-xl flex flex-col items-center justify-center text-on-surface-variant group hover:border-primary transition-colors cursor-pointer relative overflow-hidden" onclick="document.getElementById('file-upload').click()">
+<div class="flex flex-col items-center">
+<span class="material-symbols-outlined text-4xl mb-2" data-icon="add_a_photo">add_a_photo</span>
+<span class="font-label-caps text-label-caps">Upload Product Image</span>
+</div>
+<input class="hidden" id="file-upload" type="file">
+</div>
+</section>
+<!-- Product Form -->
+<form class="space-y-6" id="product-form">
+<!-- Product Name -->
+<div class="space-y-2">
+<label class="font-label-caps text-label-caps text-on-surface-variant" for="product-name">Product Name</label>
+<input class="w-full h-12 px-4 bg-white border border-surface-border rounded-lg font-body-lg text-body-lg focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all" id="product-name" placeholder="e.g., San Miguel Beer 330ml" type="text">
+</div>
+<!-- Price & Stock Grid -->
+<div class="grid grid-cols-2 gap-4">
+<div class="space-y-2">
+<label class="font-label-caps text-label-caps text-on-surface-variant" for="buy-price">Buy Price (₱)</label>
+<input class="w-full h-12 px-4 bg-white border border-surface-border rounded-lg font-body-lg text-body-lg focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all" id="buy-price" placeholder="0.00" type="number">
+</div>
+<div class="space-y-2">
+<label class="font-label-caps text-label-caps text-on-surface-variant" for="sell-price">Sell Price (₱)</label>
+<input class="w-full h-12 px-4 bg-white border border-surface-border rounded-lg font-body-lg text-body-lg focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all" id="sell-price" placeholder="0.00" type="number">
+</div>
+</div>
+<!-- Initial Stock -->
+<div class="space-y-2">
+<label class="font-label-caps text-label-caps text-on-surface-variant" for="initial-stock">Initial Stock Count</label>
+<div class="flex">
+<input class="w-full h-12 px-4 bg-white border border-surface-border rounded-l-lg font-body-lg text-body-lg focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all" id="initial-stock" placeholder="0" type="number">
+<div class="h-12 w-12 flex items-center justify-center bg-surface-container border border-l-0 border-surface-border rounded-r-lg">
+<span class="material-symbols-outlined text-on-surface-variant" data-icon="calculate" aria-label="Calculate total stock">calculate</span>
+</div>
+</div>
+</div>
+<!-- Categories / Tags -->
+<div class="space-y-3">
+<div class="flex justify-between items-center">
+<label class="font-label-caps text-label-caps text-on-surface-variant">Categories</label>
+<button class="text-primary font-label-caps text-label-caps hover:underline" onclick="addCustomTag()" type="button">+ Add Custom</button>
+</div>
+<div class="flex flex-wrap gap-2" id="tag-container">
+<button class="px-3 py-2 bg-white border border-surface-border rounded-full font-body-sm text-body-sm text-on-surface transition-all active:scale-95" data-selected="false" onclick="toggleTag(this)" type="button">Snacks</button>
+<button class="px-3 py-2 bg-white border border-surface-border rounded-full font-body-sm text-body-sm text-on-surface transition-all active:scale-95" data-selected="false" onclick="toggleTag(this)" type="button">Drinks</button>
+<button class="px-3 py-2 bg-white border border-surface-border rounded-full font-body-sm text-body-sm text-on-surface transition-all active:scale-95" data-selected="false" onclick="toggleTag(this)" type="button">Pantry</button>
+<button class="px-3 py-2 bg-white border border-surface-border rounded-full font-body-sm text-body-sm text-on-surface transition-all active:scale-95" data-selected="false" onclick="toggleTag(this)" type="button">Canned Goods</button>
+<button class="px-3 py-2 bg-white border border-surface-border rounded-full font-body-sm text-body-sm text-on-surface transition-all active:scale-95" data-selected="false" onclick="toggleTag(this)" type="button">Household</button>
+</div>
+</div>
+</form>
+</main>
+<!-- Bottom Action Bar (Floating Save) -->
+<div class="fixed bottom-16 left-0 w-full px-gutter py-4 bg-gradient-to-t from-surface via-surface/90 to-transparent z-40 pointer-events-none">
+<button class="w-full max-w-md mx-auto h-14 bg-primary text-white font-headline-md text-headline-md rounded-xl shadow-lg active:scale-[0.98] transition-transform pointer-events-auto flex items-center justify-center gap-2" form="product-form" type="submit">
+<span class="material-symbols-outlined" data-icon="save">save</span>
+            Save Product
+        </button>
+</div>
+<!-- BottomNavBar -->
+<nav class="fixed bottom-0 w-full z-50 bg-surface dark:bg-on-background border-t border-surface-border dark:border-outline shadow-high-contrast flex justify-around items-center h-16 px-container-margin">
+<a class="flex flex-col items-center justify-center text-secondary dark:text-secondary-fixed-dim opacity-70 hover:bg-surface-container-low dark:hover:bg-surface-variant transition-all duration-200" href="#">
+<span class="material-symbols-outlined" data-icon="calculate">calculate</span>
+<span class="font-label-caps text-label-caps mt-0.5">Register</span>
+</a>
+<a class="flex flex-col items-center justify-center text-primary dark:text-primary-fixed-dim scale-110 hover:bg-surface-container-low dark:hover:bg-surface-variant transition-all duration-200" href="#">
+<span class="material-symbols-outlined" data-icon="inventory_2" style="font-variation-settings: 'FILL' 1;">inventory_2</span>
+<span class="font-label-caps text-label-caps mt-0.5">Inventory</span>
+</a>
+<a class="flex flex-col items-center justify-center text-secondary dark:text-secondary-fixed-dim opacity-70 hover:bg-surface-container-low dark:hover:bg-surface-variant transition-all duration-200" href="#">
+<span class="material-symbols-outlined" data-icon="receipt_long">receipt_long</span>
+<span class="font-label-caps text-label-caps mt-0.5">History</span>
+</a>
+<a class="flex flex-col items-center justify-center text-secondary dark:text-secondary-fixed-dim opacity-70 hover:bg-surface-container-low dark:hover:bg-surface-variant transition-all duration-200" href="#">
+<span class="material-symbols-outlined" data-icon="analytics">analytics</span>
+<span class="font-label-caps text-label-caps mt-0.5">Stats</span>
+</a>
+</nav>
+<script>
+        function toggleTag(el) {
+            const isSelected = el.getAttribute('data-selected') === 'true';
+            if (isSelected) {
+                el.setAttribute('data-selected', 'false');
+                el.classList.remove('bg-primary-container', 'text-on-primary-container', 'border-primary');
+                el.classList.add('bg-white', 'text-on-surface', 'border-surface-border');
+            } else {
+                el.setAttribute('data-selected', 'true');
+                el.classList.add('bg-primary-container', 'text-on-primary-container', 'border-primary');
+                el.classList.remove('bg-white', 'text-on-surface', 'border-surface-border');
+            }
+        }
+
+        function addCustomTag() {
+            const tagName = prompt("Enter custom category name:");
+            if (tagName && tagName.trim()) {
+                const container = document.getElementById('tag-container');
+                const btn = document.createElement('button');
+                btn.type = 'button';
+                btn.onclick = function() { toggleTag(this); };
+                btn.className = 'px-3 py-2 bg-white border border-surface-border rounded-full font-body-sm text-body-sm text-on-surface transition-all active:scale-95';
+                btn.setAttribute('data-selected', 'false');
+                btn.textContent = tagName.trim();
+                container.appendChild(btn);
+                toggleTag(btn);
+            }
+        }
+
+        // Prevent default form submission for demo
+        document.getElementById('product-form').addEventListener('submit', function(e) {
+            e.preventDefault();
+            alert('Product logic would save here in a real app!');
+        });
+    </script>
+
+
+</body></html>

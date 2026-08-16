@@ -1,0 +1,22 @@
+{
+  "flutter": {
+    "platforms": {
+      "android": {
+        "default": {
+          "projectId": "tindatrack-73678",
+          "appId": "1:930423513347:android:1fa9ad2179c424f6f3c936",
+          "fileOutput": "android/app/google-services.json"
+        }
+      },
+      "dart": {
+        "lib/firebase_options.dart": {
+          "projectId": "tindatrack-73678",
+          "configurations": {
+            "android": "1:930423513347:android:1fa9ad2179c424f6f3c936",
+            "ios": "1:930423513347:ios:4354ea961362e709f3c936"
+          }
+        }
+      }
+    }
+  }
+}

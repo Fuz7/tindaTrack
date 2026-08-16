@@ -1,0 +1,286 @@
+<!DOCTYPE html><html class="light" lang="en" style=""><head>
+<meta charset="utf-8">
+<meta content="width=device-width, initial-scale=1.0" name="viewport">
+<title>TindaTrack - Home Calculator</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<script id="tailwind-config">
+    tailwind.config = {
+      darkMode: "class",
+      theme: {
+        extend: {
+          "colors": {
+            "surface-container-highest": "#dee4de",
+            "on-background": "#171d19",
+            "on-secondary": "#ffffff",
+            "on-primary-fixed": "#002114",
+            "on-secondary-container": "#5c647a",
+            "status-in-stock": "#10B981",
+            "inverse-surface": "#2c322e",
+            "background": "#f5fbf5",
+            "surface-tonal": "#F8FAFC",
+            "surface-container-low": "#eff5ef",
+            "secondary-container": "#dae2fd",
+            "on-surface-variant": "#3d4a42",
+            "surface": "#f5fbf5",
+            "primary": "#006948",
+            "surface-container": "#e9efe9",
+            "tertiary-container": "#ba5551",
+            "tertiary-fixed-dim": "#ffb3ae",
+            "on-secondary-fixed": "#131b2e",
+            "secondary-fixed": "#dae2fd",
+            "primary-container": "#00855d",
+            "surface-border": "#E2E8F0",
+            "primary-fixed": "#85f8c4",
+            "outline": "#6d7a72",
+            "primary-fixed-dim": "#68dba9",
+            "surface-bright": "#f5fbf5",
+            "on-error-container": "#93000a",
+            "error": "#ba1a1a",
+            "on-tertiary": "#ffffff",
+            "status-low-stock": "#F59E0B",
+            "on-tertiary-container": "#fffbff",
+            "surface-dim": "#d5dcd6",
+            "on-tertiary-fixed": "#410004",
+            "status-out-of-stock": "#EF4444",
+            "on-primary": "#ffffff",
+            "on-secondary-fixed-variant": "#3f465c",
+            "surface-container-high": "#e4eae4",
+            "on-primary-fixed-variant": "#005137",
+            "on-primary-container": "#f5fff7",
+            "inverse-primary": "#68dba9",
+            "on-tertiary-fixed-variant": "#7f2928",
+            "surface-variant": "#dee4de",
+            "on-surface": "#171d19",
+            "surface-container-lowest": "#ffffff",
+            "secondary": "#565e74",
+            "action-destructive": "#B91C1C",
+            "error-container": "#ffdad6",
+            "outline-variant": "#bccac0",
+            "on-error": "#ffffff",
+            "inverse-on-surface": "#ecf2ec",
+            "surface-tint": "#006c4a",
+            "secondary-fixed-dim": "#bec6e0",
+            "tertiary-fixed": "#ffdad7",
+            "tertiary": "#9b3e3b"
+          },
+          "borderRadius": {
+            "DEFAULT": "0.25rem",
+            "lg": "0.5rem",
+            "xl": "0.75rem",
+            "full": "9999px"
+          },
+          "spacing": {
+            "gutter": "1rem",
+            "container-margin": "1rem",
+            "stack-md": "1rem",
+            "stack-sm": "0.5rem",
+            "touch-target": "3rem"
+          },
+          "fontFamily": {
+            "numeric-keypad": ["Inter"],
+            "headline-lg": ["Inter"],
+            "body-lg": ["Inter"],
+            "body-sm": ["Inter"],
+            "label-caps": ["Inter"],
+            "headline-md": ["Inter"],
+            "display-price": ["Inter"]
+          },
+          "fontSize": {
+            "numeric-keypad": ["24px", {"lineHeight": "24px", "fontWeight": "500"}],
+            "headline-lg": ["24px", {"lineHeight": "32px", "fontWeight": "700"}],
+            "body-lg": ["16px", {"lineHeight": "24px", "fontWeight": "500"}],
+            "body-sm": ["14px", {"lineHeight": "20px", "fontWeight": "400"}],
+            "label-caps": ["12px", {"lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "700"}],
+            "headline-md": ["20px", {"lineHeight": "28px", "fontWeight": "600"}],
+            "display-price": ["48px", {"lineHeight": "56px", "letterSpacing": "-0.02em", "fontWeight": "700"}]
+          }
+        },
+      },
+    }
+  </script>
+<style>
+    body { font-family: 'Inter', sans-serif; -webkit-tap-highlight-color: transparent; }
+    .material-symbols-outlined {
+      font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+    }
+    .keypad-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 1px;
+      background-color: #E2E8F0; /* Slate-200 / surface-border */
+      border: 1px solid #E2E8F0;
+    }
+    .key-btn {
+      background-color: #ffffff;
+      height: 4.5rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: background-color 0.1s;
+    }
+    .key-btn:active {
+      background-color: #f1f5f9; /* Slate-100 */
+    }
+    .toast-animate {
+      animation: slideUpFade 0.3s ease-out forwards;
+    }
+    @keyframes slideUpFade {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .scroll-hide::-webkit-scrollbar { display: none; }
+    .scroll-hide { -ms-overflow-style: none; scrollbar-width: none; }
+  </style>
+</head>
+<body class="bg-background text-on-background selection:bg-primary-fixed">
+<!-- TopAppBar -->
+<header class="w-full top-0 sticky flex justify-between items-center px-gutter h-touch-target z-50 bg-surface border-b border-outline-variant">
+<div class="flex items-center gap-3">
+<div class="w-8 h-8 rounded-full bg-primary-container flex items-center justify-center overflow-hidden">
+<img class="w-full h-full object-cover" data-alt="A close-up high-resolution portrait of a smiling Filipino shopkeeper in a modern retail setting. The lighting is bright and professional, highlighting textures and colors associated with a clean, efficient sari-sari store management app. The aesthetic is clean, high-density, and business-focused." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBhg8qnWSxOvPQPqCfuOfsNVj9QiYmVcX0JTTJ2wdVRgMuvTE5jIFr0zEZyPZu3uwtLvrBr6afBTtoNkljtOL3LAbdyujwGnMZR_fqn08B0dotf95rGPcImiAMg7YOckg273cIM389DfpeNGJUWmWUJBbDKm4iYk5b6715OgqnGKlgjDdE2TPZ2bOC-znEa-V_TEZ7aSgZ18xIrfI9KMcIBmWZuuO3lWXhA4OHkbo3-xhBQ_XcK2BlPEABlyJjfofvrQquLcRPMlFGs">
+</div>
+<h1 class="text-headline-md font-headline-lg text-primary">TindaTrack</h1>
+</div>
+<button class="hover:bg-surface-container-high transition-colors p-2 rounded-full flex items-center justify-center active:bg-surface-container-highest">
+<span class="material-symbols-outlined text-primary">settings</span>
+</button>
+</header>
+<main class="pb-32">
+<!-- Display Section -->
+<div class="px-gutter pt-4 pb-2">
+  <div class="relative flex items-center">
+    <span class="material-symbols-outlined absolute left-3 text-on-surface-variant">search</span>
+    <input type="text" placeholder="Search products or scan barcode..." class="w-full bg-surface-container-high border-none rounded-xl py-3 pl-10 pr-4 text-body-lg focus:ring-2 focus:ring-primary placeholder:text-on-surface-variant/60">
+  </div>
+</div><div class="px-gutter pt-8 pb-4 flex flex-col items-end bg-surface-container-low border-outline-variant mt-2 mx-gutter rounded-xl border shadow-sm">
+<span class="font-label-caps text-label-caps text-on-surface-variant mb-1 uppercase">Manual Entry</span>
+<div class="flex items-baseline gap-1">
+<span class="font-display-price text-headline-md text-on-surface-variant">₱</span>
+<span class="font-display-price text-display-price text-primary">50.00</span>
+</div>
+</div>
+<!-- Smart Keypad -->
+<section class="keypad-grid relative p-1 gap-2 bg-surface-container" style="grid-template-columns: repeat(3, 1fr);"><button class="key-btn font-numeric-keypad text-numeric-keypad">7</button>
+<button class="key-btn font-numeric-keypad text-numeric-keypad">8</button>
+<button class="key-btn font-numeric-keypad text-numeric-keypad">9</button>
+<button class="key-btn font-numeric-keypad text-numeric-keypad">4</button>
+<button class="key-btn font-numeric-keypad text-numeric-keypad">5</button>
+<button class="key-btn font-numeric-keypad text-numeric-keypad">6</button>
+<button class="key-btn font-numeric-keypad text-numeric-keypad">1</button>
+<button class="key-btn font-numeric-keypad text-numeric-keypad">2</button>
+<button class="key-btn font-numeric-keypad text-numeric-keypad">3</button>
+<button class="key-btn font-numeric-keypad text-numeric-keypad text-error font-bold bg-error-container/20">C</button>
+<button class="key-btn font-numeric-keypad text-numeric-keypad">0</button>
+<button class="key-btn font-numeric-keypad text-numeric-keypad">.</button></section><div class="px-gutter mt-4">
+  <button class="w-full bg-primary-container text-on-primary-container h-touch-target rounded-xl font-bold flex items-center justify-center gap-2 active:scale-95 transition-transform shadow-sm">
+    <span class="material-symbols-outlined">add_shopping_cart</span>
+    Add to Cart
+  </button>
+</div>
+<!-- Cart Section (Active Items) -->
+<section class="mt-6 px-gutter">
+<div class="flex justify-between items-center mb-4">
+<h2 class="font-headline-md text-headline-md text-on-background">Current Cart</h2>
+<button class="flex items-center gap-1 px-3 py-1 rounded-lg transition-colors active:scale-95 text-on-surface-variant hover:bg-surface-container-high">
+  <span class="material-symbols-outlined text-[20px]">delete</span>
+  <span class="text-label-caps">Clear Cart</span>
+</button><span class="bg-primary-container text-on-primary-container px-3 py-1 rounded-full text-label-caps">3 Items</span>
+</div>
+<div class="space-y-2">
+<!-- New Manual Entry Item -->
+<div class="flex items-center gap-4 bg-surface-container-highest p-3 rounded-xl border-2 border-primary">
+<div class="w-12 h-12 bg-white rounded-lg flex items-center justify-center border border-outline-variant">
+<span class="material-symbols-outlined text-primary">edit_note</span>
+</div>
+<div class="flex-1">
+<h3 class="font-body-lg text-body-lg text-on-background">Manual Entry</h3>
+<p class="font-body-sm text-body-sm text-on-surface-variant">Quick Sale Item</p>
+</div>
+<div class="text-right">
+<p class="font-body-lg text-body-lg text-primary">₱50.00</p>
+<p class="font-label-caps text-label-caps text-on-surface-variant">Qty: 1</p>
+</div>
+</div>
+<!-- Previous Items -->
+<div class="flex items-center gap-4 bg-white p-3 rounded-xl border border-outline-variant opacity-80">
+<div class="w-12 h-12 bg-surface-container rounded-lg overflow-hidden flex items-center justify-center">
+<img class="w-10 h-10 object-contain" data-alt="A product photo of a small can of sardines with bright orange and blue label, photographed in high-detail studio lighting for a grocery inventory application. The background is a clean white, emphasizing the product's professional asset appearance. Minimalist and high-density design style." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCESiPFuNIDY64PYoVU2_38DMVz9g61m6ZbsKmFiYmsMZ5asktefnN7vRFmKXvJOyTPURwRyxjoUtiOYtJczwNeNr175VeijcZ4-XoaCO8XDUEHYh4jFlLZ5GhKFJBHL5JX6LsVSirvrKXpeWYp95n8K01mEeFuagWnSMWYrxeIAwbdi5ZS-3VAgA9C4eTnA_0Ll47xhmUmaOoJoUDjOTYzyx3RCEwZq3QP_gvsoPbLR7nEg_ef51nRModmyDxSdyKMxH961ymDOmDY">
+</div>
+<div class="flex-1">
+<h3 class="font-body-lg text-body-lg text-on-background">Ligo Sardines Red</h3>
+<p class="font-body-sm text-body-sm text-on-surface-variant">155g Tin</p>
+</div>
+<div class="text-right">
+<p class="font-body-lg text-body-lg text-on-background">₱22.50</p>
+<p class="font-label-caps text-label-caps text-on-surface-variant">Qty: 1</p>
+</div>
+</div>
+<div class="flex items-center gap-4 bg-white p-3 rounded-xl border border-outline-variant opacity-80">
+<div class="w-12 h-12 bg-surface-container rounded-lg overflow-hidden flex items-center justify-center">
+<img class="w-10 h-10 object-contain" data-alt="A high-quality product image of a single sachet of instant coffee with red and gold branding. The sachet is placed on a neutral background, suitable for a retail stock list. Sharp focus and vibrant colors representing a clean, professional retail environment." src="https://lh3.googleusercontent.com/aida-public/AB6AXuD5gdCFLMD60qcgbp18THh9PpPb2EcTFgkuW7hrQjsSJl4BosFbABJ8rNAq0h_fCqENMtjcpkhIH3tGSH8TKRpX0L3YpTDMnKN4BtjcYI56Xb4O94DkQWofB4GfaFfIy757my6P8bHM1v-Xbn6kctYeCjj0xYI_cO5Z4Km41AOfSsg65xo-i3R5wzg4bOFpwDQ-TpaQAodqC-0nwBMgFhqizhFw1GB61kXB25XB5ftkVaKP88KyCt-cYIBFA2dwagf-d3WYIAeP9Nc1">
+</div>
+<div class="flex-1">
+<h3 class="font-body-lg text-body-lg text-on-background">Nescafe Original</h3>
+<p class="font-body-sm text-body-sm text-on-surface-variant">Twin Pack</p>
+</div>
+<div class="text-right">
+<p class="font-body-lg text-body-lg text-on-background">₱15.00</p>
+<p class="font-label-caps text-label-caps text-on-surface-variant">Qty: 2</p>
+</div>
+</div>
+</div>
+</section>
+</main>
+<!-- Total Summary Bar (Action Area) -->
+<div class="fixed bottom-16 left-0 w-full bg-white px-gutter py-4 border-t border-outline-variant flex justify-between items-center z-40">
+<div>
+<p class="font-label-caps text-label-caps text-on-surface-variant">SUBTOTAL</p>
+<p class="font-headline-md text-headline-md text-primary">₱102.50</p>
+</div>
+<button class="bg-primary text-on-primary px-8 h-12 rounded-xl font-bold flex items-center gap-2 active:scale-95 transition-transform">
+      Checkout
+      <span class="material-symbols-outlined">arrow_forward</span>
+</button>
+</div>
+<!-- BottomNavBar -->
+<nav class="fixed bottom-0 left-0 w-full flex justify-around items-center px-container-margin pb-safe bg-surface border-t border-outline-variant shadow-lg h-16 z-50">
+<a class="flex flex-col items-center justify-center bg-primary-container text-on-primary-container rounded-xl p-2 transition-all active:scale-95 duration-100" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">home</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-secondary-fixed-variant p-2 hover:bg-surface-container-low transition-all active:scale-95 duration-100" href="#">
+<span class="material-symbols-outlined">inventory_2</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-secondary-fixed-variant p-2 hover:bg-surface-container-low transition-all active:scale-95 duration-100" href="#">
+<span class="material-symbols-outlined">receipt_long</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-secondary-fixed-variant p-2 hover:bg-surface-container-low transition-all active:scale-95 duration-100" href="#">
+<span class="material-symbols-outlined">analytics</span>
+</a>
+</nav>
+<script>
+    // Micro-interaction for the keypad
+    document.querySelectorAll('.key-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        // Optional: Trigger a small haptic feedback simulator or sound
+        console.log('Pressed:', btn.innerText || 'Icon');
+      });
+    });
+
+    // Auto-hide the toast after 3 seconds
+    setTimeout(() => {
+      const toast = document.querySelector('.toast-animate');
+      if (toast) {
+        toast.style.transition = 'opacity 0.5s ease-out';
+        toast.style.opacity = '0';
+        setTimeout(() => toast.remove(), 500);
+      }
+    }, 3000);
+  </script>
+
+
+
+
+</body></html>

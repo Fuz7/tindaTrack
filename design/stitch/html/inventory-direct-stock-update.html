@@ -1,0 +1,320 @@
+<!DOCTYPE html><html lang="en" style=""><head>
+<meta charset="utf-8">
+<meta content="width=device-width, initial-scale=1.0" name="viewport">
+<title>TindaTrack - Inventory Details</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "on-error": "#ffffff",
+                        "primary-fixed": "#85f8c4",
+                        "outline-variant": "#bccac0",
+                        "surface-container-high": "#e4eae4",
+                        "secondary-container": "#dae2fd",
+                        "inverse-surface": "#2c322e",
+                        "surface-container-lowest": "#ffffff",
+                        "tertiary": "#9b3e3b",
+                        "surface-container": "#e9efe9",
+                        "surface": "#f5fbf5",
+                        "status-low-stock": "#F59E0B",
+                        "on-primary-fixed-variant": "#005137",
+                        "on-secondary-fixed-variant": "#3f465c",
+                        "on-primary-container": "#f5fff7",
+                        "on-error-container": "#93000a",
+                        "surface-dim": "#d5dcd6",
+                        "on-secondary-fixed": "#131b2e",
+                        "on-background": "#171d19",
+                        "surface-variant": "#dee4de",
+                        "on-primary": "#ffffff",
+                        "action-destructive": "#B91C1C",
+                        "surface-tint": "#006c4a",
+                        "secondary": "#565e74",
+                        "surface-border": "#E2E8F0",
+                        "surface-container-highest": "#dee4de",
+                        "on-tertiary-fixed-variant": "#7f2928",
+                        "error-container": "#ffdad6",
+                        "background": "#f5fbf5",
+                        "on-secondary-container": "#5c647a",
+                        "error": "#ba1a1a",
+                        "surface-bright": "#f5fbf5",
+                        "on-surface-variant": "#3d4a42",
+                        "surface-container-low": "#eff5ef",
+                        "tertiary-fixed": "#ffdad7",
+                        "primary-fixed-dim": "#68dba9",
+                        "on-tertiary-fixed": "#410004",
+                        "tertiary-container": "#ba5551",
+                        "secondary-fixed-dim": "#bec6e0",
+                        "primary": "#006948",
+                        "on-tertiary-container": "#fffbff",
+                        "inverse-primary": "#68dba9",
+                        "on-secondary": "#ffffff",
+                        "secondary-fixed": "#dae2fd",
+                        "on-tertiary": "#ffffff",
+                        "tertiary-fixed-dim": "#ffb3ae",
+                        "surface-tonal": "#F8FAFC",
+                        "primary-container": "#00855d",
+                        "status-out-of-stock": "#EF4444",
+                        "outline": "#6d7a72",
+                        "on-surface": "#171d19",
+                        "status-in-stock": "#10B981",
+                        "on-primary-fixed": "#002114",
+                        "inverse-on-surface": "#ecf2ec"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "touch-target": "3rem",
+                        "stack-md": "1rem",
+                        "stack-sm": "0.5rem",
+                        "gutter": "1rem",
+                        "container-margin": "1rem"
+                    },
+                    "fontFamily": {
+                        "body-lg": ["Inter"],
+                        "headline-md": ["Inter"],
+                        "numeric-keypad": ["Inter"],
+                        "label-caps": ["Inter"],
+                        "display-price": ["Inter"],
+                        "headline-lg": ["Inter"],
+                        "body-sm": ["Inter"]
+                    },
+                    "fontSize": {
+                        "body-lg": ["16px", {"lineHeight": "24px", "fontWeight": "500"}],
+                        "headline-md": ["20px", {"lineHeight": "28px", "fontWeight": "600"}],
+                        "numeric-keypad": ["24px", {"lineHeight": "24px", "fontWeight": "500"}],
+                        "label-caps": ["12px", {"lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "700"}],
+                        "display-price": ["48px", {"lineHeight": "56px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                        "headline-lg": ["24px", {"lineHeight": "32px", "fontWeight": "700"}],
+                        "body-sm": ["14px", {"lineHeight": "20px", "fontWeight": "400"}]
+                    }
+                },
+            },
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+            display: inline-block;
+            line-height: 1;
+            text-transform: none;
+            letter-spacing: normal;
+            word-wrap: normal;
+            white-space: nowrap;
+            direction: ltr;
+        }
+        body { font-family: 'Inter', sans-serif; }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        .drawer-mask {
+            background-color: rgba(23, 29, 25, 0.4);
+            backdrop-filter: blur(2px);
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+</head>
+<body class="bg-surface text-on-surface min-h-screen flex flex-col items-center">
+<!-- Mobile Screen Wrapper -->
+<div class="w-full max-w-md bg-background min-h-screen relative overflow-hidden flex flex-col shadow-2xl">
+<!-- TopAppBar (From JSON) -->
+<header class="bg-surface dark:bg-surface-dim w-full top-0 sticky border-b border-outline-variant dark:border-outline z-50 flex justify-between items-center px-gutter h-touch-target">
+<div class="flex items-center gap-2">
+<div class="w-8 h-8 rounded-full bg-primary-container flex items-center justify-center overflow-hidden">
+<img class="w-full h-full object-cover" data-alt="A close-up portrait of a friendly Filipino sari-sari store owner in a brightly lit professional setting. The image uses high-contrast lighting and a clean, minimalist background with emerald green accents. The aesthetic is modern and institutional, focusing on reliability and business efficiency for the TindaTrack platform." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCXEHLbVd0bkL6AYnnL9SL7nJuje8oEqxHceoOnkx6yOlKS-Q8E-saSLvtK8g8l_F9mCjPJe1UddEUDef53CkZqiz1bhnWwUxGxdoVPMMgAYuWBm6zIGiCFnRTvjeZWk3btAJIM-whzL07X2eFnHKBhHu_EuBNEGPB2uLWbCsQW49jVN_0uBEvvbfgbSEkuUs6IysvXL56fU5JUFl3PSwd3MZlRv8owku6kXmJXhOBsq4J5rrPGT-RAzcenM3p_2FDaZoN2si3NdM7s">
+</div>
+<h1 class="font-headline-lg text-headline-md text-primary dark:text-primary-fixed-dim">TindaTrack</h1>
+</div>
+<button class="material-symbols-outlined text-primary dark:text-primary-fixed-dim p-2 hover:bg-surface-container-high transition-colors active:bg-surface-container-highest rounded-full">
+                settings
+            </button>
+</header>
+<!-- Main Content Area (Inventory List) -->
+<main class="flex-1 px-container-margin pt-stack-md pb-24 overflow-y-auto no-scrollbar">
+<div class="flex justify-between items-center mb-stack-md">
+<h2 class="font-headline-md text-headline-md text-on-surface">Inventory</h2>
+<div class="flex gap-2">
+<span class="material-symbols-outlined text-outline p-1">search</span>
+<span class="material-symbols-outlined text-outline p-1">filter_list</span>
+</div>
+</div>
+<!-- Category Pill Filter -->
+<div class="flex gap-2 mb-stack-md overflow-x-auto no-scrollbar pb-2">
+<span class="px-4 py-1.5 rounded-full bg-primary text-on-primary font-label-caps text-label-caps">ALL</span>
+<span class="px-4 py-1.5 rounded-full border border-outline-variant text-on-surface-variant font-label-caps text-label-caps">DRINKS</span>
+<span class="px-4 py-1.5 rounded-full border border-outline-variant text-on-surface-variant font-label-caps text-label-caps">SNACKS</span>
+<span class="px-4 py-1.5 rounded-full border border-outline-variant text-on-surface-variant font-label-caps text-label-caps">CANNED</span>
+</div>
+<!-- Inventory Grid/List (Denser Monolith Style) -->
+<div class="space-y-2">
+<!-- Item 1 (Target for Drawer) -->
+<div class="flex items-center bg-white p-3 border border-outline-variant rounded-lg gap-3">
+<div class="w-12 h-12 bg-surface-container-high rounded flex-shrink-0 overflow-hidden">
+<img class="w-full h-full object-contain" data-alt="A clean, studio-lit commercial photograph of a Royal Tru Orange 300ml bottle. The image is set against a solid Slate-50 background, emphasizing the vibrant orange liquid and the crisp labeling. The lighting is high-density and professional, conforming to the TindaTrack Monolith Craft aesthetic of precision and business clarity." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCDrLmR0TJScb6z0NFuObKq6t2tDuxXox0uLBYXR1eeOS4Rq5snJChiUFHZqPNqzgtEKBzyhPk9tjRzlPD2M3yDXk2_MKMlu2KzQSbzfxY5TfnFXTYkqq254Xfyls6HAcxFA2MsCK680zSQTEKZNnzEYAW1gDWquk-ggMt-9kDiWWMOCKMSY2uQka5hj6xB91_o74S9mcTMjP36jk52yTByHG4i5SgsRFvRFVZEs4gMnBAua-6q8xtWZjmxBmO7gZk3tNYO4OLjSqUf">
+</div>
+<div class="flex-1">
+<p class="font-body-lg text-body-lg text-on-surface">Royal Tru Orange 300ml</p>
+<p class="font-label-caps text-[10px] text-on-surface-variant uppercase">Drinks • 24 Units</p>
+</div>
+<div class="text-right">
+<p class="font-headline-md text-primary">₱18.00</p>
+</div>
+</div>
+<!-- Item 2 -->
+<div class="flex items-center bg-white p-3 border border-outline-variant rounded-lg gap-3 opacity-80">
+<div class="w-12 h-12 bg-surface-container-high rounded flex-shrink-0 overflow-hidden">
+<img class="w-full h-full object-contain" data-alt="A pack of SkyFlakes crackers in a sharp, clear product shot. The design is utilitarian, with high-contrast edges and neutral lighting. The background is a subtle Slate-100, fitting the professional TindaTrack inventory management style. The focus is on the packaging details for easy identification in a store environment." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBmwgCmHDByajEpn5KQmoCrnP7b60hEu8TrH2DH90SIIwyOhG9vDC__viImotwmd3IlivOmeYIgrmGLBhsWILD1iKHNJlH-FWEatD5WlTuMszciU6ysX4AU5P57gbZtsI4fEXNNKPiftmwlOqgsvcnk29FYK1P7UGjn3d8m9YdzBhSOAT-QccLGMBbgTxhQ5aceevS5IImQxPcVnx6k81U0Lt0eQvjUlmiP4PyzjdEXiAswIzWbINVZ_QW8VMx1tGJH1dGYxN3c0YMJ">
+</div>
+<div class="flex-1">
+<p class="font-body-lg text-body-lg text-on-surface">SkyFlakes Crackers (1pc)</p>
+<p class="font-label-caps text-[10px] text-status-low-stock uppercase">Snacks • 5 Units left</p>
+</div>
+<div class="text-right">
+<p class="font-headline-md text-on-surface">₱7.00</p>
+</div>
+</div>
+<!-- Item 3 -->
+<div class="flex items-center bg-white p-3 border border-outline-variant rounded-lg gap-3 opacity-80">
+<div class="w-12 h-12 bg-surface-container-high rounded flex-shrink-0 overflow-hidden">
+<img class="w-full h-full object-contain" data-alt="A 500ml bottle of Nature's Spring drinking water captured with crisp, architectural lighting. The bottle is perfectly centered on a light mode Slate-50 backdrop. This minimalist and high-contrast photography style ensures the product stands out as a clear data point in the TindaTrack inventory management system." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBzddK5VPNQYZAC_NbUdqUdMDzuT9RwMcbjQycEqkVdmMjI8j_cNCa3E1P5Jihk4sP4gfNkXZXp4xVF8_GmK5C1ud4qhGc4H8bLhxRSJfUJO_KDf5Raad3Yamx0eJgmxs5H5E6hR2AcAnrVnTiE0WSfUfVBqdHmoSKATfal5z7ZjIACFlFDlq5UZpBGTQ_vCvvXo4hiHgN5GH0FGb_ElbPyt4qqHrn9wkgud767IRgqMrfrab0EjelKkY-HGhzwAgFymJSoPznzGjEd">
+</div>
+<div class="flex-1">
+<p class="font-body-lg text-body-lg text-on-surface">Nature's Spring 500ml</p>
+<p class="font-label-caps text-[10px] text-on-surface-variant uppercase">Drinks • 48 Units</p>
+</div>
+<div class="text-right">
+<p class="font-headline-md text-on-surface">₱12.00</p>
+</div>
+</div>
+<!-- Item 4 -->
+<div class="flex items-center bg-white p-3 border border-outline-variant rounded-lg gap-3 opacity-80">
+<div class="w-12 h-12 bg-surface-container-high rounded flex-shrink-0 overflow-hidden">
+<img class="w-full h-full object-contain" data-alt="A can of Ligo Sardines in tomato sauce, photographed in a high-key, professional studio environment. The metallic surface of the can glimmers under bright, even lighting against a neutral Slate-50 background. The mood is industrial and clean, aligned with the TindaTrack design philosophy of calculated efficiency." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDNQreMZqVjry2N-7YHly5QJrTgWS6TUrJqHf0GRcWMZGc_cAuDFE0G1cxUM2MA09dfXDbsTPd5lPV7f10uvmber8TOw9V16tGVMUfxZctqG_25Fo0w0h0Jf1-a8rK_NksthkwODSvYVJuj6KOMHzNyXY44fbMToKQfq6vKUYTWa5sd0-_7n7iXWp1fsWNK2zzDWB3ygd3TKMo-XOngNxqr2NGAyGsMx8aA1PXP5594O12dksk3pCnpF9QJaJqHubRoQqezCoXRcURe">
+</div>
+<div class="flex-1">
+<p class="font-body-lg text-body-lg text-on-surface">Ligo Sardines (Red)</p>
+<p class="font-label-caps text-[10px] text-on-surface-variant uppercase">Canned • 12 Units</p>
+</div>
+<div class="text-right">
+<p class="font-headline-md text-on-surface">₱22.50</p>
+</div>
+</div>
+</div>
+</main>
+<!-- Product Detail Drawer Overlay -->
+<div class="absolute inset-0 z-[60] drawer-mask flex flex-col justify-end">
+<!-- Swipeable Drawer Handle Area -->
+<div class="w-full h-4 flex justify-center items-end bg-surface rounded-t-xl">
+<div class="w-12 h-1 bg-outline-variant rounded-full mb-1"></div>
+</div>
+<!-- Drawer Body -->
+<div class="bg-surface w-full p-gutter flex flex-col gap-6 shadow-[0_-8px_24px_rgba(0,0,0,0.1)]">
+<!-- Product Overview Section -->
+<div class="flex gap-4">
+<div class="w-24 h-24 bg-surface-container rounded-xl border border-outline-variant overflow-hidden flex items-center justify-center">
+<img class="w-full h-full object-contain p-2" data-alt="A professional studio-quality close-up of a Royal Tru Orange 300ml bottle, isolated on a clean Slate-50 background. The image highlights the bright orange beverage and clear brand graphics with crisp, high-contrast lighting. This visual is designed for a business inventory interface, emphasizing clarity, precision, and a minimalist aesthetic." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCvlfASe54-4eVd8roRoHgJo3kA2dCG2cbjDz7l3xJLoVE6dqxX79DBI8bz3Fwk04OvJ9iegekVOJe_PvltZAN2lUGAciAn3E8-l9sVP7N7ChqTR2Rhe2dEkGJzSRnOH0cPAlYNtSGUWY35qNuhWZKLiZIlFFkZR_8eNRmlAyOfoSgTO2zdIKSZOVDsai12d42cojd-jJSV0UQ3rpMo691jvTj9f2uKA3q8SZwsqFhWbNlEYSAVk13cmFc1NufeuFvZuK469HF47FI9">
+</div>
+<div class="flex flex-col justify-between py-1">
+<div>
+<span class="inline-block px-2 py-0.5 rounded bg-secondary-container text-on-secondary-container font-label-caps text-[10px] mb-1">DRINKS</span>
+<h3 class="font-headline-lg text-headline-lg text-on-surface leading-tight">Royal Tru Orange 300ml</h3>
+</div>
+<div class="flex items-center gap-1.5">
+<span class="w-2 h-2 rounded-full bg-status-in-stock"></span>
+<p class="font-body-sm text-body-sm text-on-surface-variant">In Stock: <span class="font-bold text-on-surface">24 units</span></p>
+</div>
+</div>
+</div>
+<!-- Financial Density Grid -->
+<div class="grid grid-cols-2 gap-px bg-outline-variant border border-outline-variant rounded overflow-hidden">
+<div class="bg-white p-3">
+<p class="font-label-caps text-[10px] text-outline uppercase mb-1">Buy Price</p>
+<p class="font-headline-md text-on-surface">₱15.50</p>
+</div>
+<div class="bg-white p-3">
+<p class="font-label-caps text-[10px] text-outline uppercase mb-1">Sell Price</p>
+<p class="font-headline-md text-primary">₱18.00</p>
+</div>
+<div class="bg-surface-container-low col-span-2 p-3 flex justify-between items-center">
+<div>
+<p class="font-label-caps text-[10px] text-outline uppercase">Profit Margin</p>
+<p class="font-body-lg text-status-in-stock">₱2.50 per unit</p>
+</div>
+<div class="text-right">
+<p class="font-label-caps text-[10px] text-outline uppercase">ROI</p>
+<p class="font-body-lg text-on-surface-variant font-bold">16.1%</p>
+</div>
+</div>
+</div>
+<!-- Action Buttons -->
+<div class="flex flex-col gap-2 mt-2">
+<div class="flex flex-col gap-3">
+<div class="flex items-center justify-between bg-surface-container-low rounded-lg p-1 border border-outline-variant">
+<button class="w-12 h-12 flex items-center justify-center bg-white rounded-lg text-primary active:scale-95 transition-transform border border-outline-variant">
+<span class="material-symbols-outlined">remove</span>
+</button>
+<div class="flex flex-col items-center">
+<span class="text-label-caps text-outline uppercase">Current Stock</span>
+<input class="text-center font-headline-lg text-on-surface w-20 focus:ring-0 p-0 bg-white border border-outline-variant rounded py-1" type="text" value="24" min="0" step="1">
+</div>
+<button class="w-12 h-12 flex items-center justify-center bg-white rounded-lg text-primary active:scale-95 transition-transform border border-outline-variant">
+<span class="material-symbols-outlined">add</span>
+</button>
+</div>
+<button class="w-full h-touch-target bg-primary text-on-primary rounded-lg font-body-lg flex items-center justify-center gap-2 active:scale-[0.98] transition-transform shadow-lg">
+<span class="material-symbols-outlined">check_circle</span>
+        Save Stock
+    </button>
+</div>
+<button class="w-full h-touch-target border border-outline-variant text-on-surface-variant rounded-lg font-body-lg flex items-center justify-center gap-2 active:bg-surface-container-low transition-colors">
+<span class="material-symbols-outlined">edit</span>
+                        Edit Product
+                    </button>
+</div>
+</div>
+</div>
+<!-- BottomNavBar (From JSON) -->
+<!-- Suppression Logic: Suppressed because the Product Detail Drawer acts as a temporary task focus/sub-page interaction -->
+<!-- Note: Based on instructions, we suppress the navigation shell if the page intent is a task-focused sub-page with a close/back action. The drawer implies this focus. -->
+<nav class="hidden fixed bottom-0 left-0 w-full flex justify-around items-center px-container-margin pb-safe bg-surface dark:bg-surface-dim z-50 h-16 border-t border-outline-variant dark:border-outline shadow-lg">
+<div class="flex flex-col items-center justify-center text-on-secondary-fixed-variant p-2">
+<span class="material-symbols-outlined">home</span>
+</div>
+<div class="flex flex-col items-center justify-center bg-primary-container text-on-primary-container rounded-xl p-2">
+<span class="material-symbols-outlined">inventory_2</span>
+</div>
+<div class="flex flex-col items-center justify-center text-on-secondary-fixed-variant p-2">
+<span class="material-symbols-outlined">receipt_long</span>
+</div>
+<div class="flex flex-col items-center justify-center text-on-secondary-fixed-variant p-2">
+<span class="material-symbols-outlined">analytics</span>
+</div>
+</nav>
+</div>
+<script>
+        // Simple micro-interaction for the drawer closing
+        document.querySelector('.drawer-mask').addEventListener('click', function(e) {
+            if (e.target === this) {
+                this.style.transition = 'opacity 0.3s ease';
+                this.style.opacity = '0';
+                setTimeout(() => this.style.display = 'none', 300);
+            }
+        });
+    </script>
+
+
+
+
+</body></html>

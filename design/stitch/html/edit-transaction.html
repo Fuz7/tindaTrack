@@ -1,0 +1,330 @@
+<!DOCTYPE html><html class="light" lang="en"><head>
+<meta charset="utf-8">
+<meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" name="viewport">
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "inverse-primary": "#68dba9",
+                        "surface": "#f5fbf5",
+                        "tertiary-fixed": "#ffdad7",
+                        "primary-fixed": "#85f8c4",
+                        "background": "#f5fbf5",
+                        "status-in-stock": "#10B981",
+                        "on-secondary-container": "#5c647a",
+                        "on-primary": "#ffffff",
+                        "surface-tint": "#006c4a",
+                        "tertiary": "#9b3e3b",
+                        "on-secondary": "#ffffff",
+                        "surface-variant": "#dee4de",
+                        "on-tertiary-fixed-variant": "#7f2928",
+                        "on-error-container": "#93000a",
+                        "outline-variant": "#bccac0",
+                        "on-background": "#171d19",
+                        "primary": "#006948",
+                        "surface-container-lowest": "#ffffff",
+                        "on-tertiary": "#ffffff",
+                        "surface-bright": "#f5fbf5",
+                        "on-error": "#ffffff",
+                        "primary-container": "#00855d",
+                        "error-container": "#ffdad6",
+                        "status-out-of-stock": "#EF4444",
+                        "on-secondary-fixed": "#131b2e",
+                        "tertiary-container": "#ba5551",
+                        "inverse-on-surface": "#ecf2ec",
+                        "action-destructive": "#B91C1C",
+                        "secondary-fixed": "#dae2fd",
+                        "error": "#ba1a1a",
+                        "on-surface": "#171d19",
+                        "on-primary-fixed": "#002114",
+                        "surface-container-highest": "#dee4de",
+                        "on-primary-fixed-variant": "#005137",
+                        "on-tertiary-fixed": "#410004",
+                        "tertiary-fixed-dim": "#ffb3ae",
+                        "on-tertiary-container": "#fffbff",
+                        "inverse-surface": "#2c322e",
+                        "surface-tonal": "#F8FAFC",
+                        "secondary-container": "#dae2fd",
+                        "on-secondary-fixed-variant": "#3f465c",
+                        "secondary-fixed-dim": "#bec6e0",
+                        "on-surface-variant": "#3d4a42",
+                        "surface-dim": "#d5dcd6",
+                        "surface-border": "#E2E8F0",
+                        "surface-container-low": "#eff5ef",
+                        "surface-container": "#e9efe9",
+                        "status-low-stock": "#F59E0B",
+                        "secondary": "#565e74",
+                        "outline": "#6d7a72",
+                        "surface-container-high": "#e4eae4",
+                        "primary-fixed-dim": "#68dba9",
+                        "on-primary-container": "#f5fff7"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "stack-sm": "0.5rem",
+                        "container-margin": "1rem",
+                        "gutter": "1rem",
+                        "touch-target": "3rem",
+                        "stack-md": "1rem"
+                    },
+                    "fontFamily": {
+                        "label-caps": ["Inter"],
+                        "headline-lg": ["Inter"],
+                        "body-sm": ["Inter"],
+                        "display-price": ["Inter"],
+                        "numeric-keypad": ["Inter"],
+                        "body-lg": ["Inter"],
+                        "headline-md": ["Inter"]
+                    },
+                    "fontSize": {
+                        "label-caps": ["12px", {"lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "700"}],
+                        "headline-lg": ["24px", {"lineHeight": "32px", "fontWeight": "700"}],
+                        "body-sm": ["14px", {"lineHeight": "20px", "fontWeight": "400"}],
+                        "display-price": ["48px", {"lineHeight": "56px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                        "numeric-keypad": ["24px", {"lineHeight": "24px", "fontWeight": "500"}],
+                        "body-lg": ["16px", {"lineHeight": "24px", "fontWeight": "500"}],
+                        "headline-md": ["20px", {"lineHeight": "28px", "fontWeight": "600"}]
+                    }
+                },
+            },
+        }
+    </script>
+<style>
+        body { font-family: 'Inter', sans-serif; }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .custom-scrollbar::-webkit-scrollbar { width: 4px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #bccac0; border-radius: 2px; }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-surface text-on-surface min-h-screen pb-32">
+<!-- Top App Bar -->
+<header class="bg-surface dark:bg-surface-dim border-b border-outline-variant dark:border-outline w-full top-0 sticky flex justify-between items-center px-gutter h-touch-target z-50">
+<div class="flex items-center gap-3">
+<div class="w-8 h-8 bg-primary-container rounded-full flex items-center justify-center text-on-primary-container">
+<span class="material-symbols-outlined text-sm">store</span>
+</div>
+<span class="font-headline-md text-primary">TindaTrack</span>
+</div>
+<div class="flex items-center gap-2">
+<button class="p-2 hover:bg-surface-container-high transition-colors rounded-full active:bg-surface-container-highest">
+<span class="material-symbols-outlined text-on-surface-variant">settings</span>
+</button>
+</div>
+</header>
+<main class="max-w-md mx-auto p-gutter space-y-6"><div class="flex items-center gap-4 mb-6">
+<button class="p-2 -ml-2 hover:bg-surface-container-high transition-colors rounded-full active:bg-surface-container-highest">
+<span class="material-symbols-outlined text-primary">arrow_back</span>
+</button>
+<h1 class="font-headline-md text-on-surface">Edit Transaction</h1>
+<div class="flex-grow"></div>
+<button class="p-2 hover:bg-surface-container-high transition-colors rounded-full active:bg-surface-container-highest">
+<span class="material-symbols-outlined text-error">delete</span>
+</button>
+</div>
+<!-- Transaction Meta Information -->
+<section class="bg-surface-container-low border border-outline-variant p-4 rounded-xl space-y-4">
+<div class="grid grid-cols-2 gap-4">
+<div class="space-y-1">
+<label class="font-label-caps text-label-caps text-on-surface-variant">TRANSACTION ID</label>
+<input class="w-full bg-surface-variant border-none text-on-surface-variant font-body-lg text-body-lg rounded-lg px-3 py-2 cursor-not-allowed" disabled="" type="text" value="TXN-90210">
+</div>
+<div class="space-y-1">
+<label class="font-label-caps text-label-caps text-on-surface-variant">DATE &amp; TIME</label>
+<input class="w-full bg-surface border border-outline text-on-surface font-body-lg text-body-lg rounded-lg px-3 py-2 focus:ring-2 focus:ring-primary focus:border-primary" type="datetime-local" value="2023-11-24T14:30">
+</div>
+</div>
+<div class="space-y-1">
+<label class="font-label-caps text-label-caps text-on-surface-variant">CUSTOMER NAME</label>
+<input class="w-full bg-surface border border-outline text-on-surface font-body-lg text-body-lg rounded-lg px-3 py-2 focus:ring-2 focus:ring-primary focus:border-primary" placeholder="Optional" type="text" value="Aling Nena">
+</div>
+</section>
+<!-- Itemized List -->
+<section class="space-y-3">
+<div class="flex justify-between items-center">
+<h2 class="font-label-caps text-label-caps text-on-surface-variant">PURCHASED ITEMS</h2>
+<span class="font-label-caps text-label-caps text-primary">3 ITEMS</span>
+</div>
+<div class="space-y-2">
+<!-- Row 1 -->
+<div class="flex items-center justify-between p-3 bg-surface border border-outline-variant rounded-xl group">
+<div class="flex items-center gap-3">
+<div class="w-12 h-12 bg-surface-container rounded-lg overflow-hidden border border-outline-variant">
+<img class="w-full h-full object-cover" data-alt="Close up product shot of a bright orange soda bottle labeled Royal Tru Orange, studio lighting, high contrast, clean minimalist background consistent with an inventory management app interface." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBN_FkAqsDCOFzo19fVHf6BpEhWosgTbnZOEX0noNwcdfxKyu4JveJg1D9a4AWK6ERXlSNoQVu64fP0cdwQI2vT32k5UFWK6NGCkU6Sl4CV-2AiTZu40EazmOCI2IkJHZECMRbAkw46lt1GsTi6NfuRo8O_xJeIuJIu32rrdl0hO89F_nRfR89HpZDnQoSmDAD4K2tlEyXivwi2m07e9Zf5_KniHUC3QYzSBm2Eo_XZPVsv7OOpcosOww">
+</div>
+<div>
+<p class="font-body-lg text-body-lg">Royal Tru Orange 1L</p>
+<p class="font-body-sm text-body-sm text-on-surface-variant">₱45.00</p>
+</div>
+</div>
+<div class="flex items-center gap-3">
+<div class="flex items-center border border-outline rounded-lg overflow-hidden h-9">
+<button class="px-2 hover:bg-surface-container-high active:bg-surface-container-highest transition-colors">
+<span class="material-symbols-outlined text-sm">remove</span>
+</button>
+<span class="px-3 font-bold text-body-lg min-w-[2rem] text-center">1</span>
+<button class="px-2 hover:bg-surface-container-high active:bg-surface-container-highest transition-colors">
+<span class="material-symbols-outlined text-sm">add</span>
+</button>
+</div>
+<button class="text-error hover:bg-error-container p-2 rounded-full transition-colors active:scale-95">
+<span class="material-symbols-outlined">close</span>
+</button>
+</div>
+</div>
+<!-- Row 2 -->
+<div class="flex items-center justify-between p-3 bg-surface border border-outline-variant rounded-xl group">
+<div class="flex items-center gap-3">
+<div class="w-12 h-12 bg-surface-container rounded-lg overflow-hidden border border-outline-variant">
+<img class="w-full h-full object-cover" data-alt="Macro photography of a blue and white bag of Piattos cheese flavored potato chips, professional studio lighting, sharp focus, clean composition for a commercial business application." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBrsm0NRYhQ5SE7Fl6bWkxNGzgsaf2TUDIWV_brD2_I_PRFg8Tt_AV6Tix62VbNpmFTENZWLWjFvVSJca60OYd3k1rBEbRva6TGqf3tQV8hv2HaS-Ozh9FuQzuC9-NAqDuo2g7hVMhWr6rMwF2muzRRlRgwgDCrPn6aqEzHfxpCAGPJoaDEUyhVK-bvn4cBP02o5UlcmhUH9AY9NO1TnEywNoLXHvBNIy08ATmG_4QBcCNZoO5Oaw87vw">
+</div>
+<div>
+<p class="font-body-lg text-body-lg">Piattos XL Cheese</p>
+<p class="font-body-sm text-body-sm text-on-surface-variant">₱38.00</p>
+</div>
+</div>
+<div class="flex items-center gap-3">
+<div class="flex items-center border border-outline rounded-lg overflow-hidden h-9">
+<button class="px-2 hover:bg-surface-container-high active:bg-surface-container-highest transition-colors">
+<span class="material-symbols-outlined text-sm">remove</span>
+</button>
+<span class="px-3 font-bold text-body-lg min-w-[2rem] text-center">2</span>
+<button class="px-2 hover:bg-surface-container-high active:bg-surface-container-highest transition-colors">
+<span class="material-symbols-outlined text-sm">add</span>
+</button>
+</div>
+<button class="text-error hover:bg-error-container p-2 rounded-full transition-colors active:scale-95">
+<span class="material-symbols-outlined">close</span>
+</button>
+</div>
+</div>
+<!-- Row 3 -->
+<div class="flex items-center justify-between p-3 bg-surface border border-outline-variant rounded-xl group">
+<div class="flex items-center gap-3">
+<div class="w-12 h-12 bg-surface-container rounded-lg overflow-hidden border border-outline-variant">
+<img class="w-full h-full object-cover" data-alt="Minimalist pack of Skyflakes crackers, high density retail packaging, bright background, professional commercial lighting, focused on the typography and brand label for business inventory view." src="https://lh3.googleusercontent.com/aida-public/AB6AXuC-PyQ74eZWJJEJDVjniU151mNXiUqTHebEYevP6HT9oz3_z0yQd3kyx2CRtPJC927HHcpBshxHaY109_pfv1cMPdD1b0gdVZakBmYGh4IGnO4KqCu8AvqB05ioFbml47fLpZnUbZjLoRS9QOm0EmX6dm4TI4M9fJcEX7cSnrr00TKxb2O6QPJ7a7u9KCBrl0lBlfMnQsOw_3VP8ZLERS7QMPS_LZlTwy0L5jM-21L05MB3lz2CHNeeTg">
+</div>
+<div>
+<p class="font-body-lg text-body-lg">Skyflakes 10s</p>
+<p class="font-body-sm text-body-sm text-on-surface-variant">₱55.00</p>
+</div>
+</div>
+<div class="flex items-center gap-3">
+<div class="flex items-center border border-outline rounded-lg overflow-hidden h-9">
+<button class="px-2 hover:bg-surface-container-high active:bg-surface-container-highest transition-colors">
+<span class="material-symbols-outlined text-sm">remove</span>
+</button>
+<span class="px-3 font-bold text-body-lg min-w-[2rem] text-center">1</span>
+<button class="px-2 hover:bg-surface-container-high active:bg-surface-container-highest transition-colors">
+<span class="material-symbols-outlined text-sm">add</span>
+</button>
+</div>
+<button class="text-error hover:bg-error-container p-2 rounded-full transition-colors active:scale-95">
+<span class="material-symbols-outlined">close</span>
+</button>
+</div>
+</div>
+</div>
+<!-- Add Item Search -->
+<div class="relative mt-4">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant">search</span>
+<input class="w-full bg-surface border border-outline text-on-surface font-body-lg text-body-lg rounded-xl pl-10 pr-4 py-3 focus:ring-2 focus:ring-primary focus:border-primary" placeholder="Add more products..." type="text">
+</div>
+</section>
+<!-- Payment Info Section -->
+<section class="bg-surface-container p-4 rounded-xl space-y-4">
+<h2 class="font-label-caps text-label-caps text-on-surface-variant">PAYMENT INFORMATION</h2>
+<div class="space-y-4">
+<div class="space-y-1">
+<label class="font-body-sm text-body-sm text-on-surface-variant">Payment Method</label>
+<div class="grid grid-cols-2 gap-2">
+<button class="flex items-center justify-center gap-2 border-2 border-primary bg-primary-container text-on-primary-container py-2 rounded-lg font-bold">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">payments</span>
+                            Cash
+                        </button>
+<button class="flex items-center justify-center gap-2 border border-outline bg-surface text-on-surface-variant py-2 rounded-lg hover:bg-surface-container-high transition-colors">
+<span class="material-symbols-outlined">qr_code_2</span>
+                            GCash
+                        </button>
+</div>
+</div>
+<div class="space-y-1">
+<label class="font-body-sm text-body-sm text-on-surface-variant">Amount Received</label>
+<div class="relative">
+<span class="absolute left-3 top-1/2 -translate-y-1/2 font-bold text-on-surface-variant">₱</span>
+<input class="w-full bg-surface border border-outline text-on-surface font-headline-md text-headline-md-mobile rounded-lg pl-8 pr-4 py-2 text-right focus:ring-2 focus:ring-primary" type="number" value="200.00">
+</div>
+</div>
+</div>
+</section>
+<!-- Order Summary -->
+<section class="border-t border-outline-variant pt-4 space-y-2">
+<div class="flex justify-between items-center text-on-surface-variant">
+<span class="font-body-lg text-body-lg">Subtotal</span>
+<span class="font-body-lg text-body-lg">₱176.00</span>
+</div>
+<div class="flex justify-between items-center text-tertiary">
+<span class="font-body-lg text-body-lg">Discount</span>
+<div class="flex items-center gap-2">
+<span class="font-body-lg text-body-lg">-₱0.00</span>
+<button class="text-xs font-bold border border-tertiary rounded px-2 py-0.5 hover:bg-tertiary-fixed transition-colors">EDIT</button>
+</div>
+</div>
+<div class="flex justify-between items-center pt-2">
+<span class="font-headline-md text-headline-md text-on-surface">Total Amount</span>
+<span class="font-headline-md text-headline-md text-primary">₱176.00</span>
+</div>
+<div class="flex justify-between items-center text-on-secondary-container">
+<span class="font-body-sm text-body-sm">Change Due</span>
+<span class="font-body-sm text-body-sm">₱24.00</span>
+</div>
+</section>
+</main>
+<!-- Footer Actions -->
+<footer class="fixed bottom-0 left-0 w-full bg-surface border-t border-outline-variant p-gutter flex flex-col gap-3 shadow-lg z-50">
+<button class="w-full bg-primary py-4 rounded-xl text-on-primary font-headline-md text-headline-md active:scale-[0.98] transition-transform shadow-md">
+            Update Transaction
+        </button>
+<button class="w-full py-2 text-on-surface-variant font-body-lg text-body-lg hover:text-on-surface transition-colors">
+            Cancel Changes
+        </button>
+</footer>
+<!-- Bottom Nav Placeholder (Hiding as per focused task rules) -->
+<nav class="hidden" id="bottom-nav">
+<!-- Persistent nav usually here, but suppressed for focused edit task -->
+</nav>
+<script>
+        // Simple micro-interaction for item controls
+        document.querySelectorAll('button').forEach(btn => {
+            btn.addEventListener('click', function(e) {
+                if (this.textContent.includes('add') || this.textContent.includes('remove')) {
+                    const parent = this.closest('.flex.items-center.border');
+                    const span = parent.querySelector('span');
+                    let val = parseInt(span.textContent);
+                    if (this.textContent.includes('add')) val++;
+                    else if (val > 1) val--;
+                    span.textContent = val;
+                }
+            });
+        });
+    </script>
+
+
+</body></html>

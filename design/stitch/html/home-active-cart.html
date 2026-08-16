@@ -1,0 +1,285 @@
+<!DOCTYPE html><html class="light" lang="en"><head>
+<meta charset="utf-8">
+<meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" name="viewport">
+<title>TindaTrack - Active Cart</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "primary-container": "#00855d",
+                    "on-primary-fixed-variant": "#005137",
+                    "surface-bright": "#f5fbf5",
+                    "primary": "#006948",
+                    "inverse-primary": "#68dba9",
+                    "on-error": "#ffffff",
+                    "tertiary-container": "#ba5551",
+                    "outline": "#6d7a72",
+                    "tertiary-fixed-dim": "#ffb3ae",
+                    "on-tertiary": "#ffffff",
+                    "surface-border": "#E2E8F0",
+                    "on-surface": "#171d19",
+                    "secondary-fixed": "#dae2fd",
+                    "error": "#ba1a1a",
+                    "action-destructive": "#B91C1C",
+                    "tertiary-fixed": "#ffdad7",
+                    "surface-container-low": "#eff5ef",
+                    "on-error-container": "#93000a",
+                    "inverse-surface": "#2c322e",
+                    "inverse-on-surface": "#ecf2ec",
+                    "surface-tint": "#006c4a",
+                    "on-surface-variant": "#3d4a42",
+                    "surface-dim": "#d5dcd6",
+                    "secondary": "#565e74",
+                    "on-tertiary-fixed-variant": "#7f2928",
+                    "primary-fixed-dim": "#68dba9",
+                    "background": "#f5fbf5",
+                    "on-secondary-fixed": "#131b2e",
+                    "secondary-fixed-dim": "#bec6e0",
+                    "on-tertiary-container": "#fffbff",
+                    "surface-container-highest": "#dee4de",
+                    "outline-variant": "#bccac0",
+                    "surface-container-high": "#e4eae4",
+                    "on-secondary-fixed-variant": "#3f465c",
+                    "on-background": "#171d19",
+                    "status-out-of-stock": "#EF4444",
+                    "surface-container-lowest": "#ffffff",
+                    "tertiary": "#9b3e3b",
+                    "on-secondary": "#ffffff",
+                    "error-container": "#ffdad6",
+                    "on-secondary-container": "#5c647a",
+                    "on-primary": "#ffffff",
+                    "surface-container": "#e9efe9",
+                    "secondary-container": "#dae2fd",
+                    "surface": "#f5fbf5",
+                    "primary-fixed": "#85f8c4",
+                    "on-primary-fixed": "#002114",
+                    "surface-variant": "#dee4de",
+                    "status-in-stock": "#10B981",
+                    "on-primary-container": "#f5fff7",
+                    "surface-tonal": "#F8FAFC",
+                    "status-low-stock": "#F59E0B",
+                    "on-tertiary-fixed": "#410004"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.25rem",
+                    "lg": "0.5rem",
+                    "xl": "0.75rem",
+                    "full": "9999px"
+            },
+            "spacing": {
+                    "stack-md": "1rem",
+                    "stack-sm": "0.5rem",
+                    "gutter": "1rem",
+                    "touch-target": "3rem",
+                    "container-margin": "1rem"
+            },
+            "fontFamily": {
+                    "headline-md": ["Inter"],
+                    "body-sm": ["Inter"],
+                    "label-caps": ["Inter"],
+                    "headline-lg": ["Inter"],
+                    "display-price": ["Inter"],
+                    "numeric-keypad": ["Inter"],
+                    "body-lg": ["Inter"]
+            },
+            "fontSize": {
+                    "headline-md": ["20px", {"lineHeight": "28px", "fontWeight": "600"}],
+                    "body-sm": ["14px", {"lineHeight": "20px", "fontWeight": "400"}],
+                    "label-caps": ["12px", {"lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "700"}],
+                    "headline-lg": ["24px", {"lineHeight": "32px", "fontWeight": "700"}],
+                    "display-price": ["48px", {"lineHeight": "56px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                    "numeric-keypad": ["24px", {"lineHeight": "24px", "fontWeight": "500"}],
+                    "body-lg": ["16px", {"lineHeight": "24px", "fontWeight": "500"}]
+            }
+          },
+        },
+      }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        body { font-family: 'Inter', sans-serif; }
+        .cart-item-list { scrollbar-width: none; }
+        .cart-item-list::-webkit-scrollbar { display: none; }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background text-on-surface select-none">
+<!-- Top AppBar -->
+<header class="bg-surface dark:bg-surface-dim w-full top-0 sticky border-b border-outline-variant dark:border-outline z-50 flex justify-between items-center px-gutter h-touch-target">
+<div class="flex items-center gap-3">
+<div class="w-8 h-8 rounded-full bg-primary-container flex items-center justify-center text-on-primary-container overflow-hidden">
+<img class="w-full h-full object-cover" data-alt="A professional high-resolution profile headshot of a friendly Filipino sari-sari store owner, wearing a clean apron. The setting is a brightly lit, organized modern retail space with a minimalist Monolith Craft aesthetic. The lighting is soft and high-key, emphasizing a clean and efficient business environment." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDeEt31RBlzj392jPEo398RVk_3kXQl85NUaMcNvqL4VukwPNXEgRZeN2ZzfASY0EVWpiD1M0AANRfLY4tF4OA1y5v0PKNxlA7rOd0QGeVE2dKh0QJCYYUaK0KSJ5ENkA5NkNs5HxfsQydRNHxqfTxCkwGmBTgIBMIRLwqGT1Xx4wsvFC9_7sKSARnVmzKBvT-jv4hcD8CoZ7gRvaxSds1ljR5P7LOXrkBWYLAMA-W8uaCz9NdcqnnyHG299iQhYPGwVGKZWp88O_fX">
+</div>
+<h1 class="text-headline-md font-headline-lg text-primary dark:text-primary-fixed-dim">TindaTrack</h1>
+</div>
+<button class="w-touch-target h-touch-target flex items-center justify-center hover:bg-surface-container-high transition-colors active:bg-surface-container-highest rounded-full">
+<span class="material-symbols-outlined text-primary">settings</span>
+</button>
+</header>
+<main class="pb-40">
+<!-- Search & Minimized Keypad Area -->
+<div class="p-4 bg-surface-container-low">
+<div class="relative mb-4">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant">search</span>
+<input class="w-full pl-10 pr-4 py-3 bg-surface-container-lowest border border-outline-variant rounded-lg focus:ring-2 focus:ring-primary focus:border-primary font-label-caps text-label-caps outline-none" placeholder="SEARCH ITEMS..." type="text">
+</div>
+<!-- Quick Category Tabs -->
+<div class="flex gap-2 overflow-x-auto cart-item-list">
+<button class="px-4 py-2 bg-primary text-on-primary rounded-lg font-label-caps text-label-caps whitespace-nowrap">ALL ITEMS</button>
+<button class="px-4 py-2 bg-surface-container-highest text-on-surface-variant rounded-lg font-label-caps text-label-caps whitespace-nowrap">SNACKS</button>
+<button class="px-4 py-2 bg-surface-container-highest text-on-surface-variant rounded-lg font-label-caps text-label-caps whitespace-nowrap">DRINKS</button>
+<button class="px-4 py-2 bg-surface-container-highest text-on-surface-variant rounded-lg font-label-caps text-label-caps whitespace-nowrap">CANNED</button>
+</div>
+</div>
+<!-- Active Cart Section -->
+<section class="px-4 py-2">
+<div class="flex justify-between items-center mb-4">
+<h2 class="font-headline-md text-headline-md text-on-surface">Active Cart</h2>
+<span class="bg-secondary-container text-on-secondary-container px-2 py-1 rounded text-xs font-bold">5 ITEMS</span>
+</div>
+<!-- Cart Items List -->
+<div class="space-y-2">
+<!-- Item 1 -->
+<div class="flex items-center p-3 bg-surface-container-lowest border border-surface-border rounded-xl transition-all active:bg-surface-container-low">
+<div class="w-12 h-12 bg-surface-container-high rounded-lg flex-shrink-0 flex items-center justify-center">
+<span class="material-symbols-outlined text-primary">chips</span>
+</div>
+<div class="ml-3 flex-grow">
+<div class="flex justify-between">
+<span class="font-body-lg text-body-lg text-on-surface">Piattos Cheese 40g</span>
+<span class="font-body-lg text-body-lg text-on-surface">₱36.00</span>
+</div>
+<div class="flex justify-between items-center mt-1">
+<div class="flex items-center bg-surface-container-low rounded-lg p-0.5 border border-outline-variant">
+<button class="w-8 h-8 flex items-center justify-center text-primary active:scale-95"><span class="material-symbols-outlined">remove</span></button>
+<span class="px-3 font-bold text-primary">2</span>
+<button class="w-8 h-8 flex items-center justify-center text-primary active:scale-95"><span class="material-symbols-outlined">add</span></button>
+</div>
+<span class="text-on-surface-variant font-label-caps text-label-caps">₱18.00 / EA</span>
+</div>
+</div>
+</div>
+<!-- Item 2 -->
+<div class="flex items-center p-3 bg-surface-container-lowest border border-surface-border rounded-xl transition-all active:bg-surface-container-low">
+<div class="w-12 h-12 bg-surface-container-high rounded-lg flex-shrink-0 flex items-center justify-center">
+<span class="material-symbols-outlined text-primary">liquor</span>
+</div>
+<div class="ml-3 flex-grow">
+<div class="flex justify-between">
+<span class="font-body-lg text-body-lg text-on-surface">Coke Mismo 290ml</span>
+<span class="font-body-lg text-body-lg text-on-surface">₱40.00</span>
+</div>
+<div class="flex justify-between items-center mt-1">
+<div class="flex items-center bg-surface-container-low rounded-lg p-0.5 border border-outline-variant">
+<button class="w-8 h-8 flex items-center justify-center text-primary active:scale-95"><span class="material-symbols-outlined">remove</span></button>
+<span class="px-3 font-bold text-primary">2</span>
+<button class="w-8 h-8 flex items-center justify-center text-primary active:scale-95"><span class="material-symbols-outlined">add</span></button>
+</div>
+<span class="text-on-surface-variant font-label-caps text-label-caps">₱20.00 / EA</span>
+</div>
+</div>
+</div>
+<!-- Item 3 -->
+<div class="flex items-center p-3 bg-surface-container-lowest border border-surface-border rounded-xl transition-all active:bg-surface-container-low">
+<div class="w-12 h-12 bg-surface-container-high rounded-lg flex-shrink-0 flex items-center justify-center">
+<span class="material-symbols-outlined text-primary">egg</span>
+</div>
+<div class="ml-3 flex-grow">
+<div class="flex justify-between">
+<span class="font-body-lg text-body-lg text-on-surface">Egg (Large)</span>
+<span class="font-body-lg text-body-lg text-on-surface">₱7.50</span>
+</div>
+<div class="flex justify-between items-center mt-1">
+<div class="flex items-center bg-surface-container-low rounded-lg p-0.5 border border-outline-variant">
+<button class="w-8 h-8 flex items-center justify-center text-primary active:scale-95"><span class="material-symbols-outlined">remove</span></button>
+<span class="px-3 font-bold text-primary">1</span>
+<button class="w-8 h-8 flex items-center justify-center text-primary active:scale-95"><span class="material-symbols-outlined">add</span></button>
+</div>
+<span class="text-on-surface-variant font-label-caps text-label-caps">₱7.50 / EA</span>
+</div>
+</div>
+</div>
+</div>
+<!-- Promotion / Discount Area -->
+<button class="w-full mt-4 p-3 border-2 border-dashed border-outline-variant rounded-xl flex items-center justify-center gap-2 text-on-surface-variant hover:bg-surface-container-low transition-colors">
+<span class="material-symbols-outlined">add_circle</span>
+<span class="font-label-caps text-label-caps">ADD DISCOUNT OR CUSTOM ITEM</span>
+</button>
+</section>
+</main>
+<!-- Checkout Footer -->
+<div class="fixed bottom-16 left-0 w-full bg-surface-container-lowest shadow-[0_-4px_20px_-10px_rgba(0,0,0,0.1)] border-t border-outline-variant z-40 p-4">
+<div class="flex justify-between items-end mb-4 px-2">
+<div>
+<p class="font-label-caps text-label-caps text-on-surface-variant">SUBTOTAL</p>
+<p class="font-body-lg text-body-lg text-on-surface">₱83.50</p>
+</div>
+<div class="text-right">
+<p class="font-label-caps text-label-caps text-primary font-bold">TOTAL TO PAY</p>
+<p class="font-display-price text-display-price text-primary leading-none">₱83.50</p>
+</div>
+</div>
+<div class="grid grid-cols-5 gap-2">
+<button class="col-span-1 bg-surface-container-highest text-on-surface flex items-center justify-center rounded-xl h-14 active:scale-95 transition-all">
+<span class="material-symbols-outlined">delete</span>
+</button>
+<button class="col-span-4 bg-primary text-on-primary font-headline-md text-headline-md rounded-xl h-14 flex items-center justify-center gap-3 active:scale-[0.98] transition-all shadow-lg shadow-primary/20" onclick="handleCheckout()">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">shopping_cart_checkout</span>
+                CHECKOUT
+            </button>
+</div>
+</div>
+<!-- Bottom Navigation Bar -->
+<nav class="fixed bottom-0 left-0 w-full flex justify-around items-center px-container-margin pb-safe bg-surface dark:bg-surface-dim border-t border-outline-variant dark:border-outline shadow-lg z-50 h-16">
+<a class="flex flex-col items-center justify-center bg-primary-container text-on-primary-container rounded-xl p-2 active:scale-95 duration-100 transition-all" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">home</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-secondary-fixed-variant p-2 hover:bg-surface-container-low active:scale-95 duration-100 transition-all" href="#">
+<span class="material-symbols-outlined">inventory_2</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-secondary-fixed-variant p-2 hover:bg-surface-container-low active:scale-95 duration-100 transition-all" href="#">
+<span class="material-symbols-outlined">receipt_long</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-secondary-fixed-variant p-2 hover:bg-surface-container-low active:scale-95 duration-100 transition-all" href="#">
+<span class="material-symbols-outlined">analytics</span>
+</a>
+</nav>
+<!-- Simple Haptic Feedback Script & Micro-interactions -->
+<script>
+        function handleCheckout() {
+            // Simulated haptic/visual feedback
+            const btn = event.currentTarget;
+            btn.innerHTML = '<span class="material-symbols-outlined animate-spin">sync</span> PROCESSING...';
+            setTimeout(() => {
+                btn.innerHTML = '<span class="material-symbols-outlined">check_circle</span> SUCCESS';
+                btn.classList.replace('bg-primary', 'bg-status-in-stock');
+                setTimeout(() => {
+                    btn.innerHTML = '<span class="material-symbols-outlined" style="font-variation-settings: \'FILL\' 1;">shopping_cart_checkout</span> CHECKOUT';
+                    btn.classList.replace('bg-status-in-stock', 'bg-primary');
+                }, 2000);
+            }, 800);
+        }
+
+        // Add active state styles to items for better touch feedback
+        document.querySelectorAll('.active\\:bg-surface-container-low').forEach(item => {
+            item.addEventListener('touchstart', () => {
+                item.style.transform = 'scale(0.98)';
+            });
+            item.addEventListener('touchend', () => {
+                item.style.transform = 'scale(1)';
+            });
+        });
+    </script>
+</body></html>

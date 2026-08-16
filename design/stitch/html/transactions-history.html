@@ -1,0 +1,282 @@
+<!DOCTYPE html><html class="light" lang="en"><head>
+<meta charset="utf-8">
+<meta content="width=device-width, initial-scale=1.0" name="viewport">
+<title>TindaTrack - Transactions</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@100..900&amp;display=swap" rel="stylesheet">
+<script id="tailwind-config">
+    tailwind.config = {
+      darkMode: "class",
+      theme: {
+        extend: {
+          "colors": {
+            "on-primary-fixed-variant": "#005137",
+            "on-surface-variant": "#3d4a42",
+            "error-container": "#ffdad6",
+            "surface-container-high": "#e4eae4",
+            "on-primary-fixed": "#002114",
+            "error": "#ba1a1a",
+            "tertiary-container": "#ba5551",
+            "surface-container-highest": "#dee4de",
+            "outline-variant": "#bccac0",
+            "on-secondary-fixed": "#131b2e",
+            "on-error": "#ffffff",
+            "status-in-stock": "#10B981",
+            "on-tertiary-fixed": "#410004",
+            "on-primary": "#ffffff",
+            "on-secondary-fixed-variant": "#3f465c",
+            "tertiary-fixed": "#ffdad7",
+            "on-primary-container": "#f5fff7",
+            "inverse-surface": "#2c322e",
+            "primary-container": "#00855d",
+            "status-out-of-stock": "#EF4444",
+            "surface-tint": "#006c4a",
+            "primary-fixed": "#85f8c4",
+            "inverse-on-surface": "#ecf2ec",
+            "surface-tonal": "#F8FAFC",
+            "secondary": "#565e74",
+            "on-background": "#171d19",
+            "on-tertiary": "#ffffff",
+            "status-low-stock": "#F59E0B",
+            "inverse-primary": "#68dba9",
+            "surface-variant": "#dee4de",
+            "surface-dim": "#d5dcd6",
+            "on-tertiary-container": "#fffbff",
+            "surface": "#f5fbf5",
+            "tertiary": "#9b3e3b",
+            "surface-bright": "#f5fbf5",
+            "secondary-fixed-dim": "#bec6e0",
+            "action-destructive": "#B91C1C",
+            "primary": "#006948",
+            "surface-container-lowest": "#ffffff",
+            "background": "#f5fbf5",
+            "on-tertiary-fixed-variant": "#7f2928",
+            "secondary-container": "#dae2fd",
+            "tertiary-fixed-dim": "#ffb3ae",
+            "surface-container": "#e9efe9",
+            "surface-container-low": "#eff5ef",
+            "primary-fixed-dim": "#68dba9",
+            "on-surface": "#171d19",
+            "on-secondary-container": "#5c647a",
+            "secondary-fixed": "#dae2fd",
+            "on-error-container": "#93000a",
+            "on-secondary": "#ffffff",
+            "outline": "#6d7a72",
+            "surface-border": "#E2E8F0"
+          },
+          "borderRadius": {
+            "DEFAULT": "0.25rem",
+            "lg": "0.5rem",
+            "xl": "0.75rem",
+            "full": "9999px"
+          },
+          "spacing": {
+            "stack-md": "1rem",
+            "stack-sm": "0.5rem",
+            "gutter": "1rem",
+            "container-margin": "1rem",
+            "touch-target": "3rem"
+          },
+          "fontFamily": {
+            "body-lg": ["Inter"],
+            "numeric-keypad": ["Inter"],
+            "headline-md": ["Inter"],
+            "headline-lg": ["Inter"],
+            "label-caps": ["Inter"],
+            "display-price": ["Inter"],
+            "body-sm": ["Inter"]
+          },
+          "fontSize": {
+            "body-lg": ["16px", {"lineHeight": "24px", "fontWeight": "500"}],
+            "numeric-keypad": ["24px", {"lineHeight": "24px", "fontWeight": "500"}],
+            "headline-md": ["20px", {"lineHeight": "28px", "fontWeight": "600"}],
+            "headline-md-mobile": ["18px", {"lineHeight": "24px", "fontWeight": "600"}],
+            "headline-lg": ["24px", {"lineHeight": "32px", "fontWeight": "700"}],
+            "label-caps": ["12px", {"lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "700"}],
+            "display-price": ["48px", {"lineHeight": "56px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+            "body-sm": ["14px", {"lineHeight": "20px", "fontWeight": "400"}]
+          }
+        },
+      },
+    }
+  </script>
+<style>
+    .material-symbols-outlined {
+      font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+    }
+    body { font-family: 'Inter', sans-serif; }
+    .no-scrollbar::-webkit-scrollbar { display: none; }
+    .transaction-card:active { transform: scale(0.98); }
+  </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background text-on-surface min-h-screen flex flex-col pb-24">
+<!-- TopAppBar -->
+<header class="bg-surface dark:bg-surface-dim w-full top-0 sticky border-b border-outline-variant dark:border-outline z-50 flex justify-between items-center px-gutter h-touch-target">
+<div class="flex items-center gap-3">
+<div class="w-8 h-8 rounded-full bg-primary-container flex items-center justify-center overflow-hidden">
+<span class="material-symbols-outlined text-on-primary-container text-lg">store</span>
+</div>
+<h1 class="font-headline-md text-headline-md-mobile text-primary dark:text-primary-fixed-dim">TindaTrack</h1>
+</div>
+<button class="hover:bg-surface-container-high transition-colors active:bg-surface-container-highest p-2 rounded-full">
+<span class="material-symbols-outlined text-primary">settings</span>
+</button>
+</header>
+<main class="flex-1 px-container-margin py-stack-md max-w-md mx-auto w-full">
+<!-- Page Header & Filter Section -->
+<div class="mb-stack-md flex flex-col gap-stack-sm">
+<div class="flex items-center justify-between">
+<h2 class="font-headline-lg text-on-surface">Transactions</h2>
+<span class="font-label-caps text-outline bg-surface-container px-2 py-1 rounded">Today</span>
+</div>
+<!-- Search & Date Filter -->
+<div class="flex gap-2">
+<div class="relative flex-1">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-outline text-sm">search</span>
+<input class="w-full pl-9 pr-4 py-2 bg-white border border-outline-variant rounded-lg font-body-sm focus:border-primary focus:ring-0 transition-all outline-none" placeholder="Search item or ID..." type="text">
+</div>
+<button class="w-10 h-10 flex items-center justify-center bg-white border border-outline-variant rounded-lg text-on-surface-variant hover:bg-surface-container-low transition-colors">
+<span class="material-symbols-outlined">calendar_today</span>
+</button>
+</div>
+</div>
+<!-- Daily Summary Bento -->
+<div class="grid grid-cols-2 gap-2 mb-stack-md">
+<div class="bg-primary-container text-on-primary-container p-3 rounded-xl flex flex-col gap-1">
+<span class="font-label-caps opacity-80 uppercase">Total Sales</span>
+<span class="font-headline-md">₱ 4,250.00</span>
+</div>
+<div class="bg-surface-container-high text-on-surface-variant p-3 rounded-xl flex flex-col gap-1">
+<span class="font-label-caps opacity-80 uppercase">Orders</span>
+<span class="font-headline-md">24</span>
+</div>
+</div>
+<!-- Transaction List -->
+<div class="flex flex-col gap-2">
+<!-- Item 1 -->
+<div class="transaction-card transition-all cursor-pointer bg-white border border-outline-variant rounded-xl p-3 flex flex-col hover:border-primary" onclick="toggleDetails('tx-001')">
+<div class="flex justify-between items-start">
+<div class="flex flex-col">
+<span class="font-label-caps text-outline">14:32 • TX-9842</span>
+<span class="font-body-lg text-on-surface">5 Items Purchased</span>
+</div>
+<span class="font-headline-md text-primary">₱ 145.00</span>
+</div>
+<!-- Hidden Details -->
+<div class="hidden mt-3 pt-3 border-t border-outline-variant animate-in fade-in slide-in-from-top-2 duration-300" id="tx-001">
+<ul class="flex flex-col gap-2 mb-3">
+<li class="flex justify-between text-body-sm">
+<span>2x Coke Sakura 500ml</span>
+<span class="font-medium text-on-surface">₱ 70.00</span>
+</li>
+<li class="flex justify-between text-body-sm">
+<span>1x Skyflakes Pack</span>
+<span class="font-medium text-on-surface">₱ 15.00</span>
+</li>
+<li class="flex justify-between text-body-sm">
+<span>2x Lucky Me Pancit Canton</span>
+<span class="font-medium text-on-surface">₱ 60.00</span>
+</li>
+</ul>
+<div class="flex gap-2">
+<button class="flex-1 py-2 bg-surface-container-highest text-on-surface-variant rounded-lg font-label-caps hover:bg-surface-variant transition-colors flex items-center justify-center gap-1">
+<span class="material-symbols-outlined text-sm">print</span> Receipt
+            </button>
+<button class="flex-1 py-2 bg-error-container text-on-error-container rounded-lg font-label-caps hover:bg-red-200 transition-colors flex items-center justify-center gap-1">
+<span class="material-symbols-outlined text-sm">undo</span> Refund
+            </button>
+</div>
+</div>
+</div>
+<!-- Item 2 (Voided State) -->
+<div class="bg-surface-container-low border border-outline-variant opacity-60 rounded-xl p-3 flex flex-col grayscale">
+<div class="flex justify-between items-start">
+<div class="flex flex-col">
+<div class="flex items-center gap-2">
+<span class="font-label-caps text-outline">14:10 • TX-9841</span>
+<span class="bg-error text-on-error text-[10px] px-1.5 py-0.5 rounded font-bold uppercase">Voided</span>
+</div>
+<span class="font-body-lg text-on-surface line-through">1 Item Purchased</span>
+</div>
+<span class="font-headline-md text-outline line-through">₱ 22.00</span>
+</div>
+</div>
+<!-- Item 3 -->
+<div class="transaction-card transition-all cursor-pointer bg-white border border-outline-variant rounded-xl p-3 flex flex-col hover:border-primary" onclick="toggleDetails('tx-003')">
+<div class="flex justify-between items-start">
+<div class="flex flex-col">
+<span class="font-label-caps text-outline">13:55 • TX-9840</span>
+<span class="font-body-lg text-on-surface">12 Items Purchased</span>
+</div>
+<span class="font-headline-md text-primary">₱ 840.50</span>
+</div>
+<div class="hidden mt-3 pt-3 border-t border-outline-variant" id="tx-003">
+<div class="flex justify-between text-body-sm py-1"><span>Bulk Rice Order (5kg)</span> <span class="font-medium">₱ 350.00</span></div>
+<div class="flex justify-between text-body-sm py-1"><span>Canned Goods Bundle</span> <span class="font-medium">₱ 490.50</span></div>
+<div class="mt-2 flex gap-2">
+<button class="flex-1 py-2 bg-error-container text-on-error-container rounded-lg font-label-caps">Refund</button>
+</div>
+</div>
+</div>
+<!-- Item 4 -->
+<div class="transaction-card transition-all cursor-pointer bg-white border border-outline-variant rounded-xl p-3 flex flex-col hover:border-primary" onclick="toggleDetails('tx-004')">
+<div class="flex justify-between items-start">
+<div class="flex flex-col">
+<span class="font-label-caps text-outline">13:20 • TX-9839</span>
+<span class="font-body-lg text-on-surface">2 Items Purchased</span>
+</div>
+<span class="font-headline-md text-primary">₱ 45.00</span>
+</div>
+<div class="hidden mt-3 pt-3 border-t border-outline-variant" id="tx-004">
+<p class="text-body-sm text-on-surface-variant italic">Loading items...</p>
+</div>
+</div>
+</div>
+<!-- Empty State Spacer -->
+<div class="h-12"></div>
+</main>
+<!-- BottomNavBar -->
+<nav class="fixed bottom-0 left-0 w-full flex justify-around items-center px-container-margin pb-safe bg-surface dark:bg-surface-dim z-50 h-16 border-t border-outline-variant dark:border-outline shadow-lg">
+<a class="flex flex-col items-center justify-center text-on-secondary-fixed-variant p-2 hover:bg-surface-container-low transition-all active:scale-95 duration-100" href="#">
+<span class="material-symbols-outlined">home</span>
+<span class="font-label-caps mt-1">Home</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-secondary-fixed-variant p-2 hover:bg-surface-container-low transition-all active:scale-95 duration-100" href="#">
+<span class="material-symbols-outlined">inventory_2</span>
+<span class="font-label-caps mt-1">Stock</span>
+</a>
+<a class="flex flex-col items-center justify-center bg-primary-container text-on-primary-container rounded-xl p-2 hover:bg-surface-container-low transition-all active:scale-95 duration-100" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">receipt_long</span>
+<span class="font-label-caps mt-1">History</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-secondary-fixed-variant p-2 hover:bg-surface-container-low transition-all active:scale-95 duration-100" href="#">
+<span class="material-symbols-outlined">analytics</span>
+<span class="font-label-caps mt-1">Trends</span>
+</a>
+</nav>
+<!-- Detail Interaction Script -->
+<script>
+    function toggleDetails(id) {
+      const element = document.getElementById(id);
+      const isHidden = element.classList.contains('hidden');
+      
+      // Close all others first for clean accordian effect
+      document.querySelectorAll('[id^="tx-"]').forEach(el => {
+        if (el.id !== id) el.classList.add('hidden');
+      });
+
+      if (isHidden) {
+        element.classList.remove('hidden');
+      } else {
+        element.classList.add('hidden');
+      }
+    }
+  </script>
+</body></html>

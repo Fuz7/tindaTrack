@@ -1,0 +1,258 @@
+<!DOCTYPE html><html class="light" lang="en"><head>
+<meta charset="utf-8">
+<meta content="width=device-width, initial-scale=1.0" name="viewport">
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet">
+<script id="tailwind-config">
+    tailwind.config = {
+      darkMode: "class",
+      theme: {
+        extend: {
+          "colors": {
+                  "surface-container-highest": "#dee4de",
+                  "on-background": "#171d19",
+                  "on-secondary": "#ffffff",
+                  "on-primary-fixed": "#002114",
+                  "on-secondary-container": "#5c647a",
+                  "status-in-stock": "#10B981",
+                  "inverse-surface": "#2c322e",
+                  "background": "#f5fbf5",
+                  "surface-tonal": "#F8FAFC",
+                  "surface-container-low": "#eff5ef",
+                  "secondary-container": "#dae2fd",
+                  "on-surface-variant": "#3d4a42",
+                  "surface": "#f5fbf5",
+                  "primary": "#006948",
+                  "surface-container": "#e9efe9",
+                  "tertiary-container": "#ba5551",
+                  "tertiary-fixed-dim": "#ffb3ae",
+                  "on-secondary-fixed": "#131b2e",
+                  "secondary-fixed": "#dae2fd",
+                  "primary-container": "#00855d",
+                  "surface-border": "#E2E8F0",
+                  "primary-fixed": "#85f8c4",
+                  "outline": "#6d7a72",
+                  "primary-fixed-dim": "#68dba9",
+                  "surface-bright": "#f5fbf5",
+                  "on-error-container": "#93000a",
+                  "error": "#ba1a1a",
+                  "on-tertiary": "#ffffff",
+                  "status-low-stock": "#F59E0B",
+                  "on-tertiary-container": "#fffbff",
+                  "surface-dim": "#d5dcd6",
+                  "on-tertiary-fixed": "#410004",
+                  "status-out-of-stock": "#EF4444",
+                  "on-primary": "#ffffff",
+                  "on-secondary-fixed-variant": "#3f465c",
+                  "surface-container-high": "#e4eae4",
+                  "on-primary-fixed-variant": "#005137",
+                  "on-primary-container": "#f5fff7",
+                  "inverse-primary": "#68dba9",
+                  "on-tertiary-fixed-variant": "#7f2928",
+                  "surface-variant": "#dee4de",
+                  "on-surface": "#171d19",
+                  "surface-container-lowest": "#ffffff",
+                  "secondary": "#565e74",
+                  "action-destructive": "#B91C1C",
+                  "error-container": "#ffdad6",
+                  "outline-variant": "#bccac0",
+                  "on-error": "#ffffff",
+                  "inverse-on-surface": "#ecf2ec",
+                  "surface-tint": "#006c4a",
+                  "secondary-fixed-dim": "#bec6e0",
+                  "tertiary-fixed": "#ffdad7",
+                  "tertiary": "#9b3e3b"
+          },
+          "borderRadius": {
+                  "DEFAULT": "0.25rem",
+                  "lg": "0.5rem",
+                  "xl": "0.75rem",
+                  "full": "9999px"
+          },
+          "spacing": {
+                  "gutter": "1rem",
+                  "container-margin": "1rem",
+                  "stack-md": "1rem",
+                  "stack-sm": "0.5rem",
+                  "touch-target": "3rem"
+          },
+          "fontFamily": {
+                  "numeric-keypad": ["Inter"],
+                  "headline-lg": ["Inter"],
+                  "body-lg": ["Inter"],
+                  "body-sm": ["Inter"],
+                  "label-caps": ["Inter"],
+                  "headline-md": ["Inter"],
+                  "display-price": ["Inter"]
+          },
+          "fontSize": {
+                  "numeric-keypad": ["24px", {"lineHeight": "24px", "fontWeight": "500"}],
+                  "headline-lg": ["24px", {"lineHeight": "32px", "fontWeight": "700"}],
+                  "body-lg": ["16px", {"lineHeight": "24px", "fontWeight": "500"}],
+                  "body-sm": ["14px", {"lineHeight": "20px", "fontWeight": "400"}],
+                  "label-caps": ["12px", {"lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "700"}],
+                  "headline-md": ["20px", {"lineHeight": "28px", "fontWeight": "600"}],
+                  "display-price": ["48px", {"lineHeight": "56px", "letterSpacing": "-0.02em", "fontWeight": "700"}]
+          }
+        },
+      },
+    }
+  </script>
+<style>
+    .material-symbols-outlined {
+      font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+    }
+    .custom-shadow {
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+    }
+    .search-overlay {
+      background: rgba(23, 29, 25, 0.4);
+      backdrop-filter: blur(2px);
+    }
+    .keypad-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 1px;
+      background-color: #E2E8F0;
+    }
+    body {
+      min-height: max(884px, 100dvh);
+      font-family: 'Inter', sans-serif;
+    }
+  </style>
+</head>
+<body class="bg-background text-on-background min-h-screen flex flex-col font-body-lg overflow-hidden">
+<!-- TopAppBar -->
+<header class="w-full top-0 sticky flex justify-between items-center px-gutter h-touch-target z-50 bg-surface border-b border-outline-variant">
+<div class="flex items-center gap-3">
+<div class="w-8 h-8 rounded-full bg-primary-container flex items-center justify-center overflow-hidden">
+<img class="w-full h-full object-cover" data-alt="A close-up high-resolution portrait of a smiling Filipino shopkeeper in a modern retail setting." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBhg8qnWSxOvPQPqCfuOfsNVj9QiYmVcX0JTTJ2wdVRgMuvTE5jIFr0zEZyPZu3uwtLvrBr6afBTtoNkljtOL3LAbdyujwGnMZR_fqn08B0dotf95rGPcImiAMg7YOckg273cIM389DfpeNGJUWmWUJBbDKm4iYk5b6715OgqnGKlgjDdE2TPZ2bOC-znEa-V_TEZ7aSgZ18xIrfI9KMcIBmWZuuO3lWXhA4OHkbo3-xhBQ_XcK2BlPEABlyJjfofvrQquLcRPMlFGs">
+</div>
+<h1 class="text-headline-md font-headline-lg text-primary">TindaTrack</h1>
+</div>
+<button class="hover:bg-surface-container-high transition-colors p-2 rounded-full flex items-center justify-center active:bg-surface-container-highest">
+<span class="material-symbols-outlined text-primary">settings</span>
+</button>
+</header>
+<!-- Main Canvas -->
+<main class="flex-1 relative flex flex-col overflow-hidden">
+<!-- Price Display Area -->
+<section class="px-gutter pt-8 pb-4 flex flex-col items-end">
+<span class="font-label-caps text-label-caps text-on-surface-variant mb-1">TOTAL AMOUNT</span>
+<div class="flex items-baseline gap-1">
+<span class="font-headline-md text-headline-md text-primary">₱</span>
+<span class="font-display-price text-display-price">0.00</span>
+</div>
+</section>
+<!-- Dimmed Background Overlay -->
+<div class="search-overlay absolute inset-0 z-30 pointer-events-none"></div>
+<!-- Search Results & Keypad Section -->
+<section class="mt-auto z-40 relative flex flex-col">
+<!-- Search Results (Styled like SCREEN_6 Cart Items) -->
+<div class="px-gutter mb-2 space-y-2">
+<!-- Result Item 1 -->
+<div class="flex items-center gap-4 bg-white p-3 rounded-xl border-2 border-primary shadow-sm animate-in fade-in slide-in-from-bottom-2">
+<div class="w-12 h-12 bg-surface-container rounded-lg overflow-hidden flex items-center justify-center border border-outline-variant">
+<img class="w-10 h-10 object-contain" src="https://lh3.googleusercontent.com/aida-public/AB6AXuB0IdcpQtyO5YIQ606aUhc2wgOO9qyqlrn5H1laxCoBAOxYhEt8fQEOUIkY1-nxrvbhiuyMbNYaioCkwdxEp6JjyrmUNfKhUAIjhyARjq3eejZCVrQRNegbs1Mr9fGchdk9_XQTLMaLOSgFouUNrw8C_XcwQRbzcH3SpkOAVue7A8YFfSRLj-SdH406v5g1kx8--eN9TUaca90FOF-lOSOxGXS_-WciMEMzUiStr6K8CFj39WhzE4wX1rN-zEeHzzXbDMCLJWT9qArU">
+</div>
+<div class="flex-1">
+<h3 class="font-body-lg text-body-lg text-on-background"><span class="font-bold text-primary">Pi</span>attos Roast Beef</h3>
+<p class="font-body-sm text-body-sm text-on-surface-variant">40g • 12 in stock</p>
+</div>
+<div class="text-right">
+<p class="font-body-lg text-body-lg text-primary">₱18.50</p>
+<p class="font-label-caps text-[10px] text-status-in-stock">IN STOCK</p>
+</div>
+</div>
+<!-- Result Item 2 -->
+<div class="flex items-center gap-4 bg-white p-3 rounded-xl border border-outline-variant shadow-sm opacity-90">
+<div class="w-12 h-12 bg-surface-container rounded-lg overflow-hidden flex items-center justify-center">
+<img class="w-10 h-10 object-contain" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDk__XvAXVWZoyQ_X2JDaDMzf_ZyhJFR7HqIsdAXhdTKUvIa8OigH6njpcOKldwJSgoQyT_Orim7skW_ymYlkYHHBBGfdV6xillGVKVORCNOIx-MO4api_cKY-H6psaUF6J36QdUnC0MQkLMrPcZDG-RHns_o3V_x3pFyljGdkof50xGaocHV-adanSX8IgzDBULyyu116F97FPnKhQT_tKnhg-lejJ7xMGgZ8Y0gky-hJXk2GFE6eQhJhKPRChDRYNxdcNwx_V1Vy7">
+</div>
+<div class="flex-1">
+<h3 class="font-body-lg text-body-lg text-on-background"><span class="font-bold text-primary">Pi</span>attos Cheese Large</h3>
+<p class="font-body-sm text-body-sm text-on-surface-variant">85g • 5 in stock</p>
+</div>
+<div class="text-right">
+<p class="font-body-lg text-body-lg text-primary">₱36.00</p>
+<p class="font-label-caps text-[10px] text-status-low-stock">LOW STOCK</p>
+</div>
+</div>
+<!-- Result Item 3 -->
+<div class="flex items-center gap-4 bg-white p-3 rounded-xl border border-outline-variant shadow-sm opacity-80">
+<div class="w-12 h-12 bg-surface-container rounded-lg overflow-hidden flex items-center justify-center">
+<img class="w-10 h-10 object-contain" src="https://lh3.googleusercontent.com/aida-public/AB6AXuC79fT6sMroBl4m2EAJUX5GYVDmyhGwCZbHYN6Vop1uiTXHuLiz5jg5Ss091aq2s3_kofj7SXXITk15OMdUEDbLL3CAsaFUUnitowni-3JdJHcOXAmQX7M6WAE6Mv-QG0kurbvfHaZnzDvWezqF9Y17UwCZKlIgPSWewpOH9TsKhPeH_7Q-W8KkFonhtmyBCNU6xU2saGJjdVa8a4VcgA1v-z8JpJkpStu08BY-qATvB4i0MFS_vuBFohIrBU9h-kv2yIT7imK_o1qd">
+</div>
+<div class="flex-1">
+<h3 class="font-body-lg text-body-lg text-on-background">Piatos Sour Cream</h3>
+<p class="font-body-sm text-body-sm text-on-surface-variant">40g • 0 in stock</p>
+</div>
+<div class="text-right">
+<p class="font-body-lg text-body-lg text-primary">₱18.50</p>
+<p class="font-label-caps text-[10px] text-status-out-of-stock">OUT OF STOCK</p>
+</div>
+</div>
+</div>
+<!-- Thumb Zone Search Bar (Sitting directly above keypad) -->
+<div class="px-gutter mb-4">
+<div class="relative flex items-center bg-surface-container-lowest border-2 rounded-xl px-3 h-12 shadow-md border-primary">
+<span class="material-symbols-outlined mr-2 text-primary">search</span>
+<input autofocus="" class="flex-1 bg-transparent border-none focus:ring-0 font-body-lg text-on-background" type="text" value="Pi">
+<button class="text-on-surface-variant">
+<span class="material-symbols-outlined">cancel</span>
+</button>
+</div>
+</div>
+<!-- Smart Keypad (Inactive State Overlayed by Search) -->
+<div class="opacity-40">
+<div class="keypad-grid border-t border-outline-variant">
+<button class="bg-surface h-16 flex items-center justify-center font-numeric-keypad text-numeric-keypad active:bg-surface-container-highest transition-colors">1</button>
+<button class="bg-surface h-16 flex items-center justify-center font-numeric-keypad text-numeric-keypad active:bg-surface-container-highest transition-colors">2</button>
+<button class="bg-surface h-16 flex items-center justify-center font-numeric-keypad text-numeric-keypad active:bg-surface-container-highest transition-colors">3</button>
+<button class="bg-surface h-16 flex items-center justify-center font-numeric-keypad text-numeric-keypad active:bg-surface-container-highest transition-colors">4</button>
+<button class="bg-surface h-16 flex items-center justify-center font-numeric-keypad text-numeric-keypad active:bg-surface-container-highest transition-colors">5</button>
+<button class="bg-surface h-16 flex items-center justify-center font-numeric-keypad text-numeric-keypad active:bg-surface-container-highest transition-colors">6</button>
+<button class="bg-surface h-16 flex items-center justify-center font-numeric-keypad text-numeric-keypad active:bg-surface-container-highest transition-colors">7</button>
+<button class="bg-surface h-16 flex items-center justify-center font-numeric-keypad text-numeric-keypad active:bg-surface-container-highest transition-colors">8</button>
+<button class="bg-surface h-16 flex items-center justify-center font-numeric-keypad text-numeric-keypad active:bg-surface-container-highest transition-colors">9</button>
+<button class="bg-surface-container h-16 flex items-center justify-center font-numeric-keypad text-numeric-keypad active:bg-surface-container-highest transition-colors">.</button>
+<button class="bg-surface h-16 flex items-center justify-center font-numeric-keypad text-numeric-keypad active:bg-surface-container-highest transition-colors">0</button>
+<button class="bg-surface-container h-16 flex items-center justify-center font-numeric-keypad text-numeric-keypad active:bg-surface-container-highest transition-colors">
+<span class="material-symbols-outlined">backspace</span>
+</button>
+</div>
+<!-- Primary Action Button -->
+<button class="w-full h-16 text-on-primary font-headline-md flex items-center justify-center gap-2 bg-primary active:opacity-90" style="background-color: #059669;">
+<span class="material-symbols-outlined">add_shopping_cart</span>
+      ADD TO CART
+    </button>
+</div>
+</section>
+</main>
+<!-- BottomNavBar -->
+<nav class="fixed bottom-0 left-0 w-full flex justify-around items-center px-container-margin pb-safe bg-surface border-t border-outline-variant shadow-lg h-16 z-50">
+<a class="flex flex-col items-center justify-center bg-primary text-on-primary rounded-xl p-2 transition-all active:scale-95 duration-100" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">home</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-secondary-fixed-variant p-2 hover:bg-surface-container-low transition-all active:scale-95 duration-100" href="#">
+<span class="material-symbols-outlined">inventory_2</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-secondary-fixed-variant p-2 hover:bg-surface-container-low transition-all active:scale-95 duration-100" href="#">
+<span class="material-symbols-outlined">receipt_long</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-secondary-fixed-variant p-2 hover:bg-surface-container-low transition-all active:scale-95 duration-100" href="#">
+<span class="material-symbols-outlined">analytics</span>
+</a>
+</nav>
+<script>
+    // Micro-interaction for keypad buttons
+    document.querySelectorAll('.keypad-grid button').forEach(button => {
+      button.addEventListener('touchstart', () => {
+        if (window.navigator.vibrate) {
+          window.navigator.vibrate(10);
+        }
+      });
+    });
+  </script>
+</body></html>

@@ -1,0 +1,290 @@
+<!DOCTYPE html><html class="light" lang="en" style=""><head>
+<meta charset="utf-8">
+<meta content="width=device-width, initial-scale=1.0" name="viewport">
+<title>TindaTrack - Settings</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "primary-container": "#00855d",
+                    "outline-variant": "#bccac0",
+                    "primary-fixed-dim": "#68dba9",
+                    "tertiary-fixed": "#ffdad7",
+                    "surface-container-lowest": "#ffffff",
+                    "on-surface-variant": "#3d4a42",
+                    "inverse-primary": "#68dba9",
+                    "on-primary-fixed-variant": "#005137",
+                    "tertiary-fixed-dim": "#ffb3ae",
+                    "on-tertiary-fixed": "#410004",
+                    "on-error": "#ffffff",
+                    "error-container": "#ffdad6",
+                    "surface-dim": "#d5dcd6",
+                    "status-in-stock": "#10B981",
+                    "on-primary-fixed": "#002114",
+                    "on-background": "#171d19",
+                    "on-secondary": "#ffffff",
+                    "background": "#f5fbf5",
+                    "on-tertiary-fixed-variant": "#7f2928",
+                    "error": "#ba1a1a",
+                    "surface-tint": "#006c4a",
+                    "surface-container-high": "#e4eae4",
+                    "primary": "#006948",
+                    "on-surface": "#171d19",
+                    "inverse-surface": "#2c322e",
+                    "on-error-container": "#93000a",
+                    "on-primary-container": "#f5fff7",
+                    "secondary": "#565e74",
+                    "surface": "#f5fbf5",
+                    "surface-tonal": "#F8FAFC",
+                    "surface-container-highest": "#dee4de",
+                    "status-out-of-stock": "#EF4444",
+                    "surface-border": "#E2E8F0",
+                    "surface-container": "#e9efe9",
+                    "status-low-stock": "#F59E0B",
+                    "tertiary": "#9b3e3b",
+                    "action-destructive": "#B91C1C",
+                    "on-secondary-container": "#5c647a",
+                    "on-tertiary-container": "#fffbff",
+                    "surface-bright": "#f5fbf5",
+                    "tertiary-container": "#ba5551",
+                    "surface-variant": "#dee4de",
+                    "secondary-fixed": "#dae2fd",
+                    "secondary-container": "#dae2fd",
+                    "on-tertiary": "#ffffff",
+                    "on-secondary-fixed-variant": "#3f465c",
+                    "secondary-fixed-dim": "#bec6e0",
+                    "inverse-on-surface": "#ecf2ec",
+                    "outline": "#6d7a72",
+                    "on-primary": "#ffffff",
+                    "surface-container-low": "#eff5ef",
+                    "primary-fixed": "#85f8c4",
+                    "on-secondary-fixed": "#131b2e"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.25rem",
+                    "lg": "0.5rem",
+                    "xl": "0.75rem",
+                    "full": "9999px"
+            },
+            "spacing": {
+                    "touch-target": "3rem",
+                    "gutter": "1rem",
+                    "container-margin": "1rem",
+                    "stack-md": "1rem",
+                    "stack-sm": "0.5rem"
+            },
+            "fontFamily": {
+                    "display-price": ["Inter"],
+                    "numeric-keypad": ["Inter"],
+                    "headline-lg": ["Inter"],
+                    "body-sm": ["Inter"],
+                    "label-caps": ["Inter"],
+                    "body-lg": ["Inter"],
+                    "headline-md": ["Inter"]
+            },
+            "fontSize": {
+                    "display-price": ["48px", {"lineHeight": "56px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                    "numeric-keypad": ["24px", {"lineHeight": "24px", "fontWeight": "500"}],
+                    "headline-lg": ["24px", {"lineHeight": "32px", "fontWeight": "700"}],
+                    "body-sm": ["14px", {"lineHeight": "20px", "fontWeight": "400"}],
+                    "label-caps": ["12px", {"lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "700"}],
+                    "body-lg": ["16px", {"lineHeight": "24px", "fontWeight": "500"}],
+                    "headline-md": ["20px", {"lineHeight": "28px", "fontWeight": "600"}]
+            }
+          },
+        },
+      }
+    </script>
+<style>
+        body { font-family: 'Inter', sans-serif; }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .active-tab {
+            background-color: #e4eae4; /* surface-container-high */
+            color: #006948; /* primary */
+            font-weight: 600;
+        }
+    </style>
+</head>
+<body class="bg-background text-on-surface min-h-screen flex flex-col">
+<!-- TopAppBar -->
+<header class="w-full top-0 sticky bg-surface dark:bg-surface-dim border-b border-outline-variant dark:border-outline z-50 flex justify-between items-center px-gutter h-touch-target"><div class="flex items-center gap-3"><span class="material-symbols-outlined text-primary" data-icon="storefront">storefront</span><h1 class="text-headline-md font-headline-lg text-primary dark:text-primary-fixed-dim tracking-tight">Store Profile</h1></div><div class="flex items-center gap-4"><button class="text-primary font-bold transition-colors hover:bg-surface-container-high p-2 rounded-lg"><span class="material-symbols-outlined" data-icon="settings">settings</span></button></div></header>
+<!-- Main Layout Container -->
+<div class="flex flex-1 w-full flex-col">
+<!-- Sidebar Navigation -->
+<aside class="hidden">
+<div class="flex flex-col gap-1">
+<button class="flex items-center gap-3 px-4 py-3 rounded-lg text-primary font-bold bg-surface-container-high transition-all" id="tab-store">
+<span class="material-symbols-outlined" data-icon="storefront">storefront</span>
+<span class="font-body-lg text-body-lg">Store Profile</span>
+</button>
+<button class="flex items-center gap-3 px-4 py-3 rounded-lg text-on-surface-variant hover:bg-surface-container-low transition-all" id="tab-inventory">
+<span class="material-symbols-outlined" data-icon="inventory_2">inventory_2</span>
+<span class="font-body-lg text-body-lg">Inventory Preferences</span>
+</button>
+<button class="flex items-center gap-3 px-4 py-3 rounded-lg text-on-surface-variant hover:bg-surface-container-low transition-all" id="tab-payment">
+<span class="material-symbols-outlined" data-icon="payments">payments</span>
+<span class="font-body-lg text-body-lg">Payment Methods</span>
+</button>
+<button class="flex items-center gap-3 px-4 py-3 rounded-lg text-on-surface-variant hover:bg-surface-container-low transition-all" id="tab-data">
+<span class="material-symbols-outlined" data-icon="database">database</span>
+<span class="font-body-lg text-body-lg">Data &amp; Export</span>
+</button>
+<button class="flex items-center gap-3 px-4 py-3 rounded-lg text-on-surface-variant hover:bg-surface-container-low transition-all" id="tab-app">
+<span class="material-symbols-outlined" data-icon="settings_suggest">settings_suggest</span>
+<span class="font-body-lg text-body-lg">App Preferences</span>
+</button>
+</div>
+<div class="mt-auto p-4 bg-surface-container rounded-xl border border-outline-variant">
+<p class="font-label-caps text-label-caps text-on-surface-variant mb-2">STORAGE USAGE</p>
+<div class="w-full bg-outline-variant h-1.5 rounded-full overflow-hidden">
+<div class="bg-primary h-full w-[12%]"></div>
+</div>
+<p class="text-body-sm font-body-sm mt-2">1.2 MB of 10 MB used</p>
+</div>
+</aside>
+<!-- Main Content Area -->
+<main class="flex-1 bg-white overflow-hidden flex flex-col pb-20">
+<!-- Header Section -->
+<!-- Form Content -->
+<div class="flex-1 p-4 space-y-6 w-full">
+<!-- Store Identity Section -->
+<section class="space-y-6">
+<div class="grid gap-2">
+<label class="font-label-caps text-label-caps text-primary tracking-widest" for="store-name">STORE NAME</label>
+<input class="w-full px-4 py-3 bg-surface-bright border border-outline-variant rounded-lg focus:border-2 focus:border-primary outline-none font-body-lg text-body-lg transition-all" id="store-name" type="text" value="Aling Nena's Sari-Sari Store">
+</div><div class="grid gap-2 mt-6">
+  <label class="font-label-caps text-label-caps text-primary tracking-widest">SYNC STATUS</label>
+  <div class="flex items-center gap-3 px-4 py-3 bg-surface-container-low border border-outline-variant rounded-lg">
+    <span class="material-symbols-outlined text-status-in-stock text-[20px]" style="font-variation-settings: 'FILL' 1">fiber_manual_record</span>
+    <div class="flex flex-col">
+      <span class="font-body-lg text-body-lg text-on-surface">Status: Synced</span>
+      <span class="text-body-sm font-body-sm text-on-surface-variant">Last synced: 2 minutes ago</span>
+    </div>
+  </div>
+</div>
+<div class="grid gap-2">
+<label class="font-label-caps text-label-caps text-primary tracking-widest" for="owner-name">STORE OWNER NAME</label>
+<input class="w-full px-4 py-3 bg-surface-bright border border-outline-variant rounded-lg focus:border-2 focus:border-primary outline-none font-body-lg text-body-lg transition-all" id="owner-name" placeholder="Juan Dela Cruz" type="text">
+</div>
+</section>
+<!-- Configuration Section -->
+<section class="grid gap-6">
+<div class="grid gap-2">
+<label class="font-label-caps text-label-caps text-primary tracking-widest" for="currency">CURRENCY</label>
+<select class="w-full px-4 py-3 bg-surface-bright border border-outline-variant rounded-lg focus:border-2 focus:border-primary outline-none font-body-lg text-body-lg appearance-none cursor-pointer" id="currency">
+<option selected="" value="PHP">PHP ₱ - Philippine Peso</option>
+<option value="USD">USD $ - US Dollar</option>
+<option value="EUR">EUR € - Euro</option>
+</select>
+</div>
+
+</section>
+<!-- Location Section -->
+<section class="space-y-6">
+
+<!-- Location Preview Card -->
+<div class="grid gap-2 mt-6"><label class="font-label-caps text-label-caps text-primary tracking-widest" for="allowed-emails">ALLOWED EMAILS</label><div class="flex gap-2"><input class="flex-1 px-4 py-3 bg-surface-bright border border-outline-variant rounded-lg focus:border-2 focus:border-primary outline-none font-body-lg text-body-lg transition-all" id="allowed-emails" placeholder="Enter email address" type="email"><button class="px-6 py-3 bg-primary text-on-primary font-bold rounded-lg hover:bg-primary-container transition-colors shadow-sm active:scale-95 duration-100">Add</button></div><div class="mt-2 space-y-2"><div class="flex items-center justify-between p-3 bg-surface-container-low border border-outline-variant rounded-lg"><span class="font-body-sm text-body-sm text-on-surface">helper1@gmail.com</span><button class="text-on-surface-variant hover:text-error transition-colors"><span class="material-symbols-outlined text-[20px]" data-icon="close">close</span></button></div><div class="flex items-center justify-between p-3 bg-surface-container-low border border-outline-variant rounded-lg"><span class="font-body-sm text-body-sm text-on-surface">family@tindatrack.com</span><button class="text-on-surface-variant hover:text-error transition-colors"><span class="material-symbols-outlined text-[20px]" data-icon="close">close</span></button></div></div></div><div class="grid gap-2 mt-6">
+  <label class="font-label-caps text-label-caps text-primary tracking-widest">SYNC STATUS</label>
+  <div class="flex items-center gap-3 px-4 py-3 bg-surface-container-low border border-outline-variant rounded-lg">
+    <span class="material-symbols-outlined text-status-in-stock text-[20px]" style="font-variation-settings: 'FILL' 1">fiber_manual_record</span>
+    <div class="flex flex-col">
+      <span class="font-body-lg text-body-lg text-on-surface">Status: Synced</span>
+      <span class="text-body-sm font-body-sm text-on-surface-variant">Last synced: 2 minutes ago</span>
+    </div>
+  </div>
+</div>
+</section><section class="space-y-6 pt-6 border-t border-outline-variant">
+  <h2 class="text-headline-md font-headline-lg text-primary tracking-tight">DATA MANAGEMENT</h2>
+  <div class="grid gap-4">
+    <div class="flex items-center justify-between p-4 bg-surface-bright border border-outline-variant rounded-lg hover:bg-surface-container-low transition-colors cursor-pointer group">
+      <div class="flex items-center gap-3">
+        <span class="material-symbols-outlined text-primary" data-icon="download">download</span>
+        <div>
+          <p class="font-body-lg text-body-lg">Export Product Prices (CSV)</p>
+          <p class="text-body-sm font-body-sm text-on-surface-variant">Download current product pricing data</p>
+        </div>
+      </div>
+      <span class="material-symbols-outlined text-on-surface-variant group-hover:text-primary transition-colors" data-icon="chevron_right">chevron_right</span>
+    </div>
+    <div class="flex items-center justify-between p-4 bg-surface-bright border border-outline-variant rounded-lg hover:bg-surface-container-low transition-colors cursor-pointer group">
+      <div class="flex items-center gap-3">
+        <span class="material-symbols-outlined text-primary" data-icon="upload_file">upload_file</span>
+        <div>
+          <p class="font-body-lg text-body-lg">Import Product Prices (CSV)</p>
+          <p class="text-body-sm font-body-sm text-on-surface-variant">Bulk update prices via file upload</p>
+        </div>
+      </div>
+      <span class="material-symbols-outlined text-on-surface-variant group-hover:text-primary transition-colors" data-icon="chevron_right">chevron_right</span>
+    </div>
+  </div>
+</section>
+</div>
+<!-- Action Footer -->
+<div class="mt-auto p-6 border-t border-outline-variant bg-surface-container-low flex justify-end gap-4"><div class="flex flex-col gap-3 w-full"><button class="w-full px-8 py-3 rounded-lg bg-primary text-on-primary font-bold hover:bg-primary-container transition-colors shadow-sm active:scale-95 duration-100">Save Changes</button><button class="w-full px-6 py-3 rounded-lg border border-outline-variant text-on-surface-variant font-bold hover:bg-surface-container transition-colors">Discard Changes</button></div></div>
+</main>
+</div>
+<!-- Mobile Bottom Navigation (Hidden on Desktop) -->
+<nav class="md:hidden fixed bottom-0 left-0 w-full bg-surface border-t border-outline-variant flex justify-around items-center px-4 pb-safe h-16 shadow-lg z-50"><div class="flex flex-col items-center justify-center text-on-secondary-fixed-variant p-2"><span class="material-symbols-outlined" data-icon="calculate">calculate</span></div><div class="flex flex-col items-center justify-center text-on-secondary-fixed-variant p-2"><span class="material-symbols-outlined" data-icon="inventory_2">inventory_2</span></div><div class="flex flex-col items-center justify-center text-on-secondary-fixed-variant p-2"><span class="material-symbols-outlined" data-icon="receipt_long">receipt_long</span></div><div class="flex flex-col items-center justify-center text-primary p-2"><span class="material-symbols-outlined" data-icon="analytics">analytics</span></div></nav>
+<script>
+        // Simple tab switching logic for demo purposes
+        const tabs = document.querySelectorAll('aside button');
+        const contentHeader = document.querySelector('main h2');
+        const contentDesc = document.querySelector('main p');
+
+        tabs.forEach(tab => {
+            tab.addEventListener('click', () => {
+                // Remove active states
+                tabs.forEach(t => {
+                    t.classList.remove('text-primary', 'font-bold', 'bg-surface-container-high');
+                    t.classList.add('text-on-surface-variant');
+                });
+                
+                // Add active state to clicked
+                tab.classList.add('text-primary', 'font-bold', 'bg-surface-container-high');
+                tab.classList.remove('text-on-surface-variant');
+
+                // Update Header Text (Simulation)
+                const label = tab.querySelector('span:last-child').innerText;
+                contentHeader.innerText = label;
+                
+                if (label === 'Store Profile') {
+                    contentDesc.innerText = 'Update your store\'s identity and basic information.';
+                } else {
+                    contentDesc.innerText = `Manage your ${label.toLowerCase()} settings and preferences.`;
+                }
+            });
+        });
+
+        // Save Button Interaction
+        document.querySelector('button.bg-primary').addEventListener('click', function() {
+            const originalText = this.innerText;
+            this.innerHTML = '<span class="material-symbols-outlined animate-spin" data-icon="progress_activity">progress_activity</span>';
+            this.disabled = true;
+            
+            setTimeout(() => {
+                this.innerHTML = '<span class="material-symbols-outlined" data-icon="check">check</span> SAVED';
+                this.classList.replace('bg-primary', 'bg-status-in-stock');
+                
+                setTimeout(() => {
+                    this.innerText = originalText;
+                    this.classList.replace('bg-status-in-stock', 'bg-primary');
+                    this.disabled = false;
+                }, 2000);
+            }, 800);
+        });
+    </script>
+
+
+
+
+
+
+</body></html>

@@ -1,0 +1,298 @@
+<!DOCTYPE html><html class="light" lang="en"><head>
+<meta charset="utf-8">
+<meta content="width=device-width, initial-scale=1.0" name="viewport">
+<title>TindaTrack - Inventory Management</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<!-- Tailwind Configuration -->
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                "on-primary-fixed-variant": "#005137",
+                "on-surface-variant": "#3d4a42",
+                "error-container": "#ffdad6",
+                "surface-container-high": "#e4eae4",
+                "on-primary-fixed": "#002114",
+                "error": "#ba1a1a",
+                "tertiary-container": "#ba5551",
+                "surface-container-highest": "#dee4de",
+                "outline-variant": "#bccac0",
+                "on-secondary-fixed": "#131b2e",
+                "on-error": "#ffffff",
+                "status-in-stock": "#10B981",
+                "on-tertiary-fixed": "#410004",
+                "on-primary": "#ffffff",
+                "on-secondary-fixed-variant": "#3f465c",
+                "tertiary-fixed": "#ffdad7",
+                "on-primary-container": "#f5fff7",
+                "inverse-surface": "#2c322e",
+                "primary-container": "#00855d",
+                "status-out-of-stock": "#EF4444",
+                "surface-tint": "#006c4a",
+                "primary-fixed": "#85f8c4",
+                "inverse-on-surface": "#ecf2ec",
+                "surface-tonal": "#F8FAFC",
+                "secondary": "#565e74",
+                "on-background": "#171d19",
+                "on-tertiary": "#ffffff",
+                "status-low-stock": "#F59E0B",
+                "inverse-primary": "#68dba9",
+                "surface-variant": "#dee4de",
+                "surface-dim": "#d5dcd6",
+                "on-tertiary-container": "#fffbff",
+                "surface": "#f5fbf5",
+                "tertiary": "#9b3e3b",
+                "surface-bright": "#f5fbf5",
+                "secondary-fixed-dim": "#bec6e0",
+                "action-destructive": "#B91C1C",
+                "primary": "#006948",
+                "surface-container-lowest": "#ffffff",
+                "background": "#f5fbf5",
+                "on-tertiary-fixed-variant": "#7f2928",
+                "secondary-container": "#dae2fd",
+                "tertiary-fixed-dim": "#ffb3ae",
+                "surface-container": "#e9efe9",
+                "surface-container-low": "#eff5ef",
+                "primary-fixed-dim": "#68dba9",
+                "on-surface": "#171d19",
+                "on-secondary-container": "#5c647a",
+                "secondary-fixed": "#dae2fd",
+                "on-error-container": "#93000a",
+                "on-secondary": "#ffffff",
+                "outline": "#6d7a72",
+                "surface-border": "#E2E8F0"
+            },
+            "borderRadius": {
+                "DEFAULT": "0.25rem",
+                "lg": "0.5rem",
+                "xl": "0.75rem",
+                "full": "9999px"
+            },
+            "spacing": {
+                "stack-md": "1rem",
+                "stack-sm": "0.5rem",
+                "gutter": "1rem",
+                "container-margin": "1rem",
+                "touch-target": "3rem"
+            },
+            "fontFamily": {
+                "body-lg": ["Inter"],
+                "numeric-keypad": ["Inter"],
+                "headline-md": ["Inter"],
+                "headline-lg": ["Inter"],
+                "label-caps": ["Inter"],
+                "display-price": ["Inter"],
+                "body-sm": ["Inter"]
+            },
+            "fontSize": {
+                "body-lg": ["16px", {"lineHeight": "24px", "fontWeight": "500"}],
+                "numeric-keypad": ["24px", {"lineHeight": "24px", "fontWeight": "500"}],
+                "headline-md": ["20px", {"lineHeight": "28px", "fontWeight": "600"}],
+                "headline-lg": ["24px", {"lineHeight": "32px", "fontWeight": "700"}],
+                "label-caps": ["12px", {"lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "700"}],
+                "display-price": ["48px", {"lineHeight": "56px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                "body-sm": ["14px", {"lineHeight": "20px", "fontWeight": "400"}]
+            }
+          },
+        },
+      }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        body { font-family: 'Inter', sans-serif; }
+        ::-webkit-scrollbar { width: 4px; }
+        ::-webkit-scrollbar-thumb { background: #bccac0; border-radius: 10px; }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background text-on-surface flex flex-col min-h-screen max-w-md mx-auto relative border-x border-outline-variant shadow-2xl">
+<!-- TopAppBar -->
+<header class="bg-surface dark:bg-surface-dim border-b border-outline-variant dark:border-outline w-full top-0 sticky flex justify-between items-center px-gutter h-touch-target w-full z-50">
+<div class="flex items-center gap-3">
+<div class="w-8 h-8 rounded-full bg-primary-container flex items-center justify-center text-on-primary-container overflow-hidden">
+<img class="w-full h-full object-cover" data-alt="A professional close-up of a smiling local shop owner in a clean apron, positioned in front of a well-organized Filipino sari-sari store. The lighting is bright and natural, emphasizing a high-density, professional business environment with crisp details and a warm, inviting atmosphere consistent with the TindaTrack brand identity." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCBhNBvfwLj1lXuOJ7rQC-xHGQJToUMOhfnM9HQ2HrxGzAfJ7JxBQ7lUWAWpdgoS9PmXWjAaUPNDo6gGXUdSotCSyR46BjlI8Jl8vQIVdRxA92_mxe2B_OnRcBBgted_VNg9CLb9srkMDz_a8ZYpFiC4pT_t5ejsjLNe9IXfkrUvZBgIsxeH9dpecvX7VCyDFi74e8b7FA5t_knf4VjKXvn1vBDon3k_woqzzVodwFBGpnV-ZNj-Bxy2Q0Vuf2uEETBctKGNS_s0Btr">
+</div>
+<h1 class="font-headline-md text-headline-md text-primary dark:text-primary-fixed-dim">TindaTrack</h1>
+</div>
+<button class="w-10 h-10 flex items-center justify-center rounded-full hover:bg-surface-container-high transition-colors active:bg-surface-container-highest">
+<span class="material-symbols-outlined text-on-surface-variant">settings</span>
+</button>
+</header>
+<!-- Main Content Canvas -->
+<main class="flex-1 overflow-y-auto pb-24 px-gutter pt-4 space-y-4">
+<!-- Search and Filter Section -->
+<section class="space-y-3">
+<div class="relative">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant">search</span>
+<input class="w-full pl-10 pr-4 py-2 bg-surface-container-low border border-outline-variant rounded-lg text-body-sm focus:outline-none focus:border-primary-container focus:ring-1 focus:ring-primary-container transition-all" placeholder="Search products..." type="text">
+</div>
+<div class="flex gap-2 overflow-x-auto pb-2 no-scrollbar">
+<button class="whitespace-nowrap px-4 py-1.5 rounded-full bg-primary text-on-primary font-label-caps text-label-caps shadow-sm">All Items</button>
+<button class="whitespace-nowrap px-4 py-1.5 rounded-full bg-surface-container border border-outline-variant text-on-surface-variant font-label-caps text-label-caps hover:bg-surface-container-high transition-colors">Snacks</button>
+<button class="whitespace-nowrap px-4 py-1.5 rounded-full bg-surface-container border border-outline-variant text-on-surface-variant font-label-caps text-label-caps hover:bg-surface-container-high transition-colors">Drinks</button>
+<button class="whitespace-nowrap px-4 py-1.5 rounded-full bg-surface-container border border-outline-variant text-on-surface-variant font-label-caps text-label-caps hover:bg-surface-container-high transition-colors">Pantry</button>
+<button class="whitespace-nowrap px-4 py-1.5 rounded-full bg-surface-container border border-outline-variant text-on-surface-variant font-label-caps text-label-caps hover:bg-surface-container-high transition-colors">Toiletries</button>
+</div>
+</section>
+<!-- Stats Overview (Bento Lite) -->
+<div class="grid grid-cols-2 gap-3">
+<div class="bg-surface-container-low p-3 rounded-xl border border-outline-variant">
+<p class="font-label-caps text-label-caps text-on-surface-variant uppercase mb-1">Total SKU</p>
+<p class="font-headline-lg text-headline-lg text-primary">142</p>
+</div>
+<div class="p-3 rounded-xl border border-outline-variant bg-status-low-stock/10">
+<p class="font-label-caps text-label-caps uppercase mb-1 text-status-low-stock">Alerts</p>
+<p class="font-headline-lg text-headline-lg text-status-low-stock">8</p>
+</div>
+</div>
+<!-- Inventory List -->
+<section class="space-y-2">
+<div class="flex justify-between items-center px-1">
+<h2 class="font-headline-md text-headline-md">Inventory</h2>
+<button class="flex items-center gap-1 text-primary hover:bg-primary-container/10 px-2 py-1 rounded-lg transition-colors">
+<span class="material-symbols-outlined text-[18px]">add_circle</span>
+<span class="font-label-caps text-label-caps uppercase">Add New</span>
+</button>
+</div>
+<!-- Product Card: In Stock -->
+<div class="bg-surface-container-lowest border border-outline-variant rounded-lg p-3 flex items-center gap-3 active:bg-surface-container-low transition-colors">
+<div class="w-16 h-16 bg-surface-container rounded-md overflow-hidden flex-shrink-0 border border-outline-variant">
+<img class="w-full h-full object-cover" data-alt="A studio shot of a classic Filipino soda glass bottle with condensation, set against a clean minimalist light background. High-contrast lighting highlights the textures and reflections of the bottle, creating a premium product catalog aesthetic in line with TindaTrack's professional visual identity." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBNCMm86EBmKkbp8u_EPrje1IAKAOVu0fxrJj5FkD3pa3bylpGhM4TFziRx0g3mZcIKVlG2zuaGTo5UtGZfYUpGD_pl_F_YZv1b6asq67qKbXg4deOEzPRGliI_QvDPYMbJSzQDWDQZAHHfxZxFv2B57WQa-8VqRwZmw8YpkbuCYtjqqLS9CgyBjOiayKkG9ghyRgScbKnY-SoWB8nD-WztcyMdzvU7Yrymzl-4NXDvx_wfD09vKwYd0RLsml_onYBC54r5-pyPMTes">
+</div>
+<div class="flex-1 min-w-0">
+<div class="flex justify-between items-start">
+<h3 class="font-body-lg text-body-lg truncate text-on-surface">Royal Tru Orange 1.5L</h3>
+<span class="px-2 py-0.5 rounded bg-status-in-stock/10 text-status-in-stock font-label-caps text-[10px] uppercase">In Stock</span>
+</div>
+<p class="text-on-surface-variant font-body-sm text-body-sm">Stock: 24 units</p>
+<p class="text-primary font-headline-md text-headline-md mt-1">₱85.00</p>
+</div>
+<button class="w-10 h-10 rounded-lg border border-outline-variant flex items-center justify-center hover:bg-surface-container-high active:scale-95 transition-all text-on-surface" onclick="event.stopPropagation()">
+<span class="material-symbols-outlined">exposure_plus_1</span>
+</button>
+</div>
+<!-- Product Card: Low Stock -->
+<div class="bg-surface-container-lowest border border-outline-variant rounded-lg p-3 flex items-center gap-3 active:bg-surface-container-low transition-colors">
+<div class="w-16 h-16 bg-surface-container rounded-md overflow-hidden flex-shrink-0 border border-outline-variant">
+<img class="w-full h-full object-cover" data-alt="A sharp, clear image of a local brand of corn chips snack pack, placed on a neutral grey surface. The packaging colors are vibrant against the high-contrast background, using professional product photography techniques to emphasize the texture of the foil bag for a clean inventory management interface." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBrFFmELfS5kdGcVhJMtjDlgoA5l2HAdMiuQ9-2nh0pumRIZC8cy2m1GTcfPgbwUP1D5PoShVtoTx5clbruWo1dZenB2_BQKUSp1MIOukoB_xj5hJ7EWToV_2AIw4IDRSqsTH_ReFy36WM73H3NHpfwliPLHn0yfmcVPcEBjzsX_ZC9IMHFNzNkUoEoQat0IKutV1J93SxYgSBAeleqsrqgGU_f40BeaMyBTicv2WaO5NUPtIaWFroUcvjFRCzpEXeLFzmQoJVia0yN">
+</div>
+<div class="flex-1 min-w-0">
+<div class="flex justify-between items-start">
+<h3 class="font-body-lg text-body-lg truncate text-on-surface">Lucky Me! Pancit Canton</h3>
+<span class="px-2 py-0.5 rounded bg-status-low-stock/10 text-status-low-stock font-label-caps text-[10px] uppercase">Low Stock</span>
+</div>
+<p class="text-on-surface-variant font-body-sm text-body-sm">Stock: 4 units</p>
+<p class="text-primary font-headline-md text-headline-md mt-1">₱18.00</p>
+</div>
+<button class="w-10 h-10 rounded-lg border border-outline-variant flex items-center justify-center hover:bg-surface-container-high active:scale-95 transition-all text-on-surface" onclick="event.stopPropagation()">
+<span class="material-symbols-outlined">exposure_plus_1</span>
+</button>
+</div>
+<!-- Product Card: Out of Stock -->
+<div class="bg-surface-container-lowest border border-outline-variant rounded-lg p-3 flex items-center gap-3 opacity-80 transition-colors">
+<div class="w-16 h-16 bg-surface-container rounded-md overflow-hidden flex-shrink-0 border border-outline-variant grayscale">
+<img class="w-full h-full object-cover" data-alt="A clean, professional close-up of a loaf of garden-fresh white bread in clear plastic packaging. The lighting is bright and high-contrast, ensuring every detail is visible for a business-oriented inventory system. Minimalist aesthetic with a focus on product clarity and commercial appeal." src="https://lh3.googleusercontent.com/aida-public/AB6AXuB1almyMLJGwQtHAxOdD8zShO5r8kXZn4GDSKxFgUZgjlWMIfyn7x4fAp_-fIotemInt-A1006amvsGgePZNXm4olXqCYrPTWLsWyauUZ_CCpnlbiy0LBMD1ELCUgo52j33qbrRRlD1Yca2FOazz8DqvPYoT4fGUI30l21cqETNVzrgfOJcsYP-xCk656zjeY2ndn0hBED41eDycSRWBujqX2UL8S-SRFxjPF8T6CZMEYAYTXUxy90UhsqjDt2BtVjf4uEVlB6DWUMR">
+</div>
+<div class="flex-1 min-w-0">
+<div class="flex justify-between items-start">
+<h3 class="font-body-lg text-body-lg truncate text-on-surface">Gardenia White Bread</h3>
+<span class="px-2 py-0.5 rounded bg-status-out-of-stock/10 text-status-out-of-stock font-label-caps text-[10px] uppercase">Out of Stock</span>
+</div>
+<p class="text-on-surface-variant font-body-sm text-body-sm">Stock: 0 units</p>
+<p class="text-primary font-headline-md text-headline-md mt-1">₱75.00</p>
+</div>
+<button class="w-10 h-10 rounded-lg bg-primary-container text-on-primary-container flex items-center justify-center shadow-sm active:scale-95 transition-all" onclick="event.stopPropagation()">
+<span class="material-symbols-outlined">exposure_plus_1</span>
+</button>
+</div>
+<!-- More products for scroll demonstration -->
+<div class="bg-surface-container-lowest border border-outline-variant rounded-lg p-3 flex items-center gap-3 active:bg-surface-container-low transition-colors">
+<div class="w-16 h-16 bg-surface-container rounded-md overflow-hidden flex-shrink-0 border border-outline-variant">
+<img class="w-full h-full object-cover" data-alt="A detailed product shot of a small coffee sachet, focusing on the branding and metallic texture of the packaging. Professional lighting creates a sharp, clean look with high density information, perfect for a modern business tool designed for Filipino shop owners." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAP8VrGOK7gxhwDjArDJ2bnPHJKQROqfD8hM4885AXlEdm0Vx2WqBaWoyS18niYUegiLOG0_NwLOE1WH_kjWsz0M7UxOG6nn_0l6_7_nArWWILNfYUH24NVhJkLmXuvmIhEdUCadoY4LoS5CvwUAxZ8CCyH9QD2o4duRZc3qW9lFxkfOp7VeDUZP6Kh85DdS8lCoWhYP-pEAvo2r3Zy_5PfrOp_SZLvAW9dEALbuiHHwHJJSucXmUD4Z-R8cSW3UFpmKxbgj1TbFXtH">
+</div>
+<div class="flex-1 min-w-0">
+<div class="flex justify-between items-start">
+<h3 class="font-body-lg text-body-lg truncate text-on-surface">Nescafe 3-in-1 (10s)</h3>
+<span class="px-2 py-0.5 rounded bg-status-in-stock/10 text-status-in-stock font-label-caps text-[10px] uppercase">In Stock</span>
+</div>
+<p class="text-on-surface-variant font-body-sm text-body-sm">Stock: 82 units</p>
+<p class="text-primary font-headline-md text-headline-md mt-1">₱120.00</p>
+</div>
+<button class="w-10 h-10 rounded-lg border border-outline-variant flex items-center justify-center hover:bg-surface-container-high active:scale-95 transition-all text-on-surface">
+<span class="material-symbols-outlined">exposure_plus_1</span>
+</button>
+</div>
+<div class="bg-surface-container-lowest border border-outline-variant rounded-lg p-3 flex items-center gap-3 active:bg-surface-container-low transition-colors">
+<div class="w-16 h-16 bg-surface-container rounded-md overflow-hidden flex-shrink-0 border border-outline-variant">
+<img class="w-full h-full object-cover" data-alt="Commercial photography of a standard 1kg bag of white sugar. The image is bright, high-contrast, and extremely clear, showing the crystalline texture through the bag. Ideal for a professional inventory list in a high-density mobile interface." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDxafCd8OjaOZaxSoJ5nGfXa7sHO1hKu4fKsHMLbGQiJAXmNGvcaBkL4VGuLUuEfOnCc_dm0UuhyiW2dTyF44mjXddufTpf40yq2vPgBYaloq1VEJYEcUKxw23GCml-95UD0vuu3-NrO1kmpwYfVxPEvCSESBiviNR3v8IneZ_pTDAHX3mVHpHrZV3mdxMb2WWdB6t3pKfAiHe7O_sIavFpEkG_dW5QEJrd8tSLF4PtT6IoMJ17C1F3MXIIuLsQEi-dkA2E4FoL2QOC">
+</div>
+<div class="flex-1 min-w-0">
+<div class="flex justify-between items-start">
+<h3 class="font-body-lg text-body-lg truncate text-on-surface">Refined Sugar 1kg</h3>
+<span class="px-2 py-0.5 rounded bg-status-low-stock/10 text-status-low-stock font-label-caps text-[10px] uppercase">Low Stock</span>
+</div>
+<p class="text-on-surface-variant font-body-sm text-body-sm">Stock: 2 units</p>
+<p class="text-primary font-headline-md text-headline-md mt-1">₱95.00</p>
+</div>
+<button class="w-10 h-10 rounded-lg border border-outline-variant flex items-center justify-center hover:bg-surface-container-high active:scale-95 transition-all text-on-surface">
+<span class="material-symbols-outlined">exposure_plus_1</span>
+</button>
+</div>
+</section>
+</main>
+<!-- BottomNavBar -->
+<nav class="fixed bottom-0 left-0 w-full flex justify-around items-center px-container-margin pb-safe bg-surface dark:bg-surface-dim border-t border-outline-variant dark:border-outline shadow-lg h-16 z-50">
+<button class="flex flex-col items-center justify-center text-on-secondary-fixed-variant p-2 hover:bg-surface-container-low transition-all active:scale-95 duration-100">
+<span class="material-symbols-outlined">home</span>
+</button>
+<button class="flex flex-col items-center justify-center bg-primary-container text-on-primary-container rounded-xl p-2 hover:bg-surface-container-low transition-all active:scale-95 duration-100">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">inventory_2</span>
+</button>
+<button class="flex flex-col items-center justify-center text-on-secondary-fixed-variant p-2 hover:bg-surface-container-low transition-all active:scale-95 duration-100">
+<span class="material-symbols-outlined">receipt_long</span>
+</button>
+<button class="flex flex-col items-center justify-center text-on-secondary-fixed-variant p-2 hover:bg-surface-container-low transition-all active:scale-95 duration-100">
+<span class="material-symbols-outlined">analytics</span>
+</button>
+</nav>
+<!-- FAB (Suppressed on Details, but kept here as it's a main Inventory page) -->
+<button class="fixed right-6 bottom-20 w-14 h-14 bg-primary text-on-primary rounded-2xl shadow-xl flex items-center justify-center active:scale-90 transition-transform z-40">
+<span class="material-symbols-outlined">qr_code_scanner</span>
+</button>
+<script>
+        // Micro-interaction for +1 restock buttons
+        document.querySelectorAll('button').forEach(btn => {
+            if (btn.innerText.includes('exposure_plus_1')) {
+                btn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    const ripple = document.createElement('div');
+                    ripple.className = 'absolute inset-0 bg-primary/20 rounded-lg animate-ping pointer-events-none';
+                    btn.style.position = 'relative';
+                    btn.appendChild(ripple);
+                    setTimeout(() => ripple.remove(), 400);
+                    
+                    // Logic for visual feedback
+                    const stockText = btn.parentElement.querySelector('p.text-on-surface-variant');
+                    const match = stockText.innerText.match(/\d+/);
+                    if (match) {
+                        const newVal = parseInt(match[0]) + 1;
+                        stockText.innerText = `Stock: ${newVal} units`;
+                    }
+                });
+            }
+        });
+    </script>
+
+
+</body></html>

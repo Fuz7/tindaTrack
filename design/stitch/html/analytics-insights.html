@@ -1,0 +1,358 @@
+<!DOCTYPE html><html class="light" lang="en"><head>
+<meta charset="utf-8">
+<meta content="width=device-width, initial-scale=1.0" name="viewport">
+<title>TindaTrack Analytics - Monolith Craft</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "on-primary-fixed-variant": "#005137",
+                    "on-surface-variant": "#3d4a42",
+                    "error-container": "#ffdad6",
+                    "surface-container-high": "#e4eae4",
+                    "on-primary-fixed": "#002114",
+                    "error": "#ba1a1a",
+                    "tertiary-container": "#ba5551",
+                    "surface-container-highest": "#dee4de",
+                    "outline-variant": "#bccac0",
+                    "on-secondary-fixed": "#131b2e",
+                    "on-error": "#ffffff",
+                    "status-in-stock": "#10B981",
+                    "on-tertiary-fixed": "#410004",
+                    "on-primary": "#ffffff",
+                    "on-secondary-fixed-variant": "#3f465c",
+                    "tertiary-fixed": "#ffdad7",
+                    "on-primary-container": "#f5fff7",
+                    "inverse-surface": "#2c322e",
+                    "primary-container": "#00855d",
+                    "status-out-of-stock": "#EF4444",
+                    "surface-tint": "#006c4a",
+                    "primary-fixed": "#85f8c4",
+                    "inverse-on-surface": "#ecf2ec",
+                    "surface-tonal": "#F8FAFC",
+                    "secondary": "#565e74",
+                    "on-background": "#171d19",
+                    "on-tertiary": "#ffffff",
+                    "status-low-stock": "#F59E0B",
+                    "inverse-primary": "#68dba9",
+                    "surface-variant": "#dee4de",
+                    "surface-dim": "#d5dcd6",
+                    "on-tertiary-container": "#fffbff",
+                    "surface": "#f5fbf5",
+                    "tertiary": "#9b3e3b",
+                    "surface-bright": "#f5fbf5",
+                    "secondary-fixed-dim": "#bec6e0",
+                    "action-destructive": "#B91C1C",
+                    "primary": "#006948",
+                    "surface-container-lowest": "#ffffff",
+                    "background": "#f5fbf5",
+                    "on-tertiary-fixed-variant": "#7f2928",
+                    "secondary-container": "#dae2fd",
+                    "tertiary-fixed-dim": "#ffb3ae",
+                    "surface-container": "#e9efe9",
+                    "surface-container-low": "#eff5ef",
+                    "primary-fixed-dim": "#68dba9",
+                    "on-surface": "#171d19",
+                    "on-secondary-container": "#5c647a",
+                    "secondary-fixed": "#dae2fd",
+                    "on-error-container": "#93000a",
+                    "on-secondary": "#ffffff",
+                    "outline": "#6d7a72",
+                    "surface-border": "#E2E8F0"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.25rem",
+                    "lg": "0.5rem",
+                    "xl": "0.75rem",
+                    "full": "9999px"
+            },
+            "spacing": {
+                    "stack-md": "1rem",
+                    "stack-sm": "0.5rem",
+                    "gutter": "1rem",
+                    "container-margin": "1rem",
+                    "touch-target": "3rem"
+            },
+            "fontFamily": {
+                    "body-lg": ["Inter"],
+                    "numeric-keypad": ["Inter"],
+                    "headline-md": ["Inter"],
+                    "headline-lg": ["Inter"],
+                    "label-caps": ["Inter"],
+                    "display-price": ["Inter"],
+                    "body-sm": ["Inter"]
+            },
+            "fontSize": {
+                    "body-lg": ["16px", {"lineHeight": "24px", "fontWeight": "500"}],
+                    "numeric-keypad": ["24px", {"lineHeight": "24px", "fontWeight": "500"}],
+                    "headline-md": ["20px", {"lineHeight": "28px", "fontWeight": "600"}],
+                    "headline-lg": ["24px", {"lineHeight": "32px", "fontWeight": "700"}],
+                    "label-caps": ["12px", {"lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "700"}],
+                    "display-price": ["48px", {"lineHeight": "56px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                    "body-sm": ["14px", {"lineHeight": "20px", "fontWeight": "400"}],
+                    "headline-md-mobile": ["18px", {"lineHeight": "24px", "fontWeight": "600"}]
+            }
+          },
+        },
+      }
+    </script>
+<style>
+        body { font-family: 'Inter', sans-serif; -webkit-font-smoothing: antialiased; }
+        .material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24; }
+        .custom-scrollbar::-webkit-scrollbar { width: 4px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #bccac0; border-radius: 10px; }
+        .bar-transition { transition: height 0.6s cubic-bezier(0.34, 1.56, 0.64, 1); }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background text-on-surface min-h-screen pb-24">
+<!-- TopAppBar -->
+<header class="w-full top-0 sticky bg-surface dark:bg-surface-dim border-b border-outline-variant dark:border-outline z-50">
+<div class="flex justify-between items-center px-gutter h-touch-target w-full">
+<div class="flex items-center gap-3">
+<div class="w-8 h-8 rounded-full bg-primary flex items-center justify-center text-on-primary">
+<span class="material-symbols-outlined text-[20px]">storefront</span>
+</div>
+<h1 class="font-headline-md text-headline-md-mobile text-primary dark:text-primary-fixed-dim">TindaTrack</h1>
+</div>
+<div class="flex items-center gap-2">
+<button class="w-10 h-10 flex items-center justify-center rounded-full hover:bg-surface-container-high transition-colors active:bg-surface-container-highest">
+<span class="material-symbols-outlined text-on-surface-variant">settings</span>
+</button>
+</div>
+</div>
+</header>
+<main class="px-container-margin pt-stack-md space-y-stack-md max-w-md mx-auto">
+<!-- Header Section -->
+<section class="flex justify-between items-end">
+<div>
+<p class="font-label-caps text-label-caps text-on-surface-variant uppercase tracking-wider">Dashboard</p>
+<h2 class="font-headline-lg text-headline-lg-mobile text-on-surface">Business Insights</h2>
+</div>
+<div class="flex items-center gap-1 text-primary bg-primary-container/10 px-2 py-1 rounded-lg">
+<span class="material-symbols-outlined text-[16px]">calendar_today</span>
+<span class="font-label-caps text-label-caps">Last 30 Days</span>
+</div>
+</section>
+<!-- KPI Bento Grid -->
+<section class="grid grid-cols-2 gap-stack-sm">
+<!-- Total Sales -->
+<div class="bg-surface-container-lowest border border-outline-variant p-stack-md rounded-xl shadow-sm">
+<div class="flex justify-between items-start mb-2">
+<span class="material-symbols-outlined text-primary" style="font-variation-settings: 'FILL' 1;">payments</span>
+<span class="text-[12px] font-bold text-status-in-stock">+12%</span>
+</div>
+<p class="font-label-caps text-label-caps text-on-surface-variant">Total Sales</p>
+<p class="font-headline-lg text-on-surface mt-1">₱142.5K</p>
+</div>
+<!-- Estimated Profit -->
+<div class="bg-surface-container-lowest border border-outline-variant p-stack-md rounded-xl shadow-sm">
+<div class="flex justify-between items-start mb-2">
+<span class="material-symbols-outlined text-tertiary" style="font-variation-settings: 'FILL' 1;">trending_up</span>
+<span class="text-[12px] font-bold text-status-in-stock">+8.4%</span>
+</div>
+<p class="font-label-caps text-label-caps text-on-surface-variant">Estimated Profit</p>
+<p class="font-headline-lg text-on-surface mt-1">₱38.2K</p>
+</div>
+</section>
+<!-- Sales Trends (Bar Chart) -->
+<section class="bg-surface-container-lowest border border-outline-variant p-stack-md rounded-xl shadow-sm">
+<div class="flex justify-between items-center mb-6">
+<h3 class="font-headline-md text-on-surface text-sm">Sales Trends</h3>
+<span class="material-symbols-outlined text-on-surface-variant text-[20px]">more_vert</span>
+</div>
+<div class="flex items-end justify-between h-32 gap-2 px-1">
+<!-- Bar 1 -->
+<div class="flex-1 flex flex-col items-center gap-2">
+<div class="w-full bg-secondary-container rounded-t-sm bar-transition" style="height: 40%;"></div>
+<span class="font-label-caps text-[10px] text-on-surface-variant">MON</span>
+</div>
+<!-- Bar 2 -->
+<div class="flex-1 flex flex-col items-center gap-2">
+<div class="w-full bg-secondary-container rounded-t-sm bar-transition" style="height: 65%;"></div>
+<span class="font-label-caps text-[10px] text-on-surface-variant">TUE</span>
+</div>
+<!-- Bar 3 -->
+<div class="flex-1 flex flex-col items-center gap-2">
+<div class="w-full bg-secondary-container rounded-t-sm bar-transition" style="height: 55%;"></div>
+<span class="font-label-caps text-[10px] text-on-surface-variant">WED</span>
+</div>
+<!-- Bar 4 -->
+<div class="flex-1 flex flex-col items-center gap-2">
+<div class="w-full bg-primary-container rounded-t-sm bar-transition" style="height: 90%;"></div>
+<span class="font-label-caps text-[10px] text-on-surface-variant font-bold text-primary">THU</span>
+</div>
+<!-- Bar 5 -->
+<div class="flex-1 flex flex-col items-center gap-2">
+<div class="w-full bg-secondary-container rounded-t-sm bar-transition" style="height: 75%;"></div>
+<span class="font-label-caps text-[10px] text-on-surface-variant">FRI</span>
+</div>
+<!-- Bar 6 -->
+<div class="flex-1 flex flex-col items-center gap-2">
+<div class="w-full bg-secondary-container rounded-t-sm bar-transition" style="height: 85%;"></div>
+<span class="font-label-caps text-[10px] text-on-surface-variant">SAT</span>
+</div>
+<!-- Bar 7 -->
+<div class="flex-1 flex flex-col items-center gap-2">
+<div class="w-full bg-secondary-container rounded-t-sm bar-transition" style="height: 30%;"></div>
+<span class="font-label-caps text-[10px] text-on-surface-variant">SUN</span>
+</div>
+</div>
+</section>
+<!-- Best Sellers -->
+<section class="bg-surface-container-lowest border border-outline-variant rounded-xl shadow-sm overflow-hidden">
+<div class="p-stack-md border-b border-outline-variant bg-surface-container-low">
+<h3 class="font-headline-md text-on-surface text-sm">Best Sellers (Top 5)</h3>
+</div>
+<div class="divide-y divide-outline-variant">
+<!-- Item 1 -->
+<div class="flex items-center p-stack-md gap-4">
+<div class="w-10 h-10 rounded-lg bg-surface-container flex items-center justify-center shrink-0 border border-outline-variant">
+<img class="w-8 h-8 object-contain" data-alt="Close-up commercial photography of a classic red aluminum soda can condensation droplets under studio lighting with a neutral gray background focusing on product design." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAdV-kCPl3TgexPq10iVu0um8pnYgU2Zz07ebcC8l1WBSGGdH2rIOkM-5kuchiCqhkCJBx0Nrn3z3358oiOaN8cUs42RbLwFwxxbx7RQ7zcQccmXy3RjCfbyX1cTOnht5Tqap7UwbRhIgYuqyejN0unF4UgRQPJ85qTGdQIbNjg6F-hmvkimWrnijuM5oavASrze5O82DHJdDRLJYWkenSSagwxcqOXtaif6yxutsn-3CVUmVE1EeWibidh23XUxjLongrXA8V1gjHz">
+</div>
+<div class="flex-1 min-w-0">
+<p class="font-body-lg text-sm truncate text-on-surface">Coke Solo 290ml</p>
+<p class="font-body-sm text-[12px] text-on-surface-variant">412 Units Sold</p>
+</div>
+<div class="text-right">
+<p class="font-label-caps text-on-surface font-bold">₱7,416</p>
+<div class="w-16 h-1 bg-surface-container rounded-full mt-1 overflow-hidden">
+<div class="bg-primary h-full" style="width: 85%;"></div>
+</div>
+</div>
+</div>
+<!-- Item 2 -->
+<div class="flex items-center p-stack-md gap-4">
+<div class="w-10 h-10 rounded-lg bg-surface-container flex items-center justify-center shrink-0 border border-outline-variant">
+<img class="w-8 h-8 object-contain" data-alt="Product shot of a popular yellow plastic sachet of powdered milk drink against a clean white backdrop with professional soft shadows highlighting packaging textures." src="https://lh3.googleusercontent.com/aida-public/AB6AXuA5vBSthKOiVH7i7nGoHalSaOxz0_rBWGY1Cc6tPvCy2nGdl2oPjqaeQ5vGEv8Y6rcbE3ZgGjtyinwA0Om4JkBofaA_W1ZiX3bryqunAo_IpvfNojpTcbzWfDC0zlTh50Z_V4-I-V-EIc_wKdAYiMMtVuINqIfj7DkcKBIftBqZGsCoOnwkURf77ggvf-rMTxDHVRtOerXFdhx8V-LN4T1MC41q9QT92f6oEsysAr-cb3KeSN1hRk8Xeq9nVYHp7OxIsulS2giQ26LX">
+</div>
+<div class="flex-1 min-w-0">
+<p class="font-body-lg text-sm truncate text-on-surface">Lucky Me! Pancit Canton</p>
+<p class="font-body-sm text-[12px] text-on-surface-variant">385 Units Sold</p>
+</div>
+<div class="text-right">
+<p class="font-label-caps text-on-surface font-bold">₱6,160</p>
+<div class="w-16 h-1 bg-surface-container rounded-full mt-1 overflow-hidden">
+<div class="bg-primary h-full" style="width: 72%;"></div>
+</div>
+</div>
+</div>
+<!-- Item 3 -->
+<div class="flex items-center p-stack-md gap-4">
+<div class="w-10 h-10 rounded-lg bg-surface-container flex items-center justify-center shrink-0 border border-outline-variant">
+<img class="w-8 h-8 object-contain" data-alt="High quality studio photo of a single clear plastic water bottle with a blue cap and minimal label standing upright on a reflective white surface with blue accent lighting." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDltpK-87xGRrIPiyEgeJvIuCaP0DNMwuMwifEB3DzAh3WXnUm-_O_PUdzz56cmJQ7AvqNWCvg1PC7gL0w_NLtDlu1v06ci0_mowpjR7XY4OYrcyiEfu5T3vLoyk2Lar_VUkUBNw_flqxtcAFhXTCaTPwIThZPX8AWlbjcVZBc30LVJ3h9rUVV3BTzs3yKalmW9PEx_MJsKopg3f6Hvx_5xmJ3FT1zKtY1IgVryyepgtfBc2gwD-d5YCTA0_a7f47eRtd8jUDSathd8">
+</div>
+<div class="flex-1 min-w-0">
+<p class="font-body-lg text-sm truncate text-on-surface">Wilkins 500ml</p>
+<p class="font-body-sm text-[12px] text-on-surface-variant">298 Units Sold</p>
+</div>
+<div class="text-right">
+<p class="font-label-caps text-on-surface font-bold">₱4,470</p>
+<div class="w-16 h-1 bg-surface-container rounded-full mt-1 overflow-hidden">
+<div class="bg-primary h-full" style="width: 58%;"></div>
+</div>
+</div>
+</div>
+<!-- Item 4 -->
+<div class="flex items-center p-stack-md gap-4">
+<div class="w-10 h-10 rounded-lg bg-surface-container flex items-center justify-center shrink-0 border border-outline-variant">
+<img class="w-8 h-8 object-contain" data-alt="Product photography of a traditional coffee sachet packaging with rich brown tones and golden details showcased under warm focused spot lighting against a dark elegant surface." src="https://lh3.googleusercontent.com/aida-public/AB6AXuC5E-tuFTa5JWY6MVUMahlpCqurKwT1mlGf5t1e0JoodMI72bpvwjyU3RtF_35OMqbt0Kb-0lwGV5P1aUQG7-w7qiXstBE-WbCGEIFvq0x84_fBV7ArOhtuEEuTIjWGjOlFQE3p6r98a1tw2LtrQZAwva5gZWezGJlRSzJ80zG1_TZxm1bWrW85tLco7aRaA6KQM7_TGRcImPVN6TH0nc48xAjJWBizljAcH1DfC5d9mk_ovH10ihHNexDiEW3f-SV2agCdvXxW9o65">
+</div>
+<div class="flex-1 min-w-0">
+<p class="font-body-lg text-sm truncate text-on-surface">Nescafé Stick</p>
+<p class="font-body-sm text-[12px] text-on-surface-variant">245 Units Sold</p>
+</div>
+<div class="text-right">
+<p class="font-label-caps text-on-surface font-bold">₱2,450</p>
+<div class="w-16 h-1 bg-surface-container rounded-full mt-1 overflow-hidden">
+<div class="bg-primary h-full" style="width: 45%;"></div>
+</div>
+</div>
+</div>
+<!-- Item 5 -->
+<div class="flex items-center p-stack-md gap-4">
+<div class="w-10 h-10 rounded-lg bg-surface-container flex items-center justify-center shrink-0 border border-outline-variant">
+<img class="w-8 h-8 object-contain" data-alt="Macro photo of a blue laundry detergent soap bar with textured surface and brand embossing on a clean ceramic tile background with natural morning light reflections." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDVYEhI2jtbGaF7fPvyYsX3epurkFMUUpZ2Cj_CXf_mDOcwqR_pwfcKtdcofo7HgB4IfUMmw9aaJoRn0-hLhOU085vfJE6fZRzyoYz8QF_yacKX01voZ3JoYKapmbt2hQeNBagCb1_vV8mhrkJFllWy7_G9MCvRooWfHI2M5G_PfavNVAHhW0YYDGsCNgiqIkHFEF7RDmXt8yGM0DR6NgK_0VWLm9dacj2EUWr_IP9oqmP59zZ9nLdW1BA_FCjN-P0jnpnLxp5XZnXf">
+</div>
+<div class="flex-1 min-w-0">
+<p class="font-body-lg text-sm truncate text-on-surface">Tide Bar Blue</p>
+<p class="font-body-sm text-[12px] text-on-surface-variant">192 Units Sold</p>
+</div>
+<div class="text-right">
+<p class="font-label-caps text-on-surface font-bold">₱1,920</p>
+<div class="w-16 h-1 bg-surface-container rounded-full mt-1 overflow-hidden">
+<div class="bg-primary h-full" style="width: 32%;"></div>
+</div>
+</div>
+</div>
+</div>
+</section>
+<!-- Low Stock Alerts -->
+<section class="bg-error-container/20 border border-error/20 p-stack-md rounded-xl">
+<div class="flex items-center gap-2 mb-3">
+<span class="material-symbols-outlined text-error" style="font-variation-settings: 'FILL' 1;">warning</span>
+<h3 class="font-headline-md text-error text-sm">Low Stock Alert (4 items)</h3>
+</div>
+<div class="space-y-2">
+<div class="flex justify-between items-center bg-white/50 p-2 rounded-lg border border-error/10">
+<span class="font-body-sm text-on-surface">Piatos Cheese Large</span>
+<span class="font-label-caps text-status-out-of-stock font-bold">2 Left</span>
+</div>
+<div class="flex justify-between items-center bg-white/50 p-2 rounded-lg border border-error/10">
+<span class="font-body-sm text-on-surface">San Miguel Pale Pilsen</span>
+<span class="font-label-caps text-status-out-of-stock font-bold">0 Left</span>
+</div>
+<div class="flex justify-between items-center bg-white/50 p-2 rounded-lg border border-error/10">
+<span class="font-body-sm text-on-surface">Silver Swan Soy Sauce</span>
+<span class="font-label-caps text-status-low-stock font-bold">5 Left</span>
+</div>
+</div>
+<button class="w-full mt-4 py-3 bg-error text-on-error rounded-lg font-label-caps text-center uppercase tracking-widest active:scale-95 transition-all">
+                Restock Now
+            </button>
+</section>
+</main>
+<!-- BottomNavBar -->
+<nav class="fixed bottom-0 left-0 w-full bg-surface dark:bg-surface-dim border-t border-outline-variant dark:border-outline shadow-lg z-50 h-16 flex justify-around items-center px-container-margin pb-safe">
+<!-- Home -->
+<a class="flex flex-col items-center justify-center text-on-secondary-fixed-variant p-2 hover:bg-surface-container-low transition-all active:scale-95 duration-100" href="#">
+<span class="material-symbols-outlined">home</span>
+</a>
+<!-- Inventory -->
+<a class="flex flex-col items-center justify-center text-on-secondary-fixed-variant p-2 hover:bg-surface-container-low transition-all active:scale-95 duration-100" href="#">
+<span class="material-symbols-outlined">inventory_2</span>
+</a>
+<!-- Receipts -->
+<a class="flex flex-col items-center justify-center text-on-secondary-fixed-variant p-2 hover:bg-surface-container-low transition-all active:scale-95 duration-100" href="#">
+<span class="material-symbols-outlined">receipt_long</span>
+</a>
+<!-- Analytics (ACTIVE) -->
+<a class="flex flex-col items-center justify-center bg-primary-container text-on-primary-container rounded-xl p-2 hover:bg-surface-container-low transition-all active:scale-95 duration-100" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">analytics</span>
+</a>
+</nav>
+<script>
+        // Micro-interaction: Animated bars on load
+        window.addEventListener('DOMContentLoaded', () => {
+            const bars = document.querySelectorAll('.bar-transition');
+            bars.forEach(bar => {
+                const finalHeight = bar.style.height;
+                bar.style.height = '0%';
+                setTimeout(() => {
+                    bar.style.height = finalHeight;
+                }, 100);
+            });
+        });
+    </script>
+</body></html>

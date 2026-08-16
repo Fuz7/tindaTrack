@@ -1,0 +1,340 @@
+<!DOCTYPE html><html class="light" lang="en"><head>
+<meta charset="utf-8">
+<meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" name="viewport">
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+            display: inline-block;
+            line-height: 1;
+            text-transform: none;
+            letter-spacing: normal;
+            word-wrap: normal;
+            white-space: nowrap;
+            direction: ltr;
+        }
+        /* Custom scrollbar for dense lists */
+        .dense-scroll::-webkit-scrollbar {
+            width: 4px;
+        }
+        .dense-scroll::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        .dense-scroll::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 10px;
+        }
+        /* Bottom Sheet Transition */
+        .bottom-sheet-overlay {
+            transition: opacity 0.3s ease;
+        }
+        .bottom-sheet-content {
+            transition: transform 0.4s cubic-bezier(0.32, 0.72, 0, 1);
+        }
+    </style>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "surface-container-lowest": "#ffffff",
+                        "status-low-stock": "#F59E0B",
+                        "on-primary-fixed": "#002114",
+                        "error": "#ba1a1a",
+                        "on-tertiary": "#ffffff",
+                        "inverse-primary": "#68dba9",
+                        "status-out-of-stock": "#EF4444",
+                        "surface-container-high": "#e4eae4",
+                        "on-tertiary-fixed-variant": "#7f2928",
+                        "on-surface-variant": "#3d4a42",
+                        "on-secondary-container": "#5c647a",
+                        "primary-fixed-dim": "#68dba9",
+                        "surface-container-low": "#eff5ef",
+                        "tertiary-fixed-dim": "#ffb3ae",
+                        "surface-bright": "#f5fbf5",
+                        "on-secondary-fixed-variant": "#3f465c",
+                        "on-tertiary-fixed": "#410004",
+                        "primary-container": "#00855d",
+                        "action-destructive": "#B91C1C",
+                        "on-background": "#171d19",
+                        "on-secondary-fixed": "#131b2e",
+                        "on-error-container": "#93000a",
+                        "status-in-stock": "#10B981",
+                        "surface-variant": "#dee4de",
+                        "inverse-on-surface": "#ecf2ec",
+                        "secondary-container": "#dae2fd",
+                        "outline": "#6d7a72",
+                        "on-primary": "#ffffff",
+                        "on-error": "#ffffff",
+                        "inverse-surface": "#2c322e",
+                        "surface-tonal": "#F8FAFC",
+                        "error-container": "#ffdad6",
+                        "secondary-fixed-dim": "#bec6e0",
+                        "on-primary-fixed-variant": "#005137",
+                        "secondary": "#565e74",
+                        "tertiary-fixed": "#ffdad7",
+                        "surface-container": "#e9efe9",
+                        "primary": "#006948",
+                        "surface": "#f5fbf5",
+                        "surface-border": "#E2E8F0",
+                        "on-surface": "#171d19",
+                        "primary-fixed": "#85f8c4",
+                        "tertiary-container": "#ba5551",
+                        "secondary-fixed": "#dae2fd",
+                        "tertiary": "#9b3e3b",
+                        "surface-tint": "#006c4a",
+                        "surface-dim": "#d5dcd6",
+                        "surface-container-highest": "#dee4de",
+                        "on-secondary": "#ffffff",
+                        "on-tertiary-container": "#fffbff",
+                        "on-primary-container": "#f5fff7",
+                        "background": "#f5fbf5",
+                        "outline-variant": "#bccac0"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "stack-sm": "0.5rem",
+                        "touch-target": "3rem",
+                        "stack-md": "1rem",
+                        "gutter": "1rem",
+                        "container-margin": "1rem"
+                    },
+                    "fontFamily": {
+                        "numeric-keypad": ["Inter"],
+                        "body-sm": ["Inter"],
+                        "body-lg": ["Inter"],
+                        "label-caps": ["Inter"],
+                        "display-price": ["Inter"],
+                        "headline-md": ["Inter"],
+                        "headline-lg": ["Inter"]
+                    },
+                    "fontSize": {
+                        "numeric-keypad": ["24px", {"lineHeight": "24px", "fontWeight": "500"}],
+                        "body-sm": ["14px", {"lineHeight": "20px", "fontWeight": "400"}],
+                        "body-lg": ["16px", {"lineHeight": "24px", "fontWeight": "500"}],
+                        "label-caps": ["12px", {"lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "700"}],
+                        "display-price": ["48px", {"lineHeight": "56px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                        "headline-md": ["20px", {"lineHeight": "28px", "fontWeight": "600"}],
+                        "headline-md-mobile": ["18px", {"lineHeight": "24px", "fontWeight": "600"}],
+                        "headline-lg": ["24px", {"lineHeight": "32px", "fontWeight": "700"}],
+                        "headline-lg-mobile": ["20px", {"lineHeight": "28px", "fontWeight": "700"}]
+                    }
+                },
+            },
+        }
+    </script>
+</head>
+<body class="bg-background text-on-background font-body-lg overflow-hidden h-screen flex flex-col items-center">
+<!-- Mobile Device Container -->
+<div class="relative w-full max-w-[430px] h-screen bg-surface flex flex-col overflow-hidden shadow-2xl">
+<!-- TopAppBar -->
+<header class="bg-surface dark:bg-surface-dim text-primary dark:text-primary-fixed-dim w-full top-0 sticky border-b border-outline-variant dark:border-outline flex justify-between items-center px-gutter h-touch-target z-50">
+<div class="flex items-center gap-3">
+<div class="w-8 h-8 rounded-full bg-primary-container flex items-center justify-center text-on-primary-container overflow-hidden">
+<span class="material-symbols-outlined text-[18px]">store</span>
+</div>
+<h1 class="font-headline-md-mobile text-headline-md-mobile text-primary dark:text-primary-fixed-dim">TindaTrack</h1>
+</div>
+<button class="hover:bg-surface-container-high transition-colors p-2 rounded-full active:bg-surface-container-highest">
+<span class="material-symbols-outlined">settings</span>
+</button>
+</header>
+<!-- Main Content (Search/Home Context) -->
+<main class="flex-1 overflow-y-auto dense-scroll pb-24">
+<!-- Search Bar Area -->
+<div class="px-gutter pt-4 pb-2">
+<div class="relative flex items-center">
+<span class="material-symbols-outlined absolute left-3 text-outline">search</span>
+<input class="w-full pl-10 pr-4 py-3 bg-surface-container-low border border-outline-variant rounded-lg font-body-sm focus:border-primary focus:ring-1 focus:ring-primary transition-all outline-none" placeholder="Search products..." type="text" value="Piattos">
+<button class="absolute right-3 text-outline">
+<span class="material-symbols-outlined">cancel</span>
+</button>
+</div>
+</div>
+<!-- Search Results -->
+<div class="px-gutter py-2">
+<p class="font-label-caps text-label-caps text-on-surface-variant mb-4">Results (4)</p>
+<div class="flex flex-col gap-2">
+<!-- Target Item: Piattos -->
+<div class="flex items-center p-3 bg-surface-container-lowest border border-outline-variant rounded-lg active:bg-surface-container-low transition-all cursor-pointer" onclick="toggleBottomSheet(true)">
+<div class="w-16 h-16 bg-surface-variant rounded-md overflow-hidden flex-shrink-0">
+<img alt="Piattos Roast Beef" class="w-full h-full object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCqAlowuS3n7RFNLENYblVMsFguSOmSahHZk1JDuoWvOsxpy2te7RAFJoohJ7bMqQbMB7SMeburwK9IpekkFHldVzmWJ8IVyqea6MOz2Mb-JNs2gFSZzZAMc_SFnKcqT3wu53aXkZXHF8ah2ftBYOxIiQhGRVn5v3pr5ajE0Bu8Y-Yyvs79B3ucj3qldbITBY3mSdzhLASGHK5KC-DT9TQdE8DTf_LG0e4KHyrdMVYqQ4GlJ-Fpl79SllUTx-F8dILIlD1SW1jPC5En">
+</div>
+<div class="ml-4 flex-1">
+<h3 class="font-body-lg text-on-surface">Piattos Roast Beef (40g)</h3>
+<div class="flex justify-between items-center mt-1">
+<span class="font-display-price text-[18px] text-primary">₱18.50</span>
+<span class="font-label-caps text-label-caps text-status-in-stock">12 in stock</span>
+</div>
+</div>
+</div>
+<!-- Other Items (Generic) -->
+<div class="flex items-center p-3 bg-surface-container-lowest border border-outline-variant rounded-lg opacity-80">
+<div class="w-16 h-16 bg-surface-variant rounded-md overflow-hidden flex-shrink-0 flex items-center justify-center">
+<span class="material-symbols-outlined text-outline">image</span>
+</div>
+<div class="ml-4 flex-1">
+<h3 class="font-body-lg text-on-surface">Piattos Cheese (40g)</h3>
+<div class="flex justify-between items-center mt-1">
+<span class="font-display-price text-[18px] text-primary">₱18.50</span>
+<span class="font-label-caps text-label-caps text-status-low-stock">3 in stock</span>
+</div>
+</div>
+</div>
+<div class="flex items-center p-3 bg-surface-container-lowest border border-outline-variant rounded-lg opacity-80">
+<div class="w-16 h-16 bg-surface-variant rounded-md overflow-hidden flex-shrink-0 flex items-center justify-center">
+<span class="material-symbols-outlined text-outline">image</span>
+</div>
+<div class="ml-4 flex-1">
+<h3 class="font-body-lg text-on-surface">Piattos Sour Cream (40g)</h3>
+<div class="flex justify-between items-center mt-1">
+<span class="font-display-price text-[18px] text-primary">₱18.50</span>
+<span class="font-label-caps text-label-caps text-status-in-stock">24 in stock</span>
+</div>
+</div>
+</div>
+<div class="flex items-center p-3 bg-surface-container-lowest border border-outline-variant rounded-lg opacity-80">
+<div class="w-16 h-16 bg-surface-variant rounded-md overflow-hidden flex-shrink-0 flex items-center justify-center">
+<span class="material-symbols-outlined text-outline">image</span>
+</div>
+<div class="ml-4 flex-1">
+<h3 class="font-body-lg text-on-surface">Piattos Nacho Pizza (40g)</h3>
+<div class="flex justify-between items-center mt-1">
+<span class="font-display-price text-[18px] text-primary">₱18.50</span>
+<span class="font-label-caps text-label-caps text-status-out-of-stock">0 in stock</span>
+</div>
+</div>
+</div>
+</div>
+</div>
+</main>
+<!-- BottomNavBar -->
+<nav class="bg-surface dark:bg-surface-dim border-t border-outline-variant dark:border-outline shadow-lg fixed bottom-0 left-0 w-full flex justify-around items-center px-container-margin pb-safe h-16 z-40">
+<div class="flex flex-col items-center justify-center bg-primary-container text-on-primary-container rounded-xl p-2 active:scale-95 duration-100 transition-all cursor-pointer">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">home</span>
+</div>
+<div class="flex flex-col items-center justify-center text-on-secondary-fixed-variant p-2 hover:bg-surface-container-low active:scale-95 duration-100 transition-all cursor-pointer">
+<span class="material-symbols-outlined">inventory_2</span>
+</div>
+<div class="flex flex-col items-center justify-center text-on-secondary-fixed-variant p-2 hover:bg-surface-container-low active:scale-95 duration-100 transition-all cursor-pointer">
+<span class="material-symbols-outlined">receipt_long</span>
+</div>
+<div class="flex flex-col items-center justify-center text-on-secondary-fixed-variant p-2 hover:bg-surface-container-low active:scale-95 duration-100 transition-all cursor-pointer">
+<span class="material-symbols-outlined">analytics</span>
+</div>
+</nav>
+<!-- Bottom Sheet Overlay -->
+<div class="absolute inset-0 bg-black/60 z-[60] bottom-sheet-overlay opacity-100" id="overlay"></div>
+<!-- Product Details Bottom Sheet -->
+<div class="absolute bottom-0 left-0 w-full bg-surface-container-lowest rounded-t-3xl shadow-2xl z-[70] bottom-sheet-content flex flex-col" id="bottom-sheet">
+<!-- Drag Handle -->
+<div class="w-full flex justify-center py-3" onclick="toggleBottomSheet(false)">
+<div class="w-12 h-1.5 bg-outline-variant rounded-full"></div>
+</div>
+<!-- Content Container -->
+<div class="px-gutter pb-8 pt-2">
+<div class="flex justify-between items-center mb-6">
+<h2 class="font-headline-md text-headline-md text-on-surface">Product Details</h2>
+<button class="p-2 rounded-full hover:bg-surface-container-high active:bg-surface-container-highest transition-colors" onclick="toggleBottomSheet(false)">
+<span class="material-symbols-outlined">close</span>
+</button>
+</div>
+<!-- Product Display Card -->
+<div class="bg-surface-container-low rounded-xl p-4 flex flex-col items-center mb-6">
+<div class="w-48 h-48 rounded-lg overflow-hidden shadow-sm border border-outline-variant mb-4 bg-white">
+<img alt="Piattos Roast Beef (40g)" class="w-full h-full object-contain p-4" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCqAlowuS3n7RFNLENYblVMsFguSOmSahHZk1JDuoWvOsxpy2te7RAFJoohJ7bMqQbMB7SMeburwK9IpekkFHldVzmWJ8IVyqea6MOz2Mb-JNs2gFSZzZAMc_SFnKcqT3wu53aXkZXHF8ah2ftBYOxIiQhGRVn5v3pr5ajE0Bu8Y-Yyvs79B3ucj3qldbITBY3mSdzhLASGHK5KC-DT9TQdE8DTf_LG0e4KHyrdMVYqQ4GlJ-Fpl79SllUTx-F8dILIlD1SW1jPC5En">
+</div>
+<h3 class="font-headline-lg text-headline-lg text-on-surface text-center mb-1">Piattos Roast Beef (40g)</h3>
+<div class="flex items-center gap-2">
+<span class="font-display-price text-[28px] text-primary">₱18.50</span>
+<div class="h-4 w-px bg-outline-variant"></div>
+<span class="font-body-lg text-status-in-stock">12 in stock</span>
+</div>
+</div>
+<!-- Quantity Selector -->
+<div class="flex items-center justify-between bg-surface-container rounded-xl p-4 mb-6">
+<span class="font-body-lg text-on-surface-variant">Quantity</span>
+<div class="flex items-center gap-6">
+<button class="w-12 h-12 rounded-full border border-outline flex items-center justify-center active:bg-surface-container-highest transition-colors disabled:opacity-30" id="minus-btn">
+<span class="material-symbols-outlined">remove</span>
+</button>
+<span class="font-display-price text-[24px] text-on-surface w-8 text-center" id="qty-val">1</span>
+<button class="w-12 h-12 rounded-full border border-outline flex items-center justify-center active:bg-surface-container-highest transition-colors" id="plus-btn">
+<span class="material-symbols-outlined">add</span>
+</button>
+</div>
+</div>
+<!-- Add to Cart Button -->
+<button class="w-full py-4 bg-primary text-on-primary rounded-xl font-headline-md flex items-center justify-center gap-2 shadow-lg active:scale-[0.98] transition-all" onclick="toggleBottomSheet(false)">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">shopping_cart</span>
+                    Add to Cart
+                </button>
+</div>
+</div>
+</div>
+<script>
+        // Quantity Logic
+        const minusBtn = document.getElementById('minus-btn');
+        const plusBtn = document.getElementById('plus-btn');
+        const qtyVal = document.getElementById('qty-val');
+        let currentQty = 1;
+
+        plusBtn.addEventListener('click', () => {
+            if (currentQty < 12) { // Stock limit
+                currentQty++;
+                updateQtyDisplay();
+            }
+        });
+
+        minusBtn.addEventListener('click', () => {
+            if (currentQty > 1) {
+                currentQty--;
+                updateQtyDisplay();
+            }
+        });
+
+        function updateQtyDisplay() {
+            qtyVal.textContent = currentQty;
+            minusBtn.disabled = (currentQty === 1);
+            plusBtn.disabled = (currentQty === 12);
+        }
+
+        // Bottom Sheet Toggle Logic
+        const overlay = document.getElementById('overlay');
+        const bottomSheet = document.getElementById('bottom-sheet');
+
+        function toggleBottomSheet(show) {
+            if (show) {
+                overlay.classList.remove('pointer-events-none', 'opacity-0');
+                overlay.classList.add('opacity-100');
+                bottomSheet.classList.remove('translate-y-full');
+            } else {
+                overlay.classList.add('opacity-0');
+                setTimeout(() => {
+                    overlay.classList.add('pointer-events-none');
+                }, 300);
+                bottomSheet.classList.add('translate-y-full');
+            }
+        }
+
+        // Initialize state
+        updateQtyDisplay();
+        
+        // Auto-open on load as requested by user prompt state
+        window.addEventListener('DOMContentLoaded', () => {
+            setTimeout(() => toggleBottomSheet(true), 500);
+        });
+
+        // Close on overlay click
+        overlay.addEventListener('click', () => toggleBottomSheet(false));
+    </script>
+</body></html>

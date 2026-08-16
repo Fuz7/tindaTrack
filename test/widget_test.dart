@@ -1,30 +1,46 @@
-// This is a basic Flutter widget test.
-//
-// To perform an interaction with a widget in your test, use the WidgetTester
-// utility in the flutter_test package. For example, you can send tap and scroll
-// gestures. You can also use WidgetTester to find child widgets in the widget
-// tree, read text, and verify that the values of widget properties are correct.
+import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:flutter_application_1/main.dart';
+import 'package:tinda_track/screens/sign_in_screen.dart';
+import 'package:tinda_track/theme/app_theme.dart';
+
+Widget _wrap(Widget child) =>
+    MaterialApp(theme: AppTheme.light, home: child);
 
 void main() {
-  testWidgets('Counter increments smoke test', (WidgetTester tester) async {
-    // Build our app and trigger a frame.
-    await tester.pumpWidget(const MyApp());
+  testWidgets('sign-in screen renders the brand, tagline and CTA', (
+    tester,
+  ) async {
+    await tester.pumpWidget(_wrap(const SignInScreen()));
+    await tester.pumpAndSettle();
 
-    // Verify that our counter starts at 0.
-    expect(find.text('0'), findsOneWidget);
-    expect(find.text('1'), findsNothing);
+    expect(find.text('TindaTrack'), findsOneWidget);
+    expect(find.text('Track your store, grow your business'), findsOneWidget);
+    expect(find.text('Sign in with Google'), findsOneWidget);
+  });
 
-    // Tap the '+' icon and trigger a frame.
-    await tester.tap(find.byIcon(Icons.add));
+  testWidgets('tapping sign in shows a spinner until the callback resolves', (
+    tester,
+  ) async {
+    final completer = Completer<void>();
+
+    await tester.pumpWidget(
+      _wrap(SignInScreen(onSignIn: () => completer.future)),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Sign in with Google'));
     await tester.pump();
 
-    // Verify that our counter has incremented.
-    expect(find.text('0'), findsNothing);
-    expect(find.text('1'), findsOneWidget);
+    expect(find.byType(CircularProgressIndicator), findsOneWidget);
+    expect(find.text('Sign in with Google'), findsNothing);
+
+    completer.complete();
+    await tester.pumpAndSettle();
+
+    expect(find.byType(CircularProgressIndicator), findsNothing);
+    expect(find.text('Sign in with Google'), findsOneWidget);
   });
 }

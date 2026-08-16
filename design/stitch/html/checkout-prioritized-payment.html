@@ -1,0 +1,291 @@
+<!DOCTYPE html><html class="light" lang="en" style=""><head>
+<meta charset="utf-8">
+<meta content="width=device-width, initial-scale=1.0" name="viewport">
+<title>TindaTrack - Checkout</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com" rel="preconnect">
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet">
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "on-primary-container": "#f5fff7",
+                        "on-error": "#ffffff",
+                        "secondary-fixed-dim": "#bec6e0",
+                        "primary-fixed-dim": "#68dba9",
+                        "surface-tint": "#006c4a",
+                        "status-low-stock": "#F59E0B",
+                        "on-tertiary-container": "#fffbff",
+                        "inverse-on-surface": "#ecf2ec",
+                        "surface-dim": "#d5dcd6",
+                        "tertiary": "#9b3e3b",
+                        "tertiary-container": "#ba5551",
+                        "status-out-of-stock": "#EF4444",
+                        "surface": "#f5fbf5",
+                        "on-secondary-fixed-variant": "#3f465c",
+                        "background": "#f5fbf5",
+                        "primary-fixed": "#85f8c4",
+                        "surface-bright": "#f5fbf5",
+                        "inverse-surface": "#2c322e",
+                        "on-surface-variant": "#3d4a42",
+                        "surface-container-lowest": "#ffffff",
+                        "status-in-stock": "#10B981",
+                        "on-secondary-container": "#5c647a",
+                        "on-tertiary": "#ffffff",
+                        "on-secondary": "#ffffff",
+                        "action-destructive": "#B91C1C",
+                        "outline": "#6d7a72",
+                        "on-primary": "#ffffff",
+                        "tertiary-fixed": "#ffdad7",
+                        "outline-variant": "#bccac0",
+                        "error-container": "#ffdad6",
+                        "surface-variant": "#dee4de",
+                        "on-tertiary-fixed-variant": "#7f2928",
+                        "secondary-fixed": "#dae2fd",
+                        "primary": "#006948",
+                        "tertiary-fixed-dim": "#ffb3ae",
+                        "surface-container-high": "#e4eae4",
+                        "on-tertiary-fixed": "#410004",
+                        "secondary": "#565e74",
+                        "on-surface": "#171d19",
+                        "surface-border": "#E2E8F0",
+                        "on-primary-fixed": "#002114",
+                        "surface-tonal": "#F8FAFC",
+                        "on-primary-fixed-variant": "#005137",
+                        "inverse-primary": "#68dba9",
+                        "error": "#ba1a1a",
+                        "surface-container-low": "#eff5ef",
+                        "secondary-container": "#dae2fd",
+                        "primary-container": "#00855d",
+                        "surface-container": "#e9efe9",
+                        "on-secondary-fixed": "#131b2e",
+                        "on-background": "#171d19",
+                        "surface-container-highest": "#dee4de",
+                        "on-error-container": "#93000a"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "stack-sm": "0.5rem",
+                        "touch-target": "3rem",
+                        "gutter": "1rem",
+                        "container-margin": "1rem",
+                        "stack-md": "1rem"
+                    },
+                    "fontFamily": {
+                        "display-price": ["Inter"],
+                        "numeric-keypad": ["Inter"],
+                        "label-caps": ["Inter"],
+                        "headline-lg": ["Inter"],
+                        "body-lg": ["Inter"],
+                        "body-sm": ["Inter"],
+                        "headline-md": ["Inter"]
+                    },
+                    "fontSize": {
+                        "display-price": ["48px", { "lineHeight": "56px", "letterSpacing": "-0.02em", "fontWeight": "700" }],
+                        "numeric-keypad": ["24px", { "lineHeight": "24px", "fontWeight": "500" }],
+                        "label-caps": ["12px", { "lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "700" }],
+                        "headline-lg": ["24px", { "lineHeight": "32px", "fontWeight": "700" }],
+                        "headline-lg-mobile": ["20px", { "lineHeight": "28px", "fontWeight": "700" }],
+                        "body-lg": ["16px", { "lineHeight": "24px", "fontWeight": "500" }],
+                        "body-sm": ["14px", { "lineHeight": "20px", "fontWeight": "400" }],
+                        "headline-md": ["20px", { "lineHeight": "28px", "fontWeight": "600" }],
+                        "headline-md-mobile": ["18px", { "lineHeight": "24px", "fontWeight": "600" }]
+                    }
+                },
+            },
+        }
+    </script>
+<style>
+        body { font-family: 'Inter', sans-serif; }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .hide-scrollbar::-webkit-scrollbar { display: none; }
+        .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        
+        input::-webkit-outer-spin-button,
+        input::-webkit-inner-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
+        }
+        input[type=number] {
+            -moz-appearance: textfield;
+        }
+    </style>
+</head>
+<body class="bg-surface text-on-surface flex justify-center min-h-screen">
+<!-- Max-width Mobile Container -->
+<main class="w-full max-w-[440px] bg-white flex flex-col relative shadow-2xl min-h-screen pb-safe">
+<!-- Header (Point 1) -->
+<header class="bg-surface dark:bg-surface-dim w-full top-0 sticky border-b border-outline-variant dark:border-outline flex justify-between items-center px-gutter h-touch-target z-50">
+<div class="flex items-center gap-2 flex-1 justify-center">
+<div class="w-8 h-8 rounded-full bg-primary-container flex items-center justify-center text-on-primary-container font-bold text-xs">
+                    SP
+                </div>
+<h1 class="text-headline-md-mobile font-headline-md text-primary dark:text-primary-fixed-dim">TindaTrack</h1>
+</div>
+<button class="material-symbols-outlined text-primary hover:bg-surface-container-high transition-colors p-2 rounded-lg">settings</button>
+</header>
+<!-- Main Scrollable Area -->
+<div class="flex-1 overflow-y-auto hide-scrollbar">
+<!-- Navigation (Point 2) -->
+<div class="px-gutter pt-4 pb-2">
+<button class="flex items-center gap-1.5 text-on-surface-variant hover:text-primary transition-colors py-1 px-0 font-medium text-sm" onclick="history.back()">
+<span class="material-symbols-outlined !text-[18px]">arrow_back</span>
+<span class="">Back to Cart</span>
+</button>
+</div>
+<!-- PAYMENT SUMMARY (Points 3, 4, 5, 6) -->
+<section class="px-gutter mb-6">
+
+</section>
+<!-- Payment Method (Preserved but integrated) -->
+<section class="px-gutter mb-8">
+<div class="flex gap-2">
+<button class="flex-1 flex items-center justify-center gap-2 p-3 rounded-xl border-2 border-primary bg-primary-container text-on-primary-container transition-all" id="payCash">
+<span class="material-symbols-outlined !text-[20px]">payments</span>
+<span class="font-label-caps text-label-caps">CASH</span>
+</button>
+<button class="flex-1 flex items-center justify-center gap-2 p-3 rounded-xl border border-outline-variant bg-surface-container-low text-on-surface-variant transition-all" id="payGCash">
+<span class="material-symbols-outlined !text-[20px]">qr_code_2</span>
+<span class="font-label-caps text-label-caps">G-CASH</span>
+</button>
+</div>
+</section>
+<!-- ORDER SUMMARY (Point 7) -->
+<section class="px-gutter mb-8">
+<details class="group bg-surface-container rounded-xl border border-outline-variant overflow-hidden" open="">
+<summary class="flex justify-between items-center p-4 cursor-pointer hover:bg-surface-container-high transition-colors list-none">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-primary group-open:rotate-180 transition-transform">expand_more</span>
+<h2 class="font-label-caps text-label-caps text-on-surface-variant">ORDER SUMMARY (3 ITEMS)</h2>
+</div>
+<span class="font-body-sm text-body-sm font-bold">₱127.00</span>
+</summary>
+<div class="p-4 pt-0 space-y-3 border-t border-outline-variant/30 mt-2">
+<div class="flex justify-between items-start text-sm">
+<div>
+<p class="font-medium">Lucky Me Pancit Canton</p>
+<p class="text-xs text-on-surface-variant">2 x ₱18.50</p>
+</div>
+<p class="font-bold">₱37.00</p>
+</div>
+<div class="flex justify-between items-start text-sm">
+<div>
+<p class="font-medium">Coke 500ml</p>
+<p class="text-xs text-on-surface-variant">1 x ₱25.00</p>
+</div>
+<p class="font-bold">₱25.00</p>
+</div>
+<div class="flex justify-between items-start text-sm">
+<div>
+<p class="font-medium">Gardenia Classic White</p>
+<p class="text-xs text-on-surface-variant">1 x ₱65.00</p>
+</div>
+<p class="font-bold">₱65.00</p>
+</div>
+<div class="pt-3 mt-3 border-t border-dashed border-outline-variant flex justify-between items-center text-xs text-on-surface-variant">
+<span class="">Subtotal</span>
+<span class="">₱127.00</span>
+</div>
+</div>
+</details>
+</section>
+</div>
+<!-- Footer Action (Point 8) -->
+<footer class="p-gutter bg-white border-t border-outline-variant sticky bottom-0">
+<button class="w-full bg-primary text-on-primary py-4 rounded-xl font-headline-md text-headline-md shadow-lg shadow-primary/20 hover:bg-primary-container transition-all active:scale-[0.98] flex items-center justify-center gap-3" id="completeSale">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">check_circle</span>
+                COMPLETE SALE
+            </button>
+</footer>
+</main>
+<script>
+        const total = 127.00;
+        const cashInput = document.getElementById('cashInput');
+        const changeDisplay = document.getElementById('changeDisplay');
+        const payCashBtn = document.getElementById('payCash');
+        const payGCashBtn = document.getElementById('payGCash');
+
+        // Payment Method Switching
+        payCashBtn.addEventListener('click', () => {
+            payCashBtn.className = 'flex-1 flex items-center justify-center gap-2 p-3 rounded-xl border-2 border-primary bg-primary-container text-on-primary-container transition-all';
+            payGCashBtn.className = 'flex-1 flex items-center justify-center gap-2 p-3 rounded-xl border border-outline-variant bg-surface-container-low text-on-surface-variant transition-all';
+        });
+
+        payGCashBtn.addEventListener('click', () => {
+            payGCashBtn.className = 'flex-1 flex items-center justify-center gap-2 p-3 rounded-xl border-2 border-primary bg-primary-container text-on-primary-container transition-all';
+            payCashBtn.className = 'flex-1 flex items-center justify-center gap-2 p-3 rounded-xl border border-outline-variant bg-surface-container-low text-on-surface-variant transition-all';
+        });
+
+        // Change Calculation Logic
+        function updateChange() {
+            const received = parseFloat(cashInput.value) || 0;
+            const change = received - total;
+            if (change >= 0) {
+                changeDisplay.textContent = `₱${change.toFixed(2)}`;
+                changeDisplay.classList.remove('text-on-surface');
+                changeDisplay.classList.add('text-primary');
+            } else {
+                changeDisplay.textContent = `₱0.00`;
+                changeDisplay.classList.add('text-on-surface');
+                changeDisplay.classList.remove('text-primary');
+            }
+        }
+
+        cashInput.addEventListener('input', updateChange);
+
+        function addCash(amount) {
+            const current = parseFloat(cashInput.value) || 0;
+            cashInput.value = (current + amount).toFixed(2);
+            updateChange();
+            
+            // Visual feedback
+            cashInput.classList.add('ring-4', 'ring-primary/20');
+            setTimeout(() => cashInput.classList.remove('ring-4', 'ring-primary/20'), 300);
+        }
+
+        function clearCash() {
+            cashInput.value = '';
+            updateChange();
+            cashInput.focus();
+        }
+
+        // Completion Interaction
+        document.getElementById('completeSale').addEventListener('click', function() {
+            const received = parseFloat(cashInput.value) || 0;
+            if (received < total) {
+                alert('Insufficient cash received');
+                return;
+            }
+            
+            this.innerHTML = `<span class="material-symbols-outlined animate-spin">sync</span> PROCESSING...`;
+            this.disabled = true;
+            
+            setTimeout(() => {
+                this.innerHTML = `<span class="material-symbols-outlined">verified</span> SALE COMPLETED`;
+                this.classList.replace('bg-primary', 'bg-status-in-stock');
+                
+                const toast = document.createElement('div');
+                toast.className = 'fixed top-20 left-1/2 -translate-x-1/2 bg-inverse-surface text-inverse-on-surface px-6 py-3 rounded-full shadow-2xl z-[100] transition-all opacity-0 translate-y-4';
+                toast.textContent = 'Receipt Printed Successfully';
+                document.body.appendChild(toast);
+                
+                setTimeout(() => {
+                    toast.classList.remove('opacity-0', 'translate-y-4');
+                }, 100);
+            }, 1200);
+        });
+    </script>
+
+
+</body></html>

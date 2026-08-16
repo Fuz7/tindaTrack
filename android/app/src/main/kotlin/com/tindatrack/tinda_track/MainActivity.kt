@@ -1,4 +1,4 @@
-package com.example.flutter_application_1
+package com.tindatrack.tinda_track
 
 import io.flutter.embedding.android.FlutterActivity
 
