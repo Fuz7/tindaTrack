@@ -6,11 +6,15 @@ import '../widgets/google_g_logo.dart';
 /// Entry screen — a faithful Flutter build of the Stitch "Sign In (Google)"
 /// design (project 14772063175572299152, screen 980d26d1…).
 class SignInScreen extends StatefulWidget {
-  const SignInScreen({super.key, this.onSignIn});
+  const SignInScreen({super.key, required this.onSignIn});
 
   /// Invoked when the user taps "Sign in with Google". While the returned
   /// future is in flight the button shows a spinner and is disabled.
-  final Future<void> Function()? onSignIn;
+  ///
+  /// Required and non-nullable so a screen with a dead button cannot be built
+  /// by accident. The screen never learns whether sign-in succeeded — the app
+  /// shell reacts to `AuthService.authState` instead.
+  final Future<void> Function() onSignIn;
 
   @override
   State<SignInScreen> createState() => _SignInScreenState();
@@ -42,12 +46,20 @@ class _SignInScreenState extends State<SignInScreen>
   }
 
   Future<void> _handleSignIn() async {
-    final callback = widget.onSignIn;
-    if (callback == null || _busy) return;
+    if (_busy) return;
 
     setState(() => _busy = true);
     try {
-      await callback();
+      await widget.onSignIn();
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text("Couldn't sign in. Please try again."),
+          backgroundColor: AppColors.error,
+        ),
+      );
+      debugPrint('Sign-in failed: $e');
     } finally {
       if (mounted) setState(() => _busy = false);
     }

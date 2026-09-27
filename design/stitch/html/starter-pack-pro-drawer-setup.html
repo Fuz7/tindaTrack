@@ -1,0 +1,444 @@
+<!DOCTYPE html><html class="light" lang="en" style=""><head>
+<meta charset="utf-8">
+<meta content="width=device-width, initial-scale=1.0" name="viewport">
+<title>Create New Tindahan - TindaTrack</title>
+<!-- Google Fonts: Inter -->
+<link href="https://fonts.googleapis.com" rel="preconnect">
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+<!-- Material Symbols -->
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<!-- Tailwind CSS -->
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "error-container": "#ffdad6",
+                        "inverse-primary": "#68dba9",
+                        "on-secondary": "#ffffff",
+                        "surface-tint": "#006c4a",
+                        "surface-container-low": "#eff5ef",
+                        "tertiary-fixed-dim": "#ffb3ae",
+                        "on-primary-container": "#f5fff7",
+                        "surface-border": "#E2E8F0",
+                        "primary": "#006948",
+                        "on-secondary-container": "#5c647a",
+                        "on-secondary-fixed": "#131b2e",
+                        "inverse-on-surface": "#ecf2ec",
+                        "surface-container": "#e9efe9",
+                        "on-error": "#ffffff",
+                        "surface-bright": "#f5fbf5",
+                        "surface": "#f5fbf5",
+                        "primary-fixed-dim": "#68dba9",
+                        "on-tertiary-container": "#fffbff",
+                        "surface-container-highest": "#dee4de",
+                        "tertiary": "#9b3e3b",
+                        "primary-fixed": "#85f8c4",
+                        "on-tertiary": "#ffffff",
+                        "on-tertiary-fixed-variant": "#7f2928",
+                        "on-background": "#171d19",
+                        "on-error-container": "#93000a",
+                        "inverse-surface": "#2c322e",
+                        "on-surface": "#171d19",
+                        "status-out-of-stock": "#EF4444",
+                        "tertiary-container": "#ba5551",
+                        "on-primary": "#ffffff",
+                        "outline": "#6d7a72",
+                        "on-tertiary-fixed": "#410004",
+                        "on-secondary-fixed-variant": "#3f465c",
+                        "surface-container-lowest": "#ffffff",
+                        "secondary-fixed-dim": "#bec6e0",
+                        "on-primary-fixed-variant": "#005137",
+                        "secondary-fixed": "#dae2fd",
+                        "on-surface-variant": "#3d4a42",
+                        "surface-container-high": "#e4eae4",
+                        "secondary-container": "#dae2fd",
+                        "secondary": "#565e74",
+                        "status-low-stock": "#F59E0B",
+                        "on-primary-fixed": "#002114",
+                        "status-in-stock": "#10B981",
+                        "background": "#f5fbf5",
+                        "action-destructive": "#B91C1C",
+                        "tertiary-fixed": "#ffdad7",
+                        "surface-variant": "#dee4de",
+                        "surface-dim": "#d5dcd6",
+                        "error": "#ba1a1a",
+                        "surface-tonal": "#F8FAFC",
+                        "outline-variant": "#bccac0",
+                        "primary-container": "#00855d"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "stack-sm": "0.5rem",
+                        "gutter": "1rem",
+                        "container-margin": "1rem",
+                        "touch-target": "3rem",
+                        "stack-md": "1rem"
+                    },
+                    "fontFamily": {
+                        "body-lg": ["Inter"],
+                        "headline-md": ["Inter"],
+                        "label-caps": ["Inter"],
+                        "numeric-keypad": ["Inter"],
+                        "headline-lg": ["Inter"],
+                        "display-price": ["Inter"],
+                        "body-sm": ["Inter"]
+                    },
+                    "fontSize": {
+                        "body-lg": ["16px", { "lineHeight": "24px", "fontWeight": "500" }],
+                        "headline-md": ["20px", { "lineHeight": "28px", "fontWeight": "600" }],
+                        "label-caps": ["12px", { "lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "700" }],
+                        "numeric-keypad": ["24px", { "lineHeight": "24px", "fontWeight": "500" }],
+                        "headline-lg": ["24px", { "lineHeight": "32px", "fontWeight": "700" }],
+                        "display-price": ["48px", { "lineHeight": "56px", "letterSpacing": "-0.02em", "fontWeight": "700" }],
+                        "body-sm": ["14px", { "lineHeight": "20px", "fontWeight": "400" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        body {
+            -webkit-tap-highlight-color: transparent;
+        }
+        /* Custom Input Styles to match Monolith Craft */
+        .form-input {
+            transition: all 0.2s ease-in-out;
+        }
+        .form-input:focus {
+            box-shadow: none;
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+<meta content="mobile_stack" name="shell-type"></head>
+<body class="bg-surface text-on-surface min-h-screen flex flex-col font-body-sm max-w-md mx-auto relative overflow-hidden">
+<!-- Top Navigation (Transactional Layout - Back button instead of generic TopAppBar) -->
+<header class="flex justify-between items-center px-gutter h-touch-target border-b border-surface-border bg-surface fixed top-0 w-full z-50 max-w-md"><div class="flex items-center gap-2"><button aria-label="Go back" class="flex items-center justify-center w-10 h-10 -ml-2 text-on-surface-variant hover:bg-surface-container-low active:bg-surface-container-high rounded-full transition-colors duration-150" type="button"><span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 0;">arrow_back</span></button><div><h1 class="font-headline-md text-headline-md text-on-surface font-semibold leading-tight">Create New Tindahan</h1><p class="text-xs text-on-surface-variant font-medium">Step 1 of 2: Store Setup</p></div></div><span class="text-xs font-semibold px-2.5 py-1 bg-surface-container rounded-full text-primary">Step 1/2</span></header>
+<!-- Main Content Area -->
+<main class="flex-1 pt-20 pb-24 px-container-margin overflow-y-auto"><div class="flex flex-col w-full gap-5 pb-6">
+<!-- Step Progress Indicator -->
+<div class="bg-surface-container-lowest p-3.5 rounded-xl shadow-sm flex flex-col gap-2">
+<div class="flex items-center justify-between text-xs font-semibold">
+<div class="flex items-center gap-1.5 text-primary">
+<span class="w-5 h-5 rounded-full bg-primary-fixed flex items-center justify-center text-on-primary-fixed">
+<span class="material-symbols-outlined text-[13px]" style="font-variation-settings: 'FILL' 1;">check</span>
+</span>
+<span class="font-body-sm text-body-sm font-medium text-on-surface">Store Profile</span>
+</div>
+<span class="text-outline-variant font-normal">——</span>
+<div class="flex items-center gap-1.5 text-primary">
+<span class="w-5 h-5 rounded-full bg-primary flex items-center justify-center text-on-primary text-[11px] font-bold">2</span>
+<span class="font-body-sm text-body-sm font-bold text-primary">Starter Setup</span>
+</div>
+</div>
+<div class="w-full bg-surface-container h-1.5 rounded-full overflow-hidden flex">
+<div class="w-full bg-primary rounded-full transition-all duration-300"></div>
+</div>
+</div>
+<!-- Section A: Starter Inventory Setup -->
+<section class="flex flex-col gap-3">
+<div class="flex items-start justify-between">
+<div>
+<h2 class="font-label-caps text-label-caps text-on-surface-variant uppercase tracking-wider">
+          Starter Inventory Setup
+        </h2>
+<p class="font-body-sm text-body-sm text-on-surface-variant text-xs mt-0.5">
+          Seed popular Pinoy sari-sari items immediately or launch blank.
+        </p>
+</div>
+<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-secondary-container text-on-secondary-container text-[11px] font-semibold">
+<span class="material-symbols-outlined text-[13px]">bolt</span>
+        Instant
+      </span>
+</div>
+<!-- Toggle Selector -->
+<div class="grid grid-cols-2 p-1 bg-surface-container rounded-xl gap-1" id="modeSelector"><button class="py-2 px-3 rounded-lg bg-surface-container-lowest shadow-sm text-primary font-body-sm text-body-sm font-bold flex items-center justify-center gap-1.5 transition-all" id="btnScratch" type="button"><span class="material-symbols-outlined text-[18px]">check_circle</span><span class="">Start Empty</span><span class="text-[10px] font-semibold px-1.5 py-0.2 rounded bg-surface-container text-primary uppercase">Free</span></button><button class="py-2 px-3 rounded-lg text-on-surface-variant font-body-sm text-body-sm font-medium flex items-center justify-center gap-1.5 transition-all opacity-80" id="btnQuickPack" type="button"><span class="material-symbols-outlined text-[18px] text-status-low-stock">lock</span><span class="">Starter Pack</span><span class="px-1.5 py-0.2 rounded bg-status-low-stock text-on-primary text-[10px] font-bold uppercase tracking-wider">PRO</span></button></div>
+<!-- Quick Pack Items List Container -->
+<div class="flex flex-col gap-3 rounded-xl bg-surface-container-lowest p-4 shadow-sm border border-surface-border"><div class="flex items-center justify-between"><div class="flex items-center gap-2"><span class="material-symbols-outlined text-primary text-[20px]">inventory_2</span><span class="font-body-md font-semibold text-on-surface text-sm">Clean Slate Selected</span></div><span class="px-2 py-0.5 rounded-full bg-primary-fixed text-on-primary-fixed text-xs font-semibold">Ready to launch</span></div><p class="text-xs text-on-surface-variant leading-relaxed">Your tindahan launches immediately with an empty catalog. You can scan barcodes or quick-add custom products directly on the POS screen anytime.</p><div class="pt-2 border-t border-surface-border"><div class="p-3 rounded-lg bg-surface-container-low flex items-center justify-between gap-3"><div class="flex items-center gap-2.5 min-w-0"><div class="w-8 h-8 rounded-md bg-surface-container flex items-center justify-center text-status-low-stock shrink-0"><span class="material-symbols-outlined text-[18px]">lock</span></div><div class="min-w-0"><div class="flex items-center gap-1.5"><span class="text-xs font-bold text-on-surface">Pinoy Sari-Sari Starter Pack</span><span class="px-1.5 py-0.2 rounded bg-status-low-stock text-on-primary text-[10px] font-bold uppercase">PRO</span></div><p class="text-[11px] text-on-surface-variant truncate">Pre-seeds 50+ popular snacks, sachets &amp; drinks</p></div></div><button class="px-2.5 py-1.5 bg-primary text-on-primary text-xs font-semibold rounded-lg shrink-0 flex items-center gap-1 hover:bg-primary-container transition-colors" type="button"><span class="material-symbols-outlined text-[14px]">upgrade</span><span class="">Unlock</span></button></div></div></div>
+<!-- Empty State Container (shown when 'Start From Scratch' chosen) -->
+</section>
+<!-- Section B: Store Helpers & Cashiers -->
+<section class="flex flex-col gap-3">
+<div>
+<div class="flex items-center justify-between"><h2 class="font-label-caps text-label-caps text-on-surface-variant uppercase tracking-wider flex items-center gap-1.5"><span class="">Invite Store Helpers</span></h2><span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-status-low-stock text-on-primary text-[11px] font-bold"><span class="material-symbols-outlined text-[13px]">lock</span>PRO</span></div>
+<p class="font-body-sm text-body-sm text-on-surface-variant text-xs mt-0.5">
+        Add trusted staff or family Gmail accounts who can ring sales on their own mobile phones.
+      </p>
+</div>
+<!-- Helper Input Form -->
+<div class="bg-surface-container-lowest p-3 rounded-xl shadow-sm flex flex-col gap-2.5"><div class="relative p-1"><div class="flex gap-2 opacity-50 pointer-events-none"><div class="flex-1 flex items-center bg-surface-container-low px-3 py-2 rounded-lg gap-2"><span class="material-symbols-outlined text-outline text-[18px]">alternate_email</span><input class="bg-transparent border-0 p-0 text-xs font-body-sm text-on-surface placeholder:text-outline focus:outline-none w-full" disabled="" placeholder="e.g. maria.tindera@gmail.com" type="email" value="helper.maria@gmail.com"></div><button class="px-3.5 py-2 bg-surface-container-high text-on-surface-variant rounded-lg text-xs font-semibold flex items-center gap-1 shrink-0" disabled="" type="button"><span class="material-symbols-outlined text-[16px]">add</span><span class="">Add</span></button></div><div class="flex items-center gap-2 pt-2 opacity-50 pointer-events-none"><div class="inline-flex items-center gap-2 py-1 px-2.5 rounded-lg bg-surface-container text-on-surface text-xs font-medium"><span class="w-2 h-2 rounded-full bg-status-in-stock"></span><span class="truncate max-w-[150px]">helper.maria@gmail.com</span><span class="px-1.5 py-0.2 rounded bg-surface-container-highest text-[10px] text-on-surface-variant font-bold uppercase tracking-wide">Cashier</span></div></div></div><div class="mt-1 p-3 rounded-lg bg-surface-container border border-surface-border flex items-center justify-between gap-2"><div class="flex items-center gap-2"><span class="material-symbols-outlined text-status-low-stock text-[18px]">workspace_premium</span><p class="text-xs font-medium text-on-surface">Unlock multi-device cashier logins &amp; staff permissions with <span class="font-bold text-primary">TindaTrack Pro</span>.</p></div><button class="px-3 py-1.5 bg-primary text-on-primary text-xs font-bold rounded-lg shrink-0 hover:bg-primary-container transition-colors" type="button">Upgrade</button></div></div>
+</section>
+<!-- Section C: Offline & Auto-Sync Notice -->
+<section class="bg-surface-container-low p-3.5 rounded-xl flex items-start gap-3">
+<div class="w-8 h-8 rounded-full bg-primary-fixed flex items-center justify-center text-on-primary-fixed shrink-0">
+<span class="material-symbols-outlined text-[18px]" style="font-variation-settings: 'FILL' 1;">cloud_sync</span>
+</div>
+<div class="flex-1">
+<h3 class="text-xs font-bold text-on-surface">100% Offline Capable</h3>
+<p class="text-[11px] text-on-surface-variant leading-relaxed mt-0.5">
+        No internet? TindaTrack keeps tallying sales without interruption. All inventory and ledger receipts will safely sync once reconnected.
+      </p>
+</div>
+</section>
+<!-- Secondary Inline Skip Action -->
+<div class="flex justify-center pt-1">
+<button class="text-xs font-semibold text-on-surface-variant hover:text-primary transition-colors py-1 px-3" type="button">
+      Skip inventory seed &amp; finish later
+    </button>
+</div>
+</div>
+<script>
+  function switchStarterMode(mode) {
+    const quickSection = document.getElementById('quickPackSection');
+    const scratchSection = document.getElementById('scratchSection');
+    const btnQuick = document.getElementById('btnQuickPack');
+    const btnScratch = document.getElementById('btnScratch');
+
+    if (mode === 'pack') {
+      quickSection.classList.remove('hidden');
+      scratchSection.classList.add('hidden');
+      
+      btnQuick.className = 'py-2 px-3 rounded-lg bg-surface-container-lowest shadow-sm text-primary font-body-sm text-body-sm font-bold flex items-center justify-center gap-1.5 transition-all';
+      btnScratch.className = 'py-2 px-3 rounded-lg text-on-surface-variant font-body-sm text-body-sm font-medium flex items-center justify-center gap-1.5 transition-all';
+    } else {
+      quickSection.classList.add('hidden');
+      scratchSection.classList.remove('hidden');
+
+      btnScratch.className = 'py-2 px-3 rounded-lg bg-surface-container-lowest shadow-sm text-primary font-body-sm text-body-sm font-bold flex items-center justify-center gap-1.5 transition-all';
+      btnQuick.className = 'py-2 px-3 rounded-lg text-on-surface-variant font-body-sm text-body-sm font-medium flex items-center justify-center gap-1.5 transition-all';
+    }
+  }
+
+  function updateSelectedCount() {
+    const checkboxes = document.querySelectorAll('.item-checkbox');
+    let count = 0;
+    checkboxes.forEach(cb => {
+      if (cb.checked) count++;
+    });
+    const label = document.getElementById('selectedCountLabel');
+    const toggleBtn = document.getElementById('toggleAllBtn');
+    if (label) {
+      label.innerText = count + ' starter items selected';
+    }
+    if (toggleBtn) {
+      toggleBtn.innerText = count === 0 ? 'Select all' : 'Deselect all';
+    }
+  }
+
+  function toggleSelectAll() {
+    const checkboxes = document.querySelectorAll('.item-checkbox');
+    const hasUnchecked = Array.from(checkboxes).some(cb => !cb.checked);
+    checkboxes.forEach(cb => cb.checked = hasUnchecked);
+    updateSelectedCount();
+  }
+
+  function addHelperChip() {
+    const input = document.getElementById('helperEmailInput');
+    const list = document.getElementById('helperList');
+    const val = input.value.trim();
+
+    if (!val || !val.includes('@')) return;
+
+    const chipId = 'chip-' + Date.now();
+    const chip = document.createElement('div');
+    chip.id = chipId;
+    chip.className = 'inline-flex items-center gap-2 py-1 px-2.5 rounded-lg bg-surface-container text-on-surface text-xs font-medium';
+    chip.innerHTML = `
+      <span class="w-2 h-2 rounded-full bg-status-in-stock"></span>
+      <span class="truncate max-w-[150px]">${val}</span>
+      <span class="px-1.5 py-0.2 rounded bg-surface-container-highest text-[10px] text-on-surface-variant font-bold uppercase tracking-wide">Cashier</span>
+      <button type="button" onclick="removeChip('${chipId}')" class="text-on-surface-variant hover:text-action-destructive flex items-center">
+        <span class="material-symbols-outlined text-[14px]">close</span>
+      </button>
+    `;
+    list.appendChild(chip);
+    input.value = '';
+  }
+
+  function removeChip(id) {
+    const el = document.getElementById(id);
+    if (el) el.remove();
+  }
+</script></main>
+<!-- Bottom Action Area (Sticky) -->
+<div class="fixed bottom-0 w-full max-w-md bg-surface border-t border-surface-border p-container-margin z-50">
+<button class="w-full h-14 bg-primary text-on-primary font-headline-md text-headline-md rounded-lg flex items-center justify-center gap-2 hover:bg-primary-container active:bg-on-primary-fixed-variant transition-colors shadow-sm font-semibold" type="button"><span class="">Create Store &amp; Continue</span><span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 0;">arrow_forward</span></button>
+</div>
+<div class="fixed inset-0 z-50 flex flex-col justify-end bg-black/60 transition-opacity backdrop-blur-sm" id="proPaywallSheet">
+<!-- Bottom Sheet Container -->
+<div class="bg-surface-container-lowest rounded-t-2xl max-w-md w-full mx-auto max-h-[90vh] flex flex-col shadow-2xl border-t border-surface-border overflow-hidden">
+<!-- Handle bar & Header -->
+<div class="pt-3 pb-2 px-4 flex flex-col items-center relative border-b border-surface-border shrink-0">
+<div class="w-10 h-1 bg-surface-variant rounded-full mb-3"></div>
+<div class="w-full flex items-center justify-between">
+<div class="flex items-center gap-2">
+<span class="px-2 py-0.5 rounded bg-status-low-stock/15 text-status-low-stock border border-status-low-stock/30 text-[10px] font-bold uppercase tracking-wider flex items-center gap-1">
+<span class="material-symbols-outlined text-[13px]" style="font-variation-settings: 'FILL' 1;">workspace_premium</span>
+            TindaTrack PRO
+          </span>
+<span class="text-[11px] font-semibold text-primary flex items-center gap-0.5">
+<span class="material-symbols-outlined text-[14px]">bolt</span> Instant Seed
+          </span>
+</div>
+<button aria-label="Close" class="w-8 h-8 rounded-full flex items-center justify-center text-on-surface-variant hover:bg-surface-container transition-colors" onclick="document.getElementById('proPaywallSheet').remove()" type="button">
+<span class="material-symbols-outlined text-[20px]">close</span>
+</button>
+</div>
+</div>
+<!-- Scrollable Sheet Content -->
+<div class="overflow-y-auto px-4 py-4 flex flex-col gap-4 text-on-surface">
+<!-- Title with Sari-Sari Crate Icon -->
+<div class="flex items-start gap-3.5">
+<div class="w-12 h-12 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center text-primary shrink-0">
+<span class="material-symbols-outlined text-[28px]" style="font-variation-settings: 'FILL' 1;">inventory_2</span>
+</div>
+<div>
+<h2 class="text-[18px] font-bold text-on-surface leading-tight font-headline-md">
+            Unlock 50+ Pinoy Sari-Sari Starter Pack
+          </h2>
+<p class="text-xs text-on-surface-variant mt-1 leading-relaxed">
+            Pre-loaded with accurate Philippine retail pricing, barcodes, and typical cost margins so you can start selling in seconds.
+          </p>
+</div>
+</div>
+<!-- Feature List / Value Props -->
+<div class="bg-surface-container-low rounded-xl p-3.5 flex flex-col gap-2.5 border border-surface-border">
+<div class="flex items-start gap-2.5">
+<span class="material-symbols-outlined text-primary text-[18px] shrink-0 mt-0.5" style="font-variation-settings: 'FILL' 1;">check_circle</span>
+<div>
+<p class="text-xs font-bold text-on-surface">50+ Verified Sari-Sari Staples</p>
+<p class="text-[11px] text-on-surface-variant leading-normal">Canned goods, snacks, instant noodles, instant coffee sachets, beverages, and household toiletries.</p>
+</div>
+</div>
+<div class="flex items-start gap-2.5">
+<span class="material-symbols-outlined text-primary text-[18px] shrink-0 mt-0.5" style="font-variation-settings: 'FILL' 1;">check_circle</span>
+<div>
+<p class="text-xs font-bold text-on-surface">Pre-filled Suggested SRP &amp; Buy Cost</p>
+<p class="text-[11px] text-on-surface-variant leading-normal">Optimized with realistic markups (tubo) tested across NCR &amp; provincial sari-sari stores.</p>
+</div>
+</div>
+
+<div class="flex items-start gap-2.5">
+<span class="material-symbols-outlined text-primary text-[18px] shrink-0 mt-0.5" style="font-variation-settings: 'FILL' 1;">check_circle</span>
+<div>
+<p class="text-xs font-bold text-on-surface">Multi-Device Staff &amp; Cashier Sync</p>
+<p class="text-[11px] text-on-surface-variant leading-normal">Includes 3 additional cashier logins on separate mobile phones.</p>
+</div>
+</div>
+</div>
+<!-- Preview Sample Items Mini-Grid -->
+<div>
+<div class="flex items-center justify-between mb-2">
+<span class="text-[11px] font-bold uppercase tracking-wider text-on-surface-variant">Sample Pre-seeded Items</span>
+<span class="text-[11px] font-semibold text-primary">4 of 50+</span>
+</div>
+<div class="grid grid-cols-2 gap-2 text-xs">
+<div class="bg-surface-container rounded-lg p-2.5 border border-surface-border flex flex-col justify-between">
+<div>
+<p class="font-semibold text-on-surface truncate text-[12px]">Bear Brand 33g</p>
+<span class="text-[10px] text-outline uppercase">Sachet / Dairy</span>
+</div>
+<div class="mt-2 pt-1.5 border-t border-surface-border flex items-baseline justify-between">
+<span class="font-bold text-primary text-[13px]">₱17.00</span>
+<span class="text-[10px] text-on-surface-variant">Cost ₱14.50 <span class="text-status-in-stock font-semibold">(17%)</span></span>
+</div>
+</div>
+<div class="bg-surface-container rounded-lg p-2.5 border border-surface-border flex flex-col justify-between">
+<div>
+<p class="font-semibold text-on-surface truncate text-[12px]">Great Taste White Twin</p>
+<span class="text-[10px] text-outline uppercase">Coffee Sachet</span>
+</div>
+<div class="mt-2 pt-1.5 border-t border-surface-border flex items-baseline justify-between">
+<span class="font-bold text-primary text-[13px]">₱14.00</span>
+<span class="text-[10px] text-on-surface-variant">Cost ₱12.00 <span class="text-status-in-stock font-semibold">(16%)</span></span>
+</div>
+</div>
+<div class="bg-surface-container rounded-lg p-2.5 border border-surface-border flex flex-col justify-between">
+<div>
+<p class="font-semibold text-on-surface truncate text-[12px]">Silver Swan Soy Sauce 385ml</p>
+<span class="text-[10px] text-outline uppercase">Condiment</span>
+</div>
+<div class="mt-2 pt-1.5 border-t border-surface-border flex items-baseline justify-between">
+<span class="font-bold text-primary text-[13px]">₱22.00</span>
+<span class="text-[10px] text-on-surface-variant">Cost ₱18.50 <span class="text-status-in-stock font-semibold">(18%)</span></span>
+</div>
+</div>
+<div class="bg-surface-container rounded-lg p-2.5 border border-surface-border flex flex-col justify-between">
+<div>
+<p class="font-semibold text-on-surface truncate text-[12px]">Piattos Cheese 40g</p>
+<span class="text-[10px] text-outline uppercase">Snack / Chips</span>
+</div>
+<div class="mt-2 pt-1.5 border-t border-surface-border flex items-baseline justify-between">
+<span class="font-bold text-primary text-[13px]">₱18.00</span>
+<span class="text-[10px] text-on-surface-variant">Cost ₱15.20 <span class="text-status-in-stock font-semibold">(18%)</span></span>
+</div>
+</div>
+</div>
+</div>
+<!-- Pricing Option Selection Cards -->
+<div class="flex flex-col gap-2 pt-1">
+<!-- Recommended Option -->
+<label class="relative flex items-center justify-between p-3 rounded-xl border-2 border-primary bg-primary/5 cursor-pointer">
+<div class="flex items-center gap-3">
+<input checked="" class="text-primary focus:ring-primary w-4 h-4" name="paywall_plan" type="radio">
+<div>
+<div class="flex items-center gap-1.5">
+<span class="text-xs font-bold text-on-surface">TindaTrack Pro Monthly</span>
+
+</div>
+<p class="text-[11px] text-on-surface-variant">Starter pack + unlimited helpers &amp; cloud backup</p>
+</div>
+</div>
+<div class="text-right">
+<span class="text-sm font-bold text-primary">₱149</span>
+<span class="text-[10px] text-on-surface-variant block">/ month</span>
+</div>
+</label>
+<!-- One-time Pack Option -->
+<label class="relative flex items-center justify-between p-3 rounded-xl border border-surface-border bg-surface-container-lowest cursor-pointer hover:border-outline-variant transition-colors">
+<div class="flex items-center gap-3">
+<input class="text-primary focus:ring-primary w-4 h-4" name="paywall_plan" type="radio">
+<div>
+<span class="text-xs font-bold text-on-surface">Starter Pack Only</span>
+<p class="text-[11px] text-on-surface-variant">One-time import of 50 staple items</p>
+</div>
+</div>
+<div class="text-right">
+<span class="text-sm font-bold text-on-surface">₱99</span>
+<span class="text-[10px] text-on-surface-variant block">one-time</span>
+</div>
+</label>
+</div>
+<!-- CTA and Dismiss -->
+<div class="flex flex-col gap-2 pt-2 pb-2">
+<button class="w-full h-12 bg-primary text-on-primary font-bold text-sm rounded-lg flex items-center justify-center gap-2 hover:bg-primary-container active:bg-on-primary-fixed-variant transition-colors shadow-sm" type="button">
+<span class="">Upgrade to Pro &amp; Seed 50 Items</span>
+<span class="material-symbols-outlined text-[18px]">arrow_forward</span>
+</button>
+<p class="text-center text-[10px] text-on-surface-variant flex items-center justify-center gap-1">
+<span class="material-symbols-outlined text-[13px] text-status-in-stock" style="font-variation-settings: 'FILL' 1;">lock</span>
+          Safe checkout via GCash, Maya, or Card · Cancel anytime
+        </p>
+<button class="w-full py-1.5 text-xs font-semibold text-on-surface-variant hover:text-primary transition-colors text-center mt-1" onclick="document.getElementById('proPaywallSheet').remove()" type="button">
+          Continue with empty inventory for free
+        </button>
+</div>
+</div>
+</div>
+</div>
+
+</body></html>

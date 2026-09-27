@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Create New Tindahan - TindaTrack</title>
+<!-- Google Fonts: Inter -->
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<!-- Material Symbols -->
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<!-- Tailwind CSS -->
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "error-container": "#ffdad6",
+                        "inverse-primary": "#68dba9",
+                        "on-secondary": "#ffffff",
+                        "surface-tint": "#006c4a",
+                        "surface-container-low": "#eff5ef",
+                        "tertiary-fixed-dim": "#ffb3ae",
+                        "on-primary-container": "#f5fff7",
+                        "surface-border": "#E2E8F0",
+                        "primary": "#006948",
+                        "on-secondary-container": "#5c647a",
+                        "on-secondary-fixed": "#131b2e",
+                        "inverse-on-surface": "#ecf2ec",
+                        "surface-container": "#e9efe9",
+                        "on-error": "#ffffff",
+                        "surface-bright": "#f5fbf5",
+                        "surface": "#f5fbf5",
+                        "primary-fixed-dim": "#68dba9",
+                        "on-tertiary-container": "#fffbff",
+                        "surface-container-highest": "#dee4de",
+                        "tertiary": "#9b3e3b",
+                        "primary-fixed": "#85f8c4",
+                        "on-tertiary": "#ffffff",
+                        "on-tertiary-fixed-variant": "#7f2928",
+                        "on-background": "#171d19",
+                        "on-error-container": "#93000a",
+                        "inverse-surface": "#2c322e",
+                        "on-surface": "#171d19",
+                        "status-out-of-stock": "#EF4444",
+                        "tertiary-container": "#ba5551",
+                        "on-primary": "#ffffff",
+                        "outline": "#6d7a72",
+                        "on-tertiary-fixed": "#410004",
+                        "on-secondary-fixed-variant": "#3f465c",
+                        "surface-container-lowest": "#ffffff",
+                        "secondary-fixed-dim": "#bec6e0",
+                        "on-primary-fixed-variant": "#005137",
+                        "secondary-fixed": "#dae2fd",
+                        "on-surface-variant": "#3d4a42",
+                        "surface-container-high": "#e4eae4",
+                        "secondary-container": "#dae2fd",
+                        "secondary": "#565e74",
+                        "status-low-stock": "#F59E0B",
+                        "on-primary-fixed": "#002114",
+                        "status-in-stock": "#10B981",
+                        "background": "#f5fbf5",
+                        "action-destructive": "#B91C1C",
+                        "tertiary-fixed": "#ffdad7",
+                        "surface-variant": "#dee4de",
+                        "surface-dim": "#d5dcd6",
+                        "error": "#ba1a1a",
+                        "surface-tonal": "#F8FAFC",
+                        "outline-variant": "#bccac0",
+                        "primary-container": "#00855d"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "stack-sm": "0.5rem",
+                        "gutter": "1rem",
+                        "container-margin": "1rem",
+                        "touch-target": "3rem",
+                        "stack-md": "1rem"
+                    },
+                    "fontFamily": {
+                        "body-lg": ["Inter"],
+                        "headline-md": ["Inter"],
+                        "label-caps": ["Inter"],
+                        "numeric-keypad": ["Inter"],
+                        "headline-lg": ["Inter"],
+                        "display-price": ["Inter"],
+                        "body-sm": ["Inter"]
+                    },
+                    "fontSize": {
+                        "body-lg": ["16px", { "lineHeight": "24px", "fontWeight": "500" }],
+                        "headline-md": ["20px", { "lineHeight": "28px", "fontWeight": "600" }],
+                        "label-caps": ["12px", { "lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "700" }],
+                        "numeric-keypad": ["24px", { "lineHeight": "24px", "fontWeight": "500" }],
+                        "headline-lg": ["24px", { "lineHeight": "32px", "fontWeight": "700" }],
+                        "display-price": ["48px", { "lineHeight": "56px", "letterSpacing": "-0.02em", "fontWeight": "700" }],
+                        "body-sm": ["14px", { "lineHeight": "20px", "fontWeight": "400" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        body {
+            -webkit-tap-highlight-color: transparent;
+        }
+        /* Custom Input Styles to match Monolith Craft */
+        .form-input {
+            transition: all 0.2s ease-in-out;
+        }
+        .form-input:focus {
+            box-shadow: none;
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+</head>
+<body class="bg-surface text-on-surface min-h-screen flex flex-col font-body-sm max-w-md mx-auto relative overflow-hidden">
+<!-- Top Navigation (Transactional Layout - Back button instead of generic TopAppBar) -->
+<header class="flex justify-between items-center px-gutter h-touch-target border-b border-surface-border bg-surface fixed top-0 w-full z-50 max-w-md"><div class="flex items-center gap-2"><button aria-label="Go back" class="flex items-center justify-center w-10 h-10 -ml-2 text-on-surface-variant hover:bg-surface-container-low active:bg-surface-container-high rounded-full transition-colors duration-150" type="button"><span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 0;">arrow_back</span></button><div><h1 class="font-headline-md text-headline-md text-on-surface font-semibold leading-tight">Create New Tindahan</h1><p class="text-xs text-on-surface-variant font-medium">Step 1 of 2: Store Setup</p></div></div><span class="text-xs font-semibold px-2.5 py-1 bg-surface-container rounded-full text-primary">Step 1/2</span></header>
+<!-- Main Content Area -->
+<main class="flex-1 pt-20 pb-24 px-container-margin overflow-y-auto">
+<form action="#" class="flex flex-col gap-stack-md" method="POST"><div class="flex flex-col gap-stack-sm"><label class="font-label-caps text-label-caps text-on-surface-variant uppercase flex items-center gap-1" for="store_name">Store Name <span aria-hidden="true" class="text-error">*</span></label><div class="relative"><span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-outline-variant" style="font-variation-settings: 'FILL' 0;">storefront</span><input class="form-input w-full h-12 pl-10 pr-4 bg-surface-container-lowest border border-surface-border rounded-lg text-body-lg font-body-lg text-on-surface focus:border-primary focus:border-2 focus:ring-0 placeholder:text-outline-variant" id="store_name" name="store_name" placeholder="e.g., Aling Nena's Sari-Sari Store" required="" type="text"/></div></div><div class="flex flex-col gap-stack-sm"><label class="font-label-caps text-label-caps text-on-surface-variant uppercase flex items-center gap-1" for="owner_name">Owner Name <span aria-hidden="true" class="text-error">*</span></label><div class="relative"><span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-outline-variant" style="font-variation-settings: 'FILL' 0;">person</span><input class="form-input w-full h-12 pl-10 pr-4 bg-surface-container-lowest border border-surface-border rounded-lg text-body-lg font-body-lg text-on-surface focus:border-primary focus:border-2 focus:ring-0 placeholder:text-outline-variant" id="owner_name" name="owner_name" placeholder="Juan Dela Cruz" required="" type="text"/></div></div><div class="flex flex-col gap-stack-sm"><label class="font-label-caps text-label-caps text-on-surface-variant uppercase flex justify-between items-center" for="contact_phone"><span>Store Contact / Phone</span><span class="text-outline-variant text-[10px] lowercase font-normal tracking-normal">(optional)</span></label><div class="relative"><span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-outline-variant" style="font-variation-settings: 'FILL' 0;">call</span><input class="form-input w-full h-12 pl-10 pr-4 bg-surface-container-lowest border border-surface-border rounded-lg text-body-lg font-body-lg text-on-surface focus:border-primary focus:border-2 focus:ring-0 placeholder:text-outline-variant" id="contact_phone" name="contact_phone" placeholder="+63 912 345 6789" type="tel"/></div></div><div class="flex flex-col gap-stack-sm"><label class="font-label-caps text-label-caps text-on-surface-variant uppercase flex items-center gap-1" for="currency_select">Primary Currency</label><div class="relative"><span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-outline-variant" style="font-variation-settings: 'FILL' 0;">payments</span><select class="form-input w-full h-12 pl-10 pr-8 bg-surface-container-lowest border border-surface-border rounded-lg text-body-lg font-body-lg text-on-surface focus:border-primary focus:border-2 focus:ring-0 appearance-none" id="currency_select" name="currency"><option selected="" value="PHP">₱ PHP (Philippine Peso)</option><option value="USD">$ USD (US Dollar)</option></select><span class="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 text-outline-variant pointer-events-none" style="font-variation-settings: 'FILL' 0;">expand_more</span></div></div><div class="flex flex-col gap-stack-sm"><label class="font-label-caps text-label-caps text-on-surface-variant uppercase flex justify-between items-center" for="store_address"><span>Store Address / Landmark</span><span class="text-outline-variant text-[10px] lowercase font-normal tracking-normal">(optional)</span></label><div class="relative"><span class="material-symbols-outlined absolute left-3 top-3 text-outline-variant" style="font-variation-settings: 'FILL' 0;">location_on</span><textarea class="form-input w-full py-3 pl-10 pr-4 bg-surface-container-lowest border border-surface-border rounded-lg text-body-lg font-body-lg text-on-surface focus:border-primary focus:border-2 focus:ring-0 placeholder:text-outline-variant resize-none" id="store_address" name="store_address" placeholder="e.g., Barangay San Antonio, Pasig City" rows="2"></textarea></div></div><div class="p-4 bg-surface-container-lowest border border-surface-border rounded-lg flex flex-col gap-2"><div class="flex items-center justify-between"><div class="flex items-center gap-2"><span class="material-symbols-outlined text-primary text-xl" style="font-variation-settings: 'FILL' 0;">notification_important</span><label class="font-semibold text-sm text-on-surface" for="low_stock_threshold">Low Stock Alert Threshold</label></div><div class="flex items-center gap-1.5"><input class="w-16 h-9 px-2 text-center bg-surface-container-low border border-surface-border rounded-md font-semibold text-on-surface focus:border-primary focus:border-2 focus:ring-0 text-sm" id="low_stock_threshold" max="100" min="1" name="low_stock_threshold" type="number" value="5"/><span class="text-xs text-on-surface-variant font-medium">units</span></div></div><p class="text-xs text-on-surface-variant leading-relaxed">Notify when item stock falls below this count so you never run out of essential goods.</p></div><div class="p-4 bg-surface-container-low border border-surface-border rounded-lg flex items-start gap-3"><span class="material-symbols-outlined text-primary mt-0.5" style="font-variation-settings: 'FILL' 1;">info</span><p class="font-body-sm text-body-sm text-on-surface-variant leading-snug">You can invite collaborators and export or sync store data anytime in Settings after setup.</p></div></form>
+</main>
+<!-- Bottom Action Area (Sticky) -->
+<div class="fixed bottom-0 w-full max-w-md bg-surface border-t border-surface-border p-container-margin z-50">
+<button class="w-full h-14 bg-primary text-on-primary font-headline-md text-headline-md rounded-lg flex items-center justify-center gap-2 hover:bg-primary-container active:bg-on-primary-fixed-variant transition-colors shadow-sm font-semibold" type="button"><span>Create Store &amp; Continue</span><span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 0;">arrow_forward</span></button>
+</div>
+</body></html>

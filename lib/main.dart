@@ -4,8 +4,9 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'firebase_options.dart';
 import 'screens/intro_screen.dart';
-import 'screens/sign_in_screen.dart';
+import 'services/auth_service.dart';
 import 'theme/app_theme.dart';
+import 'widgets/auth_gate.dart';
 
 const kSeenIntroKey = 'seen_intro';
 
@@ -13,6 +14,10 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+  // google_sign_in v7 requires exactly one initialize() before any
+  // authenticate() call, so it happens here rather than per sign-in tap.
+  await AuthService.initialize();
+
   final prefs = await SharedPreferences.getInstance();
   final seenIntro = prefs.getBool(kSeenIntroKey) ?? false;
 
@@ -25,7 +30,7 @@ class TindaTrackApp extends StatefulWidget {
   const TindaTrackApp({super.key, this.seenIntro = false});
 
   /// Whether this device has already been through the onboarding carousel.
-  /// When false the app opens on [IntroScreen] instead of [SignInScreen].
+  /// When false the app opens on [IntroScreen] instead of the auth gate.
   final bool seenIntro;
 
   @override
@@ -35,7 +40,7 @@ class TindaTrackApp extends StatefulWidget {
 class _TindaTrackAppState extends State<TindaTrackApp> {
   late bool _showIntro = !widget.seenIntro;
 
-  /// Remembers that the intro is done, then drops the user on sign-in.
+  /// Remembers that the intro is done, then drops the user on the auth gate.
   Future<void> _completeIntro() async {
     if (mounted) setState(() => _showIntro = false);
 
@@ -51,7 +56,7 @@ class _TindaTrackAppState extends State<TindaTrackApp> {
       theme: AppTheme.light,
       home: _showIntro
           ? IntroScreen(onDone: _completeIntro)
-          : const SignInScreen(),
+          : const AuthGate(),
     );
   }
 }
