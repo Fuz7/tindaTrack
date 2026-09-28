@@ -1,16 +1,20 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
-import '../screens/dashboard_screen.dart';
 import '../screens/sign_in_screen.dart';
 import '../services/auth_service.dart';
 import '../theme/app_theme.dart';
+import 'store_gate.dart';
 
-/// Shows sign-in or the dashboard purely as a function of Firebase auth state.
+/// Shows sign-in or the signed-in app purely as a function of Firebase auth
+/// state.
 ///
 /// Nothing tells this widget that a sign-in succeeded — `authStateChanges`
 /// fires on sign-in, on sign-out from anywhere in the app, and once at startup
 /// with the restored session, so returning users skip [SignInScreen] entirely.
+///
+/// A signed-in user is handed to [StoreGate] rather than straight to the
+/// dashboard — having an account and having a tindahan are separate questions.
 class AuthGate extends StatelessWidget {
   const AuthGate({super.key});
 
@@ -37,7 +41,7 @@ class AuthGate extends StatelessWidget {
         final user = snapshot.data;
         return user == null
             ? SignInScreen(onSignIn: AuthService.signInWithGoogle)
-            : DashboardScreen(user: user);
+            : StoreGate(user: user);
       },
     );
   }

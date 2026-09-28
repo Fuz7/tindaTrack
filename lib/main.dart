@@ -54,9 +54,7 @@ class _TindaTrackAppState extends State<TindaTrackApp> {
       title: 'TindaTrack',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.light,
-      home: _showIntro
-          ? IntroScreen(onDone: _completeIntro)
-          : const AuthGate(),
+      home: _showIntro ? IntroScreen(onDone: _completeIntro) : const AuthGate(),
     );
   }
 }
