@@ -1,6 +1,8 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
+import '../screens/create_store_profile_screen.dart';
+import '../screens/create_store_starter_screen.dart';
 import '../screens/dashboard_screen.dart';
 import '../screens/onboarding_choice_screen.dart';
 import '../services/auth_service.dart';
@@ -38,7 +40,7 @@ class StoreGate extends StatelessWidget {
 
         if (!membership.hasStore) {
           return OnboardingChoiceScreen(
-            onCreate: () => _notImplemented(context, 'Create a New Tindahan'),
+            onCreate: () => _startCreateFlow(context),
             onJoin: () => _notImplemented(context, 'Join a Tindahan'),
           );
         }
@@ -48,13 +50,40 @@ class StoreGate extends StatelessWidget {
     );
   }
 
-  /// Stand-in until the Create/Join screens are built. Kept here rather than in
-  /// [OnboardingChoiceScreen] so the screen stays free of placeholder logic —
-  /// swapping these two lines for `Navigator.push` is the whole wiring job.
-  void _notImplemented(BuildContext context, String label) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('$label is not built yet.')),
+  /// Pushes the two "Create New Tindahan" steps. Step 1 stays on the stack
+  /// under step 2 so going back keeps what was typed.
+  ///
+  /// Finishing needs no hand-off: the write flips this gate to the dashboard
+  /// underneath the pushed routes, so all that is left is to pop them.
+  void _startCreateFlow(BuildContext context) {
+    final navigator = Navigator.of(context);
+
+    navigator.push(
+      MaterialPageRoute<void>(
+        builder: (_) => CreateStoreProfileScreen(
+          initialOwnerName: user.displayName,
+          onContinue: (draft) => navigator.push(
+            MaterialPageRoute<void>(
+              builder: (_) => CreateStoreStarterScreen(
+                storeName: draft.name,
+                onCreate: () async {
+                  await StoreService.createStore(user.uid, draft);
+                  navigator.popUntil((route) => route.isFirst);
+                },
+              ),
+            ),
+          ),
+        ),
+      ),
     );
+  }
+
+  /// Stand-in until the Join screen is built. Kept here rather than in
+  /// [OnboardingChoiceScreen] so the screen stays free of placeholder logic.
+  void _notImplemented(BuildContext context, String label) {
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text('$label is not built yet.')));
   }
 }
 

@@ -32,8 +32,33 @@ class StoreMembership {
   String toString() => 'StoreMembership(${status.name}, $storeId)';
 }
 
-/// Reads which tindahan a user belongs to. Read-only for now — creating and
-/// joining stores belongs to the Create/Join screens, which do not exist yet.
+/// Everything the "Create New Tindahan" flow collects before anything is
+/// written. Optional fields are null rather than empty so the stored document
+/// doesn't carry blank strings that every reader then has to second-guess.
+class StoreDraft {
+  const StoreDraft({
+    required this.name,
+    required this.ownerName,
+    this.phone,
+    this.currency = 'PHP',
+    this.address,
+    this.lowStockThreshold = 5,
+  });
+
+  final String name;
+  final String ownerName;
+  final String? phone;
+
+  /// ISO 4217 code, e.g. `PHP`.
+  final String currency;
+  final String? address;
+
+  /// Stock at or below this count is flagged as low.
+  final int lowStockThreshold;
+}
+
+/// Reads which tindahan a user belongs to, and creates one. Joining an
+/// existing store belongs to the Join flow, which does not exist yet.
 ///
 /// The pointer lives on the user document rather than in `SharedPreferences`
 /// so the choice follows the owner across devices, which is the whole point of
@@ -42,6 +67,7 @@ class StoreService {
   StoreService._();
 
   static const usersCollection = 'users';
+  static const storesCollection = 'stores';
   static const activeStoreField = 'activeStoreId';
 
   static FirebaseFirestore get _db => FirebaseFirestore.instance;
@@ -79,5 +105,35 @@ class StoreService {
 
           return StoreMembership.joined(raw);
         });
+  }
+
+  /// Creates `stores/{id}` from [draft] and points `users/{uid}` at it, as one
+  /// batch — a store nobody points at, or a pointer to a store that was never
+  /// written, are both states [membershipOf] would have to paper over.
+  ///
+  /// The UI need not be told about the new store: the local write lands on
+  /// [membershipOf]'s listener immediately and the store gate swaps itself to
+  /// the dashboard. The returned future completes when the server acknowledges,
+  /// and throws if it refuses (e.g. security rules).
+  static Future<String> createStore(String uid, StoreDraft draft) async {
+    final storeRef = _db.collection(storesCollection).doc();
+    final userRef = _db.collection(usersCollection).doc(uid);
+
+    final batch = _db.batch()
+      ..set(storeRef, {
+        'name': draft.name,
+        'ownerName': draft.ownerName,
+        'phone': draft.phone,
+        'currency': draft.currency,
+        'address': draft.address,
+        'lowStockThreshold': draft.lowStockThreshold,
+        'ownerUid': uid,
+        'createdAt': FieldValue.serverTimestamp(),
+      })
+      // Merge so any other fields on the user document survive.
+      ..set(userRef, {activeStoreField: storeRef.id}, SetOptions(merge: true));
+
+    await batch.commit();
+    return storeRef.id;
   }
 }
