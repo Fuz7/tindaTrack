@@ -3,7 +3,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:tinda_track/screens/dashboard_screen.dart';
 import 'package:tinda_track/screens/home_screen.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:tinda_track/services/product_repository.dart';
+import 'package:tinda_track/services/product_service.dart';
 import 'package:tinda_track/theme/app_theme.dart';
+
+import 'support/fake_product_remote.dart';
 
 /// Just enough of a Firebase [User] for the shell to render: no photo, so no
 /// network image is attempted.
@@ -19,10 +24,38 @@ class _FakeUser implements User {
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
-Widget _home() => MaterialApp(
+const _catalog = [
+  Product(
+    id: 'coke',
+    name: 'Coke Mismo',
+    stock: 12,
+    sellCentavos: 2000,
+    sku: 'CK-290',
+  ),
+  Product(
+    id: 'canton',
+    name: 'Lucky Me Pancit Canton',
+    stock: 3,
+    sellCentavos: 1800,
+  ),
+  Product(id: 'kopiko', name: 'Kopiko Blanca', stock: 0, sellCentavos: 1000),
+  Product(id: 'cokezero', name: 'Zero Coke', stock: 40, sellCentavos: 2500),
+];
+
+Widget _home({List<Product> products = _catalog}) => MaterialApp(
   theme: AppTheme.light,
-  home: const Scaffold(body: HomeScreen()),
+  home: Scaffold(
+    body: HomeScreen(
+      products: Stream.value(products),
+      lowStockThreshold: Stream.value(5),
+    ),
+  ),
 );
+
+Future<void> _search(WidgetTester tester, String query) async {
+  await tester.enterText(find.byType(TextField), query);
+  await tester.pumpAndSettle();
+}
 
 /// Types [digits] on the keypad.
 Future<void> _type(WidgetTester tester, String digits) async {
@@ -45,6 +78,8 @@ void _smallPhone(WidgetTester tester) {
 }
 
 void main() {
+  setUp(() => SharedPreferences.setMockInitialValues({}));
+
   test('formatPeso groups thousands and keeps two decimals', () {
     expect(formatPeso(0), '₱0.00');
     expect(formatPeso(750), '₱7.50');
@@ -176,10 +211,85 @@ void main() {
     expect(find.byTooltip('Close search'), findsNothing);
   });
 
+  testWidgets('search finds inventory products, name prefixes first', (
+    tester,
+  ) async {
+    await tester.pumpWidget(_home());
+    await _search(tester, 'coke');
+
+    final names = tester
+        .widgetList<RichText>(find.byType(RichText))
+        .map((t) => t.text.toPlainText())
+        .where((t) => t.contains('Coke'))
+        .toList();
+    expect(names, ['Coke Mismo', 'Zero Coke']);
+    expect(find.text('CK-290 • 12 in stock'), findsOneWidget);
+    expect(find.text('₱20.00'), findsOneWidget);
+    expect(find.text('IN STOCK'), findsNWidgets(2));
+    expect(find.text('Lucky Me Pancit Canton'), findsNothing);
+  });
+
+  testWidgets('search matches by SKU and shows stock status', (tester) async {
+    await tester.pumpWidget(_home());
+
+    await _search(tester, 'ck-2');
+    expect(find.text('CK-290 • 12 in stock'), findsOneWidget);
+
+    await _search(tester, 'canton');
+    expect(find.text('LOW STOCK'), findsOneWidget);
+
+    await _search(tester, 'kopiko');
+    expect(find.text('OUT OF STOCK'), findsOneWidget);
+  });
+
+  testWidgets('tapping a result rings it up; again adds a unit', (
+    tester,
+  ) async {
+    await tester.pumpWidget(_home());
+
+    for (var i = 0; i < 2; i++) {
+      await _search(tester, 'mismo');
+      await tester.tap(
+        find.bySemanticsLabel(RegExp('^Add Coke Mismo to cart')),
+      );
+      await tester.pumpAndSettle();
+    }
+
+    // Search closed, and one row with a quantity of two.
+    expect(find.byTooltip('Close search'), findsNothing);
+    expect(find.text('Coke Mismo'), findsOneWidget);
+    expect(find.text('Qty: 2 × ₱20.00'), findsOneWidget);
+    expect(find.text('2 ITEMS'), findsOneWidget);
+  });
+
+  testWidgets('enter rings up the top match', (tester) async {
+    await tester.pumpWidget(_home());
+    await _search(tester, 'co');
+
+    await tester.testTextInput.receiveAction(TextInputAction.search);
+    await tester.pumpAndSettle();
+
+    expect(find.text('Coke Mismo'), findsOneWidget);
+    expect(find.text('1 ITEM'), findsOneWidget);
+  });
+
+  testWidgets('an empty catalog points to the Inventory tab', (tester) async {
+    await tester.pumpWidget(_home(products: const []));
+    await _search(tester, 'coke');
+
+    expect(find.text('No products yet'), findsOneWidget);
+  });
+
   group('DashboardScreen', () {
     Widget shell() => MaterialApp(
       theme: AppTheme.light,
-      home: DashboardScreen(user: _FakeUser(), storeId: 'store-1'),
+      home: DashboardScreen(
+        user: _FakeUser(),
+        storeId: 'store-1',
+        createProductRepository: (id) =>
+            ProductRepository(storeId: id, remote: FakeProductRemote(_catalog)),
+        watchLowStockThreshold: (_) => Stream.value(5),
+      ),
     );
 
     testWidgets('shows the home tab under the app bar and nav', (tester) async {

@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
 
+import '../services/product_search.dart';
 import '../services/product_service.dart';
 import '../services/store_service.dart';
 import '../theme/app_theme.dart';
+import '../widgets/product_visuals.dart';
+import 'add_product_screen.dart';
 import 'home_screen.dart' show formatPeso;
 
 /// The Inventory tab — a Flutter build of the Stitch "Inventory - Product
@@ -10,21 +13,26 @@ import 'home_screen.dart' show formatPeso;
 /// chips, SKU and alert counts, the product list, and a bottom drawer with a
 /// product's stock and pricing.
 ///
-/// The catalog is read live from Firestore. Adding, editing and restocking are
-/// not built yet, so those controls say so when tapped. The design's barcode
+/// The catalog is read live from Firestore, and "Add New" opens
+/// [AddProductScreen]. Editing and restocking are not built yet, so those
+/// controls say so when tapped. The design's barcode
 /// scan button is left out on purpose: TindaTrack does not use scanning.
 class InventoryScreen extends StatefulWidget {
   const InventoryScreen({
     super.key,
     required this.products,
     required this.lowStockThreshold,
+    required this.onSaveProduct,
   });
 
   /// Streams rather than a store id so tests can drive the screen without
-  /// Firebase; the dashboard passes [ProductService.watch] and
+  /// Firebase; the dashboard passes [ProductRepository.watch] and
   /// [StoreService.lowStockThresholdOf].
   final Stream<List<Product>> products;
   final Stream<int> lowStockThreshold;
+
+  /// Saves a new product; the dashboard passes [ProductRepository.add].
+  final Future<void> Function(ProductDraft draft) onSaveProduct;
 
   @override
   State<InventoryScreen> createState() => _InventoryScreenState();
@@ -74,13 +82,15 @@ class _InventoryScreenState extends State<InventoryScreen> {
     // to All Items instead of showing an empty list with no chip selected.
     final category = categories.contains(_category) ? _category : null;
 
-    final query = _search.text.trim().toLowerCase();
-    final visible = products.where((p) {
-      if (category != null && p.category != category) return false;
-      if (query.isEmpty) return true;
-      return p.name.toLowerCase().contains(query) ||
-          (p.sku?.toLowerCase().contains(query) ?? false);
-    }).toList();
+    final inCategory = [
+      for (final p in products)
+        if (category == null || p.category == category) p,
+    ];
+    // The same forgiving search as the Home tab, best matches first.
+    final query = _search.text.trim();
+    final visible = query.isEmpty
+        ? inCategory
+        : [for (final m in searchProducts(inCategory, query)) m.product];
     final alerts = products
         .where((p) => p.statusFor(threshold) != StockStatus.inStock)
         .length;
@@ -177,7 +187,7 @@ class _InventoryScreenState extends State<InventoryScreen> {
                 ),
               ),
               TextButton.icon(
-                onPressed: () => _notBuilt(context, 'Adding products'),
+                onPressed: () => _openAddProduct(categories),
                 icon: const Icon(Icons.add_circle_outline, size: 18),
                 label: Text('ADD NEW', style: AppTypography.labelCaps),
                 style: TextButton.styleFrom(
@@ -194,6 +204,17 @@ class _InventoryScreenState extends State<InventoryScreen> {
         const SizedBox(height: AppSpacing.stackSm),
         listBody,
       ],
+    );
+  }
+
+  void _openAddProduct(List<String> categories) {
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => AddProductScreen(
+          onSave: widget.onSaveProduct,
+          existingCategories: categories,
+        ),
+      ),
     );
   }
 
@@ -229,20 +250,6 @@ class _InventoryScreenState extends State<InventoryScreen> {
       ..hideCurrentSnackBar()
       ..showSnackBar(SnackBar(content: Text('$feature is not built yet.')));
   }
-}
-
-extension on StockStatus {
-  Color get color => switch (this) {
-    StockStatus.inStock => AppColors.statusInStock,
-    StockStatus.lowStock => AppColors.statusLowStock,
-    StockStatus.outOfStock => AppColors.statusOutOfStock,
-  };
-
-  String get label => switch (this) {
-    StockStatus.inStock => 'IN STOCK',
-    StockStatus.lowStock => 'LOW STOCK',
-    StockStatus.outOfStock => 'OUT OF STOCK',
-  };
 }
 
 String _units(int stock) => '$stock ${stock == 1 ? 'unit' : 'units'}';
@@ -418,7 +425,7 @@ class _ProductCard extends StatelessWidget {
             padding: const EdgeInsets.all(12),
             child: Row(
               children: [
-                _ProductImage(
+                ProductImage(
                   url: product.imageUrl,
                   size: 64,
                   radius: 6,
@@ -458,61 +465,6 @@ class _ProductCard extends StatelessWidget {
           ),
         ),
       ),
-    );
-  }
-}
-
-/// A product photo in a bordered, rounded frame, or a placeholder icon when
-/// there is none or it fails to load.
-class _ProductImage extends StatelessWidget {
-  const _ProductImage({
-    required this.url,
-    required this.size,
-    required this.radius,
-    this.grayscale = false,
-  });
-
-  final String? url;
-  final double size;
-  final double radius;
-  final bool grayscale;
-
-  static const _grayscale = ColorFilter.matrix([
-    0.2126, 0.7152, 0.0722, 0, 0, //
-    0.2126, 0.7152, 0.0722, 0, 0, //
-    0.2126, 0.7152, 0.0722, 0, 0, //
-    0, 0, 0, 1, 0, //
-  ]);
-
-  @override
-  Widget build(BuildContext context) {
-    final placeholder = Icon(
-      Icons.inventory_2_outlined,
-      size: size * 0.45,
-      color: AppColors.outline,
-    );
-    Widget image = url == null
-        ? placeholder
-        : Image.network(
-            url!,
-            width: size,
-            height: size,
-            fit: BoxFit.cover,
-            errorBuilder: (_, _, _) => placeholder,
-          );
-    if (grayscale) image = ColorFiltered(colorFilter: _grayscale, child: image);
-
-    return Container(
-      width: size,
-      height: size,
-      alignment: Alignment.center,
-      clipBehavior: Clip.antiAlias,
-      decoration: BoxDecoration(
-        color: AppColors.surfaceContainer,
-        borderRadius: BorderRadius.circular(radius),
-        border: Border.all(color: AppColors.outlineVariant),
-      ),
-      child: image,
     );
   }
 }
@@ -615,7 +567,7 @@ class _ProductDrawer extends StatelessWidget {
                 children: [
                   Row(
                     children: [
-                      _ProductImage(
+                      ProductImage(
                         url: product.imageUrl,
                         size: 80,
                         radius: AppRadius.base,

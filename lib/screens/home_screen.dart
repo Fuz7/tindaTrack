@@ -1,20 +1,36 @@
+import 'dart:async';
 import 'dart:math' as math;
 import 'dart:ui' show ImageFilter;
 
 import 'package:flutter/material.dart';
 
+import '../services/product_search.dart';
+import '../services/product_service.dart';
+import '../services/store_service.dart';
 import '../theme/app_theme.dart';
+import '../widgets/product_visuals.dart';
 
 /// The Home (POS) tab — a Flutter build of the Stitch "Home - Calculator"
 /// design (project 14772063175572299152): the current entry on top, product
 /// search, the calculator keypad, then the active cart and its totals.
 ///
 /// Ringing up is keypad-first: type the price, tap the cart key, and a
-/// "Manual Entry" line lands at the top of the cart. Search is wired but there
-/// is no product catalog yet, so it has nothing to match against. The cart
-/// lives in memory until checkout, which is not built yet either.
+/// "Manual Entry" line lands at the top of the cart. Search finds products
+/// from the store's inventory by name or SKU; tapping one, or pressing enter
+/// for the top match, rings it up at its sell price. The cart lives in memory
+/// until checkout, which is not built yet.
 class HomeScreen extends StatefulWidget {
-  const HomeScreen({super.key});
+  const HomeScreen({
+    super.key,
+    required this.products,
+    required this.lowStockThreshold,
+  });
+
+  /// Streams rather than a store id so tests can drive the screen without
+  /// Firebase; the dashboard passes [ProductRepository.watch] and
+  /// [StoreService.lowStockThresholdOf].
+  final Stream<List<Product>> products;
+  final Stream<int> lowStockThreshold;
 
   @override
   State<HomeScreen> createState() => _HomeScreenState();
@@ -23,10 +39,13 @@ class HomeScreen extends StatefulWidget {
 /// One cart row. Money is whole centavos: doubles would drift (0.1 + 0.2) and
 /// a till that is off by a centavo is wrong.
 class _CartLine {
-  _CartLine({required this.name, required this.unitCentavos});
+  _CartLine({required this.name, required this.unitCentavos, this.productId});
 
   final String name;
   final int unitCentavos;
+
+  /// The inventory product this line rings up; null for a manual entry.
+  final String? productId;
   int quantity = 1;
 
   int get totalCentavos => unitCentavos * quantity;
@@ -44,18 +63,58 @@ class _HomeScreenState extends State<HomeScreen> {
   /// The keypad entry in whole pesos, as typed. Empty means ₱0.00.
   String _entry = '';
 
+  /// The catalog as last heard from [HomeScreen.products]; null until the
+  /// first snapshot arrives.
+  List<Product>? _products;
+  int _lowStockThreshold = StoreDraft.defaultLowStockThreshold;
+  late final StreamSubscription<List<Product>> _productsSub;
+  late final StreamSubscription<int> _thresholdSub;
+
   @override
   void initState() {
     super.initState();
     _search.addListener(() => setState(() {}));
     _searchFocus.addListener(() => setState(() {}));
+    // Held in state rather than a StreamBuilder: the result cards and
+    // enter-to-add both need the same latest list.
+    _productsSub = widget.products.listen(
+      (products) => setState(() => _products = products),
+      // Keep the last good list; a failed listen just means search can't
+      // see newer products.
+      onError: (Object _) => setState(() => _products ??= const []),
+    );
+    _thresholdSub = widget.lowStockThreshold.listen(
+      (threshold) => setState(() => _lowStockThreshold = threshold),
+      onError: (Object _) {},
+    );
   }
 
   @override
   void dispose() {
+    _productsSub.cancel();
+    _thresholdSub.cancel();
     _search.dispose();
     _searchFocus.dispose();
     super.dispose();
+  }
+
+  /// Rings up [product] at its sell price. A product already in the cart
+  /// gains a unit and moves to the top, rather than adding a second row.
+  void _addProductToCart(Product product) {
+    setState(() {
+      final existing = _lines.where((l) => l.productId == product.id);
+      final line = existing.isEmpty
+          ? _CartLine(
+              name: product.name,
+              unitCentavos: product.sellCentavos,
+              productId: product.id,
+            )
+          : (existing.first..quantity += 1);
+      _lines
+        ..remove(line)
+        ..insert(0, line);
+    });
+    _closeSearch();
   }
 
   int get _entryCentavos => _entry.isEmpty ? 0 : int.parse(_entry) * 100;
@@ -128,6 +187,7 @@ class _HomeScreenState extends State<HomeScreen> {
     // and the results float over it, as in the "home-search-results-unified"
     // design. Tapping the scrim leaves search.
     final searching = _searchFocus.hasFocus || query.isNotEmpty;
+    final matches = searchProducts(_products ?? const [], query);
 
     return Column(
       children: [
@@ -140,6 +200,10 @@ class _HomeScreenState extends State<HomeScreen> {
           controller: _search,
           focusNode: _searchFocus,
           onClose: _closeSearch,
+          // Enter rings up the top match — the highlighted card.
+          onSubmitted: () {
+            if (matches.isNotEmpty) _addProductToCart(matches.first.product);
+          },
           searching: searching,
         ),
         Expanded(
@@ -161,7 +225,15 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                 ),
               ),
-              if (searching) _SearchResults(query: query),
+              if (searching)
+                _SearchResults(
+                  query: query,
+                  matches: matches,
+                  catalogLoaded: _products != null,
+                  catalogEmpty: _products?.isEmpty ?? false,
+                  lowStockThreshold: _lowStockThreshold,
+                  onSelect: _addProductToCart,
+                ),
             ],
           ),
         ),
@@ -299,12 +371,14 @@ class _SearchBar extends StatelessWidget {
     required this.controller,
     required this.focusNode,
     required this.onClose,
+    required this.onSubmitted,
     required this.searching,
   });
 
   final TextEditingController controller;
   final FocusNode focusNode;
   final VoidCallback onClose;
+  final VoidCallback onSubmitted;
   final bool searching;
 
   @override
@@ -342,6 +416,7 @@ class _SearchBar extends StatelessWidget {
             controller: controller,
             focusNode: focusNode,
             textInputAction: TextInputAction.search,
+            onSubmitted: (_) => onSubmitted(),
             textAlignVertical: TextAlignVertical.center,
             style: AppTypography.bodyLg.copyWith(color: AppColors.onBackground),
             decoration: InputDecoration(
@@ -383,43 +458,63 @@ class _SearchBar extends StatelessWidget {
 }
 
 class _SearchResults extends StatelessWidget {
-  const _SearchResults({required this.query});
+  const _SearchResults({
+    required this.query,
+    required this.matches,
+    required this.catalogLoaded,
+    required this.catalogEmpty,
+    required this.lowStockThreshold,
+    required this.onSelect,
+  });
 
   final String query;
+  final List<ProductMatch> matches;
+  final bool catalogLoaded;
+  final bool catalogEmpty;
+  final int lowStockThreshold;
+  final ValueChanged<Product> onSelect;
 
   @override
   Widget build(BuildContext context) {
-    final (icon, title, body) = query.isEmpty
+    // Result cards float over the scrim, styled like the design's result
+    // rows: white, 12px radius, hairline border, small shadow.
+    if (matches.isNotEmpty) {
+      return ListView.separated(
+        padding: const EdgeInsets.all(AppSpacing.gutter),
+        itemCount: matches.length,
+        separatorBuilder: (_, _) => const SizedBox(height: AppSpacing.stackSm),
+        itemBuilder: (context, index) => _SearchResultCard(
+          match: matches[index],
+          status: matches[index].product.statusFor(lowStockThreshold),
+          // The top match is what enter rings up, so it wears the design's
+          // emerald outline.
+          highlighted: index == 0,
+          onTap: () => onSelect(matches[index].product),
+        ),
+      );
+    }
+
+    final (icon, title, body) = query.isEmpty || !catalogLoaded
         ? (
             Icons.search,
             'Search your products',
-            'Type a product name to add it to the cart.',
+            'Type a product name or SKU to add it to the cart.',
+          )
+        : catalogEmpty
+        ? (
+            Icons.inventory_2_outlined,
+            'No products yet',
+            'Add products in the Inventory tab to ring them up here.',
           )
         : (
             Icons.search_off,
             'No products match “$query”',
-            'Products you add in Inventory will show up here.',
+            'Check the spelling, or search by SKU.',
           );
 
-    // Result cards float over the scrim, styled like the design's result
-    // rows: white, 12px radius, hairline border, small shadow. Until there is
-    // a catalog, the only card is this status one.
     return SingleChildScrollView(
       padding: const EdgeInsets.all(AppSpacing.gutter),
-      child: Container(
-        padding: const EdgeInsets.all(12),
-        decoration: BoxDecoration(
-          color: AppColors.surfaceContainerLowest,
-          borderRadius: BorderRadius.circular(AppRadius.md),
-          border: Border.all(color: AppColors.outlineVariant),
-          boxShadow: const [
-            BoxShadow(
-              color: Color(0x0D000000),
-              blurRadius: 2,
-              offset: Offset(0, 1),
-            ),
-          ],
-        ),
+      child: _ResultFrame(
         child: Row(
           children: [
             Container(
@@ -450,6 +545,155 @@ class _SearchResults extends StatelessWidget {
                   ),
                 ],
               ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// The white, rounded, shadowed card every search result sits in.
+class _ResultFrame extends StatelessWidget {
+  const _ResultFrame({
+    required this.child,
+    this.highlighted = false,
+    this.onTap,
+  });
+
+  final Widget child;
+  final bool highlighted;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final radius = BorderRadius.circular(AppRadius.md);
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        borderRadius: radius,
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x0D000000),
+            blurRadius: 2,
+            offset: Offset(0, 1),
+          ),
+        ],
+      ),
+      child: Material(
+        color: AppColors.surfaceContainerLowest,
+        shape: RoundedRectangleBorder(
+          borderRadius: radius,
+          side: highlighted
+              ? const BorderSide(color: AppColors.primary, width: 2)
+              : const BorderSide(color: AppColors.outlineVariant),
+        ),
+        child: InkWell(
+          borderRadius: radius,
+          onTap: onTap,
+          child: Padding(padding: const EdgeInsets.all(12), child: child),
+        ),
+      ),
+    );
+  }
+}
+
+class _SearchResultCard extends StatelessWidget {
+  const _SearchResultCard({
+    required this.match,
+    required this.status,
+    required this.highlighted,
+    required this.onTap,
+  });
+
+  final ProductMatch match;
+  final StockStatus status;
+  final bool highlighted;
+  final VoidCallback onTap;
+
+  Product get product => match.product;
+
+  /// The product name with the matched parts picked out in bold emerald, as
+  /// in the design ("**Pi**attos").
+  TextSpan _highlightedName() {
+    const hit = TextStyle(
+      fontWeight: FontWeight.w700,
+      color: AppColors.primary,
+    );
+    final name = product.name;
+    final spans = <TextSpan>[];
+    var at = 0;
+    for (final (start, end) in match.highlights) {
+      if (start > at) spans.add(TextSpan(text: name.substring(at, start)));
+      spans.add(TextSpan(text: name.substring(start, end), style: hit));
+      at = end;
+    }
+    if (at < name.length) spans.add(TextSpan(text: name.substring(at)));
+    return TextSpan(
+      style: AppTypography.bodyLg.copyWith(color: AppColors.onBackground),
+      children: spans,
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final details = [
+      if (product.sku != null) product.sku!,
+      '${product.stock} in stock',
+    ].join(' • ');
+
+    return Semantics(
+      button: true,
+      label: 'Add ${product.name} to cart',
+      child: _ResultFrame(
+        highlighted: highlighted,
+        onTap: onTap,
+        child: Row(
+          children: [
+            ProductImage(
+              url: product.imageUrl,
+              size: 48,
+              radius: AppRadius.base,
+              grayscale: status == StockStatus.outOfStock,
+            ),
+            const SizedBox(width: AppSpacing.stackMd),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text.rich(
+                    _highlightedName(),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  Text(
+                    details,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: AppTypography.bodySm.copyWith(
+                      color: AppColors.onSurfaceVariant,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: AppSpacing.stackSm),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                Text(
+                  formatPeso(product.sellCentavos),
+                  style: AppTypography.bodyLg.copyWith(
+                    color: AppColors.primary,
+                  ),
+                ),
+                Text(
+                  status.label,
+                  style: AppTypography.labelCaps.copyWith(
+                    fontSize: 10,
+                    color: status.color,
+                  ),
+                ),
+              ],
             ),
           ],
         ),

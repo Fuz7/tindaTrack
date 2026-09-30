@@ -35,6 +35,7 @@ Widget _inventory({
     body: InventoryScreen(
       products: products ?? Stream.value(_products),
       lowStockThreshold: Stream.value(lowStockThreshold),
+      onSaveProduct: (_) async {},
     ),
   ),
 );
@@ -130,5 +131,17 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('Add New opens the add product page', (tester) async {
+    await tester.pumpWidget(_inventory());
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('ADD NEW'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Add New Product'), findsOneWidget);
+    // Categories the store already uses are offered alongside the defaults.
+    expect(find.text('Drinks'), findsOneWidget);
   });
 }

@@ -4,7 +4,8 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 /// design's traffic-light status.
 enum StockStatus { inStock, lowStock, outOfStock }
 
-/// One product in a tindahan's catalog, from `stores/{storeId}/products/{id}`.
+/// One product in a tindahan's catalog, from `stores/{storeId}/products/{id}`
+/// or the on-device copy in [ProductRepository].
 ///
 /// Money is whole centavos, as in the cart: doubles drift. Optional fields are
 /// null rather than empty so the UI can show "—" without second-guessing.
@@ -20,10 +21,10 @@ class Product {
     this.imageUrl,
   });
 
-  /// Reads a product document defensively: Firestore hands back `dynamic`,
-  /// and one malformed field should not take the whole list down.
-  factory Product.fromDoc(DocumentSnapshot<Map<String, dynamic>> doc) {
-    final data = doc.data() ?? const {};
+  /// Reads a product defensively, from Firestore or local JSON alike: both
+  /// hand back `dynamic`, and one malformed field should not take the whole
+  /// list down.
+  factory Product.fromMap(String id, Map<String, dynamic> data) {
     String? text(String key) {
       final value = data[key];
       return value is String && value.trim().isNotEmpty ? value.trim() : null;
@@ -35,7 +36,7 @@ class Product {
     }
 
     return Product(
-      id: doc.id,
+      id: id,
       name: text('name') ?? 'Unnamed product',
       stock: whole('stock') ?? 0,
       sellCentavos: whole('sellCentavos') ?? 0,
@@ -45,6 +46,9 @@ class Product {
       imageUrl: text('imageUrl'),
     );
   }
+
+  factory Product.fromDoc(DocumentSnapshot<Map<String, dynamic>> doc) =>
+      Product.fromMap(doc.id, doc.data() ?? const {});
 
   final String id;
   final String name;
@@ -58,6 +62,17 @@ class Product {
   final String? category;
   final String? imageUrl;
 
+  /// Every field but [id], which is the document or storage key.
+  Map<String, dynamic> toMap() => {
+    'name': name,
+    'stock': stock,
+    'sellCentavos': sellCentavos,
+    'buyCentavos': buyCentavos,
+    'sku': sku,
+    'category': category,
+    'imageUrl': imageUrl,
+  };
+
   /// Sell minus buy price, or null when the buy price is unknown.
   int? get marginCentavos =>
       buyCentavos == null ? null : sellCentavos - buyCentavos!;
@@ -69,21 +84,83 @@ class Product {
   }
 }
 
-/// Reads a store's product catalog. Adding and editing products belong to
-/// flows that do not exist yet.
-class ProductService {
-  ProductService._();
+/// What the "Add New Product" form collects before anything is written.
+/// Optional fields are null rather than empty, as on [Product].
+class ProductDraft {
+  const ProductDraft({
+    required this.name,
+    required this.sellCentavos,
+    this.buyCentavos,
+    this.stock = 0,
+    this.category,
+  });
+
+  final String name;
+  final int sellCentavos;
+  final int? buyCentavos;
+  final int stock;
+  final String? category;
+
+  Product toProduct(String id) => Product(
+    id: id,
+    name: name,
+    stock: stock,
+    sellCentavos: sellCentavos,
+    buyCentavos: buyCentavos,
+    category: category,
+  );
+}
+
+/// The server side of a store's catalog, as [ProductRepository] sees it.
+/// An interface so tests, and the offline sync to come, can stand in for
+/// Firestore.
+abstract interface class ProductRemote {
+  /// A fresh id for a product that may not reach the server for a while.
+  String newId();
+
+  /// The whole catalog, once. Throws if the server can't be reached.
+  Future<List<Product>> fetchAll();
+
+  /// Creates or overwrites [product]. Throws if the server refuses it.
+  Future<void> save(Product product);
+}
+
+/// [ProductRemote] backed by `stores/{storeId}/products` in Firestore.
+class ProductService implements ProductRemote {
+  ProductService(this.storeId);
 
   static const productsCollection = 'products';
 
-  /// Watches `stores/{storeId}/products`, sorted by name.
-  static Stream<List<Product>> watch(String storeId) {
-    return FirebaseFirestore.instance
-        .collection('stores')
-        .doc(storeId)
-        .collection(productsCollection)
-        .orderBy('name')
-        .snapshots()
-        .map((snapshot) => snapshot.docs.map(Product.fromDoc).toList());
+  final String storeId;
+
+  CollectionReference<Map<String, dynamic>> get _products => FirebaseFirestore
+      .instance
+      .collection('stores')
+      .doc(storeId)
+      .collection(productsCollection);
+
+  /// Generated on the device, so it works with no connection.
+  @override
+  String newId() => _products.doc().id;
+
+  /// Asks the server rather than Firestore's own cache: the on-device copy
+  /// is [ProductRepository]'s job, and a stale cache answer would overwrite
+  /// it with an older list.
+  @override
+  Future<List<Product>> fetchAll() async {
+    final snapshot = await _products.get(
+      const GetOptions(source: Source.server),
+    );
+    return snapshot.docs.map(Product.fromDoc).toList();
+  }
+
+  /// The opening stock is written as a plain value: the document is new, so
+  /// there is no concurrent count to lose. Later changes must be increments.
+  @override
+  Future<void> save(Product product) {
+    return _products.doc(product.id).set({
+      ...product.toMap(),
+      'createdAt': FieldValue.serverTimestamp(),
+    });
   }
 }

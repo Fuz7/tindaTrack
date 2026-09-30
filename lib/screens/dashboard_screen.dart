@@ -2,7 +2,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
 import '../services/auth_service.dart';
-import '../services/product_service.dart';
+import '../services/product_repository.dart';
 import '../services/store_service.dart';
 import '../theme/app_theme.dart';
 import 'home_screen.dart';
@@ -16,10 +16,21 @@ import 'inventory_screen.dart';
 /// them and say they are not built yet when tapped, rather than silently doing
 /// nothing.
 class DashboardScreen extends StatefulWidget {
-  const DashboardScreen({super.key, required this.user, required this.storeId});
+  const DashboardScreen({
+    super.key,
+    required this.user,
+    required this.storeId,
+    this.createProductRepository = ProductRepository.forStore,
+    this.watchLowStockThreshold = StoreService.lowStockThresholdOf,
+  });
 
   final User user;
   final String storeId;
+
+  /// The on-device catalog, Firestore-backed by default; tests swap in a
+  /// fake server.
+  final ProductRepository Function(String storeId) createProductRepository;
+  final Stream<int> Function(String storeId) watchLowStockThreshold;
 
   @override
   State<DashboardScreen> createState() => _DashboardScreenState();
@@ -31,17 +42,36 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   int _tab = _home;
 
+  /// One catalog for both tabs, so a product added in Inventory is
+  /// searchable on Home at once.
+  late final ProductRepository _products = widget.createProductRepository(
+    widget.storeId,
+  )..load();
+
   /// Built on first visit, then kept in the [IndexedStack] so switching tabs
-  /// neither drops the cart nor re-subscribes to the catalog.
+  /// neither drops the cart nor re-subscribes.
   Widget? _inventoryTab;
+
+  /// Built once so rebuilding the shell does not re-subscribe.
+  late final Widget _homeTab = HomeScreen(
+    products: _products.watch(),
+    lowStockThreshold: widget.watchLowStockThreshold(widget.storeId),
+  );
+
+  @override
+  void dispose() {
+    _products.dispose();
+    super.dispose();
+  }
 
   void _select(int tab) {
     setState(() {
       _tab = tab;
       if (tab == _inventory) {
         _inventoryTab ??= InventoryScreen(
-          products: ProductService.watch(widget.storeId),
-          lowStockThreshold: StoreService.lowStockThresholdOf(widget.storeId),
+          products: _products.watch(),
+          lowStockThreshold: widget.watchLowStockThreshold(widget.storeId),
+          onSaveProduct: _products.add,
         );
       }
     });
@@ -54,10 +84,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
       appBar: _TopBar(user: widget.user),
       body: IndexedStack(
         index: _tab,
-        children: [
-          const HomeScreen(),
-          _inventoryTab ?? const SizedBox.shrink(),
-        ],
+        children: [_homeTab, _inventoryTab ?? const SizedBox.shrink()],
       ),
       bottomNavigationBar: _BottomNav(
         selected: _tab,
