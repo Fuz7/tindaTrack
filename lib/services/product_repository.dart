@@ -39,6 +39,15 @@ class ProductRepository {
   /// Null until [load] has read the device copy.
   List<Product>? _products;
 
+  final _salesChanges = StreamController<List<Sale>>.broadcast();
+
+  /// Sales history, newest first; null until [load]. Kept for
+  /// [salesHistory], from this device and (after a refresh) every other.
+  List<Sale>? _sales;
+
+  /// How far back the device keeps, and fetches, sales.
+  static const salesHistory = Duration(days: 60);
+
   /// Changes not yet handed to the server, oldest first.
   final _ops = <ProductOp>[];
 
@@ -52,7 +61,7 @@ class ProductRepository {
   /// Products with a change the server doesn't have yet.
   Set<String> get pendingIds => {
     for (final op in _ops)
-      if (op.kind != ProductOpKind.sale) op.productId,
+      if (op.sale == null) op.productId,
   };
 
   /// The catalog sorted by name: the current copy straight away (once
@@ -71,6 +80,20 @@ class ProductRepository {
     });
   }
 
+  /// Sales history, newest first: the current copy straight away (once
+  /// loaded), then every change.
+  Stream<List<Sale>> watchSales() {
+    return Stream.multi((listener) {
+      final sales = _sales;
+      if (sales != null) listener.add(sales);
+      final sub = _salesChanges.stream.listen(
+        listener.add,
+        onError: listener.addError,
+      );
+      listener.onCancel = sub.cancel;
+    });
+  }
+
   /// Reads the device copy, then — without holding anything up — refreshes
   /// it from the server and sends queued changes. Offline, the second half
   /// fails quietly and the device copy stands.
@@ -78,6 +101,7 @@ class ProductRepository {
     final prefs = await SharedPreferences.getInstance();
     final raw = prefs.getString(_key);
     final products = <Product>[];
+    final sales = <Sale>[];
     if (raw != null) {
       try {
         final json = jsonDecode(raw) as Map<String, dynamic>;
@@ -94,14 +118,19 @@ class ProductRepository {
           final product = products.where((p) => p.id == id).firstOrNull;
           if (product != null) _ops.add(ProductOp.create(product));
         }
+        for (final sale in (json['sales'] as List<dynamic>? ?? const [])) {
+          sales.add(Sale.fromJson(Map<String, dynamic>.from(sale as Map)));
+        }
       } on Object {
         // A corrupt copy is rebuilt from the server rather than crashing the
         // till; anything still queued in it is lost with it.
         products.clear();
+        sales.clear();
         _ops.clear();
       }
     }
     _publish(products);
+    _publishSales(sales);
 
     unawaited(_refreshFromServer());
   }
@@ -179,24 +208,91 @@ class ProductRepository {
   Future<Sale> recordSale({
     required List<SaleItem> items,
     required int receivedCentavos,
+    required Cashier cashier,
   }) async {
     final sale = Sale(
       id: remote.newId(),
       items: List.unmodifiable(items),
       receivedCentavos: receivedCentavos,
       completedAt: DateTime.now(),
+      cashierUid: cashier.uid,
+      cashierName: cashier.name,
     );
     if (sale.items.isEmpty) throw ArgumentError('A sale needs items.');
     if (sale.changeCentavos < 0) {
       throw ArgumentError('Received less than the total.');
     }
+    _publishSales([sale, ...?_sales]);
     await _apply(ProductOp.sale(sale));
     return sale;
   }
 
+  /// Edits a completed sale: its [items] (quantities changed or lines
+  /// removed), [receivedCentavos] and [customerName] (blank clears it).
+  ///
+  /// Stock moves by the difference only — a line cut from 3 to 2 puts one
+  /// back on the shelf — so sales made elsewhere meanwhile still count. A
+  /// voided sale can't be edited. Returns the edited sale, or [original] if
+  /// nothing changed.
+  Future<Sale> editSale(
+    Sale original, {
+    required List<SaleItem> items,
+    required int receivedCentavos,
+    required String? customerName,
+    required Cashier editor,
+  }) async {
+    final current =
+        _sales?.where((s) => s.id == original.id).firstOrNull ?? original;
+    if (current.voided) throw StateError('A refunded sale can\'t be edited.');
+    if (items.isEmpty) {
+      throw ArgumentError('A sale needs items; refund it instead.');
+    }
+    final name = customerName?.trim();
+    final edited = current.copyWith(
+      items: List.unmodifiable(items),
+      receivedCentavos: receivedCentavos,
+      customerName: () => name == null || name.isEmpty ? null : name,
+      editedAt: DateTime.now(),
+      editedBy: editor.name,
+    );
+    if (edited.changeCentavos < 0) {
+      throw ArgumentError('Received less than the total.');
+    }
+    if (_sameSale(current, edited)) return current;
+
+    final before = current.soldByProduct;
+    final after = edited.soldByProduct;
+    final restock = <String, int>{
+      for (final id in {...before.keys, ...after.keys})
+        if ((before[id] ?? 0) != (after[id] ?? 0))
+          id: (before[id] ?? 0) - (after[id] ?? 0),
+    };
+    _publishSales([
+      for (final s in _sales ?? const <Sale>[]) s.id == edited.id ? edited : s,
+    ]);
+    await _apply(ProductOp.editSale(edited, restock));
+    return edited;
+  }
+
+  /// Refunds [sale]: marks it void and returns its items to stock. A sale
+  /// already voided is left as it is. Returns the voided sale.
+  Future<Sale> voidSale(Sale sale) async {
+    final current = _sales?.where((s) => s.id == sale.id).firstOrNull ?? sale;
+    if (current.voided) return current;
+    final voided = current.voidedOn(DateTime.now());
+    _publishSales([
+      for (final s in _sales ?? const <Sale>[]) s.id == voided.id ? voided : s,
+    ]);
+    await _apply(ProductOp.voidSale(voided));
+    return voided;
+  }
+
   Future<void> delete(String productId) => _apply(ProductOp.delete(productId));
 
-  Future<void> dispose() => _changes.close();
+  Future<void> dispose() async {
+    await _changes.close();
+    await _salesChanges.close();
+  }
 
   Future<void> _apply(ProductOp op) async {
     _ops.add(op);
@@ -236,21 +332,63 @@ class ProductRepository {
     } on Object {
       return; // Offline, or refused: keep the device copy.
     }
+    List<Sale>? serverSales;
+    try {
+      serverSales = await remote.fetchSales(
+        since: DateTime.now().subtract(salesHistory),
+      );
+    } on Object {
+      // Keep the device's sales history; products still refresh.
+    }
     if (_changes.isClosed) return;
 
-    // A queued create the server already has landed on an earlier run.
+    // Ops the server already has landed on an earlier run. They go before
+    // the replay below, or their stock change would be counted twice.
     final serverIds = {for (final p in server) p.id};
-    _ops.removeWhere(
-      (op) =>
-          op.kind == ProductOpKind.create && serverIds.contains(op.productId),
-    );
+    final salesOnServer = {
+      for (final s in serverSales ?? const <Sale>[]) s.id: s,
+    };
+    _ops.removeWhere((op) {
+      switch (op.kind) {
+        case ProductOpKind.create:
+          return serverIds.contains(op.productId);
+        case ProductOpKind.sale:
+          return salesOnServer.containsKey(op.productId);
+        case ProductOpKind.voidSale:
+          return salesOnServer[op.productId]?.voided ?? false;
+        case ProductOpKind.editSale:
+          final landed = salesOnServer[op.productId]?.editedAt;
+          return landed != null && !landed.isBefore(op.sale!.editedAt!);
+        case ProductOpKind.update:
+        case ProductOpKind.delete:
+          return false;
+      }
+    });
+
     var products = server;
     for (final op in _ops) {
       products = op.applyTo(products);
     }
     _publish(products);
+    if (serverSales != null) _mergeSales(salesOnServer);
     await _persist();
     unawaited(_flush());
+  }
+
+  /// Merges the server's recent sales into the history. A sale or refund
+  /// still queued here keeps this device's version.
+  void _mergeSales(Map<String, Sale> onServer) {
+    final queued = {
+      for (final op in _ops)
+        if (op.sale != null) op.productId,
+    };
+    final merged = {...onServer};
+    for (final local in _sales ?? const <Sale>[]) {
+      if (queued.contains(local.id) || !merged.containsKey(local.id)) {
+        merged[local.id] = local;
+      }
+    }
+    _publishSales(merged.values.toList());
   }
 
   void _publish(List<Product> products) {
@@ -258,6 +396,16 @@ class ProductRepository {
       ..sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
     _products = List.unmodifiable(sorted);
     if (!_changes.isClosed) _changes.add(_products!);
+  }
+
+  /// Newest first, and only [salesHistory] back: older sales live on the
+  /// server, and keeping them here would grow the device copy without end.
+  void _publishSales(List<Sale> sales) {
+    final cutoff = DateTime.now().subtract(salesHistory);
+    final kept = sales.where((s) => s.completedAt.isAfter(cutoff)).toList()
+      ..sort((a, b) => b.completedAt.compareTo(a.completedAt));
+    _sales = List.unmodifiable(kept);
+    if (!_salesChanges.isClosed) _salesChanges.add(_sales!);
   }
 
   Future<void> _persist() async {
@@ -270,6 +418,7 @@ class ProductRepository {
             {'id': p.id, ...p.toMap()},
         ],
         'ops': [for (final op in _ops) op.toJson()],
+        'sales': [for (final s in _sales ?? const <Sale>[]) s.toJson()],
       }),
     );
   }
@@ -286,3 +435,10 @@ bool _same(Object? a, Object? b) {
   }
   return a == b;
 }
+
+/// Whether an edit changed nothing that [ProductRepository.editSale] saves.
+bool _sameSale(Sale a, Sale b) =>
+    a.receivedCentavos == b.receivedCentavos &&
+    a.customerName == b.customerName &&
+    jsonEncode([for (final i in a.items) i.toJson()]) ==
+        jsonEncode([for (final i in b.items) i.toJson()]);

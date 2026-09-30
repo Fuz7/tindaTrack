@@ -3,18 +3,20 @@ import 'package:flutter/material.dart';
 
 import '../services/auth_service.dart';
 import '../services/product_repository.dart';
+import '../services/product_service.dart';
 import '../services/store_service.dart';
 import '../theme/app_theme.dart';
 import 'home_screen.dart';
 import 'inventory_screen.dart';
+import 'transactions_screen.dart';
 
 /// The signed-in, store-ready shell: TindaTrack app bar on top, the four-tab
 /// bottom navigation below, and the selected tab in between — the frame of
 /// the Stitch "Home - Active Cart" design.
 ///
-/// Home and Inventory exist so far. The other tabs render as the design shows
-/// them and say they are not built yet when tapped, rather than silently doing
-/// nothing.
+/// Home, Inventory and Transactions exist so far. Analytics renders as the
+/// design shows it and says it is not built yet when tapped, rather than
+/// silently doing nothing.
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({
     super.key,
@@ -39,6 +41,7 @@ class DashboardScreen extends StatefulWidget {
 class _DashboardScreenState extends State<DashboardScreen> {
   static const _home = 0;
   static const _inventory = 1;
+  static const _transactions = 2;
 
   int _tab = _home;
 
@@ -51,13 +54,23 @@ class _DashboardScreenState extends State<DashboardScreen> {
   /// Built on first visit, then kept in the [IndexedStack] so switching tabs
   /// neither drops the cart nor re-subscribes.
   Widget? _inventoryTab;
+  Widget? _transactionsTab;
 
   /// Built once so rebuilding the shell does not re-subscribe.
   late final Widget _homeTab = HomeScreen(
     products: _products.watch(),
     lowStockThreshold: widget.watchLowStockThreshold(widget.storeId),
-    onCompleteSale: _products.recordSale,
+    onCompleteSale: ({required items, required receivedCentavos}) =>
+        _products.recordSale(
+          items: items,
+          receivedCentavos: receivedCentavos,
+          cashier: _cashier,
+        ),
   );
+
+  /// Who is ringing up sales on this device. Staff accounts (a Pro feature)
+  /// aren't built, so whoever is signed in is the store's owner.
+  late final _cashier = Cashier.owner(widget.user.uid);
 
   @override
   void dispose() {
@@ -78,6 +91,26 @@ class _DashboardScreenState extends State<DashboardScreen> {
           onAdjustStock: _products.adjustStock,
         );
       }
+      if (tab == _transactions) {
+        _transactionsTab ??= TransactionsScreen(
+          sales: _products.watchSales(),
+          products: _products.watch(),
+          onRefund: _products.voidSale,
+          onEdit:
+              (
+                sale, {
+                required items,
+                required receivedCentavos,
+                required customerName,
+              }) => _products.editSale(
+                sale,
+                items: items,
+                receivedCentavos: receivedCentavos,
+                customerName: customerName,
+                editor: _cashier,
+              ),
+        );
+      }
     });
   }
 
@@ -88,12 +121,16 @@ class _DashboardScreenState extends State<DashboardScreen> {
       appBar: _TopBar(user: widget.user),
       body: IndexedStack(
         index: _tab,
-        children: [_homeTab, _inventoryTab ?? const SizedBox.shrink()],
+        children: [
+          _homeTab,
+          _inventoryTab ?? const SizedBox.shrink(),
+          _transactionsTab ?? const SizedBox.shrink(),
+        ],
       ),
       bottomNavigationBar: _BottomNav(
         selected: _tab,
         onSelect: _select,
-        builtTabs: const {_home, _inventory},
+        builtTabs: const {_home, _inventory, _transactions},
       ),
     );
   }

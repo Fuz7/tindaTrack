@@ -119,7 +119,16 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
             ),
           ),
         );
-    } on Object {
+    } on Object catch (error, stack) {
+      // Still report it: "Try again" alone hides why the save failed.
+      FlutterError.reportError(
+        FlutterErrorDetails(
+          exception: error,
+          stack: stack,
+          library: 'checkout',
+          context: ErrorDescription('while recording a sale'),
+        ),
+      );
       if (!mounted) return;
       setState(() => _saving = false);
       messenger

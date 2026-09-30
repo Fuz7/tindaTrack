@@ -268,6 +268,19 @@ class SaleItem {
   };
 }
 
+/// Who rang up, or last edited, a sale.
+///
+/// Staff accounts are a Pro feature that isn't built yet, so for now
+/// everyone signed in to a store is its owner, named "Owner".
+class Cashier {
+  const Cashier({required this.uid, required this.name});
+
+  const Cashier.owner(String uid) : this(uid: uid, name: 'Owner');
+
+  final String uid;
+  final String name;
+}
+
 /// A completed sale, as recorded in `stores/{storeId}/sales/{id}` for the
 /// Transactions and Analytics tabs to come.
 class Sale {
@@ -277,20 +290,40 @@ class Sale {
     required this.receivedCentavos,
     required this.completedAt,
     this.paymentMethod = 'cash',
+    this.customerName,
+    this.cashierUid,
+    this.cashierName,
+    this.voidedAt,
+    this.editedAt,
+    this.editedBy,
   });
 
-  factory Sale.fromJson(Map<String, dynamic> json) => Sale(
-    id: json['id'] as String,
-    items: [
-      for (final item in json['items'] as List<dynamic>)
-        SaleItem.fromJson(Map<String, dynamic>.from(item as Map)),
-    ],
-    receivedCentavos: (json['receivedCentavos'] as num).round(),
-    completedAt: DateTime.fromMillisecondsSinceEpoch(
-      (json['completedAt'] as num).round(),
-    ),
-    paymentMethod: json['paymentMethod'] as String? ?? 'cash',
-  );
+  factory Sale.fromJson(Map<String, dynamic> json) {
+    DateTime? time(String key) => json[key] is num
+        ? DateTime.fromMillisecondsSinceEpoch((json[key] as num).round())
+        : null;
+    String? text(String key) {
+      final value = json[key];
+      return value is String && value.trim().isNotEmpty ? value.trim() : null;
+    }
+
+    return Sale(
+      id: json['id'] as String,
+      items: [
+        for (final item in json['items'] as List<dynamic>)
+          SaleItem.fromJson(Map<String, dynamic>.from(item as Map)),
+      ],
+      receivedCentavos: (json['receivedCentavos'] as num).round(),
+      completedAt: time('completedAt')!,
+      paymentMethod: text('paymentMethod') ?? 'cash',
+      customerName: text('customerName'),
+      cashierUid: text('cashierUid'),
+      cashierName: text('cashierName'),
+      voidedAt: time('voidedAt'),
+      editedAt: time('editedAt'),
+      editedBy: text('editedBy'),
+    );
+  }
 
   final String id;
   final List<SaleItem> items;
@@ -302,6 +335,51 @@ class Sale {
   /// its own time, but a sale made offline belongs to when it happened.
   final DateTime completedAt;
   final String paymentMethod;
+
+  /// Optional; checkout doesn't ask, but an edit can add it.
+  final String? customerName;
+
+  /// Who rang it up. Null on sales recorded before cashiers were kept.
+  final String? cashierUid;
+  final String? cashierName;
+
+  /// When the sale was refunded, voiding it: its items went back to stock
+  /// and it no longer counts toward sales. Null for a standing sale.
+  final DateTime? voidedAt;
+
+  /// The last edit, and the cashier name of who made it.
+  final DateTime? editedAt;
+  final String? editedBy;
+
+  bool get voided => voidedAt != null;
+
+  /// A short code to read out or search by: `TX-` and the id's first six
+  /// characters.
+  String get code =>
+      'TX-${id.substring(0, id.length < 6 ? id.length : 6).toUpperCase()}';
+
+  Sale copyWith({
+    List<SaleItem>? items,
+    int? receivedCentavos,
+    String? Function()? customerName,
+    DateTime? voidedAt,
+    DateTime? editedAt,
+    String? editedBy,
+  }) => Sale(
+    id: id,
+    items: items ?? this.items,
+    receivedCentavos: receivedCentavos ?? this.receivedCentavos,
+    completedAt: completedAt,
+    paymentMethod: paymentMethod,
+    customerName: customerName == null ? this.customerName : customerName(),
+    cashierUid: cashierUid,
+    cashierName: cashierName,
+    voidedAt: voidedAt ?? this.voidedAt,
+    editedAt: editedAt ?? this.editedAt,
+    editedBy: editedBy ?? this.editedBy,
+  );
+
+  Sale voidedOn(DateTime at) => copyWith(voidedAt: at);
 
   int get totalCentavos =>
       items.fold(0, (total, item) => total + item.totalCentavos);
@@ -325,10 +403,16 @@ class Sale {
     'receivedCentavos': receivedCentavos,
     'completedAt': completedAt.millisecondsSinceEpoch,
     'paymentMethod': paymentMethod,
+    'customerName': customerName,
+    'cashierUid': cashierUid,
+    'cashierName': cashierName,
+    'voidedAt': voidedAt?.millisecondsSinceEpoch,
+    'editedAt': editedAt?.millisecondsSinceEpoch,
+    'editedBy': editedBy,
   };
 }
 
-enum ProductOpKind { create, update, delete, sale }
+enum ProductOpKind { create, update, delete, sale, voidSale, editSale }
 
 /// One change to the catalog made on this device, queued until the server
 /// has it — the unit a sync layer works in.
@@ -367,6 +451,17 @@ class ProductOp {
   ProductOp.sale(Sale sale)
     : this._(ProductOpKind.sale, sale.id, const {}, 0, null, sale);
 
+  /// A refund: [sale] (already marked voided) is recorded as void, and its
+  /// inventory lines go back to stock.
+  ProductOp.voidSale(Sale sale)
+    : this._(ProductOpKind.voidSale, sale.id, const {}, 0, null, sale);
+
+  /// An edit to a completed sale: [sale] is the edited version, and
+  /// [restock] the units per product going back to stock (negative when a
+  /// quantity went up and more left the shelf).
+  ProductOp.editSale(Sale sale, Map<String, int> restock)
+    : this._(ProductOpKind.editSale, sale.id, restock, 0, null, sale);
+
   factory ProductOp.fromJson(Map<String, dynamic> json) => ProductOp._(
     ProductOpKind.values.byName(json['kind'] as String),
     json['productId'] as String,
@@ -386,7 +481,8 @@ class ProductOp {
   final String productId;
 
   /// For a create, the whole product ([Product.toMap]); for an update, only
-  /// the changed fields; empty for a delete.
+  /// the changed fields; for a sale edit, units restocked per product id;
+  /// empty otherwise.
   final Map<String, dynamic> fields;
   final int stockDelta;
 
@@ -443,6 +539,29 @@ class ProductOp {
                 'stock': p.stock - sold[p.id]!,
               }),
         ];
+      case ProductOpKind.voidSale:
+        final returned = sale!.soldByProduct;
+        return [
+          for (final p in products)
+            if (!returned.containsKey(p.id))
+              p
+            else
+              Product.fromMap(p.id, {
+                ...p.toMap(),
+                'stock': p.stock + returned[p.id]!,
+              }),
+        ];
+      case ProductOpKind.editSale:
+        return [
+          for (final p in products)
+            if (fields[p.id] is! int)
+              p
+            else
+              Product.fromMap(p.id, {
+                ...p.toMap(),
+                'stock': p.stock + (fields[p.id] as int),
+              }),
+        ];
     }
   }
 }
@@ -466,6 +585,10 @@ abstract interface class ProductRemote {
 
   /// The whole catalog, once. Throws if the server can't be reached.
   Future<List<Product>> fetchAll();
+
+  /// Sales completed on or after [since], from every device. Throws if the
+  /// server can't be reached.
+  Future<List<Sale>> fetchSales({required DateTime since});
 
   /// Hands [op] over for delivery. Completing means the op is safely on its
   /// way — it must not be sent again, or a stock delta would count twice.
@@ -527,6 +650,65 @@ class ProductService implements ProductRemote {
       );
     }
     return Future.wait(writes);
+  }
+
+  /// Marks the sale void, then returns each product's units with an
+  /// increment — separate writes, for the same reason as [_sendSale].
+  Future<void> _sendVoid(Sale sale) {
+    return Future.wait([
+      _sales.doc(sale.id).update({
+        'voidedAt': sale.voidedAt!.millisecondsSinceEpoch,
+        'voidedAtServer': FieldValue.serverTimestamp(),
+      }),
+      for (final MapEntry(key: id, value: quantity)
+          in sale.soldByProduct.entries)
+        _products.doc(id).update({
+          'stock': FieldValue.increment(quantity),
+          'updatedAt': FieldValue.serverTimestamp(),
+        }),
+    ]);
+  }
+
+  /// Rewrites the sale's editable parts, then moves each product's stock by
+  /// its [restock] difference — separate writes, as in [_sendSale].
+  Future<void> _sendEdit(Sale sale, Map<String, int> restock) {
+    return Future.wait([
+      _sales.doc(sale.id).update({
+        'items': [for (final item in sale.items) item.toJson()],
+        'receivedCentavos': sale.receivedCentavos,
+        'totalCentavos': sale.totalCentavos,
+        'changeCentavos': sale.changeCentavos,
+        'itemCount': sale.itemCount,
+        'customerName': sale.customerName,
+        'editedAt': sale.editedAt?.millisecondsSinceEpoch,
+        'editedBy': sale.editedBy,
+        'editedAtServer': FieldValue.serverTimestamp(),
+      }),
+      for (final MapEntry(key: id, value: units) in restock.entries)
+        if (units != 0)
+          _products.doc(id).update({
+            'stock': FieldValue.increment(units),
+            'updatedAt': FieldValue.serverTimestamp(),
+          }),
+    ]);
+  }
+
+  /// Like [fetchAll], a cache-only answer counts as offline.
+  @override
+  Future<List<Sale>> fetchSales({required DateTime since}) async {
+    final snapshot = await _sales
+        .where(
+          'completedAt',
+          isGreaterThanOrEqualTo: since.millisecondsSinceEpoch,
+        )
+        .get();
+    if (snapshot.metadata.isFromCache) {
+      throw StateError('Offline: only cached sales were available.');
+    }
+    return [
+      for (final doc in snapshot.docs)
+        Sale.fromJson({...doc.data(), 'id': doc.id}),
+    ];
   }
 
   /// Generated on the device, so it works with no connection.
@@ -597,6 +779,13 @@ class ProductService implements ProductRemote {
         write = doc.delete();
       case ProductOpKind.sale:
         write = _sendSale(op.sale!);
+      case ProductOpKind.voidSale:
+        write = _sendVoid(op.sale!);
+      case ProductOpKind.editSale:
+        write = _sendEdit(op.sale!, {
+          for (final MapEntry(:key, :value) in op.fields.entries)
+            key: value as int,
+        });
     }
     unawaited(
       write.catchError((Object error) {

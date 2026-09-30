@@ -611,10 +611,10 @@ void main() {
     testWidgets('unbuilt tabs say so', (tester) async {
       await tester.pumpWidget(shell());
 
-      await tester.tap(find.byTooltip('Transactions'));
+      await tester.tap(find.byTooltip('Analytics'));
       await tester.pump();
 
-      expect(find.text('Transactions is not built yet.'), findsOneWidget);
+      expect(find.text('Analytics is not built yet.'), findsOneWidget);
     });
 
     testWidgets('fits a small phone with a full entry and cart', (

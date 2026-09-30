@@ -18,6 +18,9 @@ class FakeProductRemote implements ProductRemote {
   /// Every op the server accepted, in order.
   final sent = <ProductOp>[];
 
+  /// Sales the server holds, by id.
+  final sales = <String, Sale>{};
+
   @override
   String newId() => 'new-${_nextId++}';
 
@@ -28,12 +31,22 @@ class FakeProductRemote implements ProductRemote {
   }
 
   @override
+  Future<List<Sale>> fetchSales({required DateTime since}) async {
+    if (offline) throw StateError('offline');
+    return [
+      for (final s in sales.values)
+        if (!s.completedAt.isBefore(since)) s,
+    ];
+  }
+
+  @override
   Future<void> send(ProductOp op) async {
     if (offline) throw StateError('offline');
     if (op.kind == ProductOpKind.update && !server.containsKey(op.productId)) {
       throw ProductMissing(op.productId);
     }
     sent.add(op);
+    if (op.sale != null) sales[op.sale!.id] = op.sale!;
     final applied = op.applyTo(server.values.toList());
     server
       ..clear()
