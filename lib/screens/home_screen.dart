@@ -10,6 +10,7 @@ import '../services/product_service.dart';
 import '../services/store_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/product_visuals.dart';
+import 'checkout_screen.dart';
 
 /// The Home (POS) tab — a Flutter build of the Stitch "Home - Calculator"
 /// design (project 14772063175572299152): the current entry on top, product
@@ -19,13 +20,14 @@ import '../widgets/product_visuals.dart';
 /// "Manual Entry" line lands at the top of the cart. Search finds products
 /// from the store's inventory by name, size or SKU; tapping one, or pressing
 /// enter for the top match, opens its details drawer to pick a quantity and
-/// add it at its sell price. The cart lives in memory until checkout, which
-/// is not built yet.
+/// add it at its sell price. The cart lives in memory until [CheckoutScreen]
+/// records it as a sale.
 class HomeScreen extends StatefulWidget {
   const HomeScreen({
     super.key,
     required this.products,
     required this.lowStockThreshold,
+    required this.onCompleteSale,
   });
 
   /// Streams rather than a store id so tests can drive the screen without
@@ -33,6 +35,14 @@ class HomeScreen extends StatefulWidget {
   /// [StoreService.lowStockThresholdOf].
   final Stream<List<Product>> products;
   final Stream<int> lowStockThreshold;
+
+  /// Records a completed sale; the dashboard passes
+  /// [ProductRepository.recordSale].
+  final Future<Sale> Function({
+    required List<SaleItem> items,
+    required int receivedCentavos,
+  })
+  onCompleteSale;
 
   @override
   State<HomeScreen> createState() => _HomeScreenState();
@@ -194,12 +204,38 @@ class _HomeScreenState extends State<HomeScreen> {
       );
   }
 
-  void _completeSale() {
-    ScaffoldMessenger.of(context)
-      ..hideCurrentSnackBar()
-      ..showSnackBar(
-        const SnackBar(content: Text('Completing a sale is not built yet.')),
-      );
+  /// Opens checkout for the cart. Completing it records the sale and empties
+  /// the cart; discarding empties it too (with the usual undo); going back
+  /// leaves it as it was.
+  Future<void> _completeSale() async {
+    final items = [
+      // Oldest first, as rung up; the cart shows newest first.
+      for (final line in _lines.reversed)
+        SaleItem(
+          productId: line.productId,
+          name: line.name,
+          unitCentavos: line.unitCentavos,
+          quantity: line.quantity,
+        ),
+    ];
+    final result = await Navigator.of(context).push<CheckoutResult>(
+      MaterialPageRoute(
+        builder: (_) => CheckoutScreen(
+          items: items,
+          onComplete: (items, received) =>
+              widget.onCompleteSale(items: items, receivedCentavos: received),
+        ),
+      ),
+    );
+    if (!mounted) return;
+    switch (result) {
+      case CheckoutResult.completed:
+        setState(_lines.clear);
+      case CheckoutResult.discarded:
+        _clearCart();
+      case null:
+        break;
+    }
   }
 
   void _closeSearch() {

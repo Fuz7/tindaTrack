@@ -314,6 +314,89 @@ void main() {
       expect(repo.pendingOps, isEmpty);
     });
   });
+
+  group('sales', () {
+    const coke = Product(
+      id: 'coke',
+      name: 'Coke',
+      stock: 10,
+      sellCentavos: 2000,
+    );
+    const bread = Product(
+      id: 'bread',
+      name: 'Bread',
+      stock: 5,
+      sellCentavos: 6500,
+    );
+    const items = [
+      SaleItem(
+        productId: 'coke',
+        name: 'Coke',
+        unitCentavos: 2000,
+        quantity: 3,
+      ),
+      SaleItem(name: 'Manual Entry', unitCentavos: 1500, quantity: 1),
+      SaleItem(
+        productId: 'bread',
+        name: 'Bread',
+        unitCentavos: 6500,
+        quantity: 1,
+      ),
+    ];
+
+    test('a sale takes stock down and is sent', () async {
+      final remote = FakeProductRemote([coke, bread]);
+      final repo = _repo(remote);
+      await repo.load();
+      await _settle();
+
+      final sale = await repo.recordSale(items: items, receivedCentavos: 20000);
+      await _settle();
+
+      expect(sale.totalCentavos, 14000);
+      expect(sale.changeCentavos, 6000);
+      final stock = {for (final p in await repo.watch().first) p.id: p.stock};
+      expect(stock, {'coke': 7, 'bread': 4});
+      expect(remote.sent.single.kind, ProductOpKind.sale);
+      expect(remote.server['coke']!.stock, 7);
+      expect(repo.pendingIds, isEmpty);
+    });
+
+    test('an offline sale is kept and sent after a restart', () async {
+      final remote = FakeProductRemote([coke, bread]);
+      final repo = _repo(remote);
+      await repo.load();
+      await _settle();
+      remote.offline = true;
+
+      await repo.recordSale(items: items, receivedCentavos: 14000);
+      await _settle();
+      expect(repo.pendingOps.single.sale!.items, hasLength(3));
+      // A sale is not a pending product edit.
+      expect(repo.pendingIds, isEmpty);
+
+      remote.offline = false;
+      final next = _repo(remote);
+      await next.load();
+      await _settle();
+      await _settle();
+      expect(next.pendingOps, isEmpty);
+      expect(remote.server['bread']!.stock, 4);
+    });
+
+    test('too little cash or no items is refused', () async {
+      final repo = _repo(FakeProductRemote([coke]));
+      await repo.load();
+      expect(
+        () => repo.recordSale(items: items, receivedCentavos: 100),
+        throwsArgumentError,
+      );
+      expect(
+        () => repo.recordSale(items: const [], receivedCentavos: 0),
+        throwsArgumentError,
+      );
+    });
+  });
 }
 
 /// Reads [inner]'s catalog but can't send — online for fetches only.

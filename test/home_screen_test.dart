@@ -42,15 +42,26 @@ const _catalog = [
   Product(id: 'cokezero', name: 'Zero Coke', stock: 40, sellCentavos: 2500),
 ];
 
-Widget _home({List<Product> products = _catalog}) => MaterialApp(
-  theme: AppTheme.light,
-  home: Scaffold(
-    body: HomeScreen(
-      products: Stream.value(products),
-      lowStockThreshold: Stream.value(5),
-    ),
-  ),
-);
+Widget _home({List<Product> products = _catalog, List<Sale>? sales}) =>
+    MaterialApp(
+      theme: AppTheme.light,
+      home: Scaffold(
+        body: HomeScreen(
+          products: Stream.value(products),
+          lowStockThreshold: Stream.value(5),
+          onCompleteSale: ({required items, required receivedCentavos}) async {
+            final sale = Sale(
+              id: 'sale-${sales?.length ?? 0}',
+              items: items,
+              receivedCentavos: receivedCentavos,
+              completedAt: DateTime(2026, 9, 30),
+            );
+            sales?.add(sale);
+            return sale;
+          },
+        ),
+      ),
+    );
 
 /// The product drawer's quantity field.
 Finder get _qtyField => find.descendant(
@@ -480,6 +491,100 @@ void main() {
     await _search(tester, 'coke');
 
     expect(find.text('No products yet'), findsOneWidget);
+  });
+
+  group('checkout', () {
+    Future<void> ringUpMismo(WidgetTester tester, int quantity) async {
+      await _search(tester, 'mismo');
+      await tester.tap(find.bySemanticsLabel(RegExp('^Open Coke Mismo')));
+      await tester.pumpAndSettle();
+      await tester.enterText(_qtyField, '$quantity');
+      await tester.tap(find.text('Add to Cart'));
+      await tester.pumpAndSettle();
+    }
+
+    Future<void> openCheckout(WidgetTester tester) async {
+      await tester.tap(find.text('COMPLETE SALE'));
+      await tester.pumpAndSettle();
+    }
+
+    testWidgets('Complete Sale opens checkout with the cart', (tester) async {
+      await tester.pumpWidget(_home());
+      await _type(tester, '15');
+      await _addToCart(tester);
+      await ringUpMismo(tester, 2);
+
+      await openCheckout(tester);
+
+      expect(find.text('ORDER SUMMARY · 3 ITEMS'), findsOneWidget);
+      // Oldest first, as rung up.
+      expect(find.text('Manual Entry, Coke Mismo'), findsOneWidget);
+      await tester.tap(find.text('ORDER SUMMARY · 3 ITEMS'));
+      await tester.pumpAndSettle();
+      expect(
+        tester.getTopLeft(find.text('Manual Entry')).dy,
+        lessThan(tester.getTopLeft(find.text('Coke Mismo')).dy),
+      );
+      expect(find.text('Qty: 2 × ₱20.00'), findsOneWidget);
+      expect(find.text('₱55.00'), findsOneWidget); // total
+      expect(find.textContaining('Discount'), findsNothing);
+      expect(find.textContaining('Promo'), findsNothing);
+    });
+
+    testWidgets('completing records the sale and empties the cart', (
+      tester,
+    ) async {
+      final sales = <Sale>[];
+      await tester.pumpWidget(_home(sales: sales));
+      await _type(tester, '15');
+      await _addToCart(tester);
+      await ringUpMismo(tester, 2);
+      await openCheckout(tester);
+
+      await tester.ensureVisible(find.text('₱100'));
+      await tester.tap(find.text('₱100'));
+      await tester.pump();
+      await tester.tap(find.text('COMPLETE SALE'));
+      await tester.pumpAndSettle();
+
+      final sale = sales.single;
+      expect(sale.totalCentavos, 5500);
+      expect(sale.receivedCentavos, 10000);
+      expect(
+        [for (final i in sale.items) (i.productId, i.quantity)],
+        [(null, 1), ('coke', 2)],
+      );
+      expect(find.text('0 ITEMS'), findsOneWidget);
+      expect(find.text('Sale completed. Change: ₱45.00'), findsOneWidget);
+    });
+
+    testWidgets('Back to Cart keeps the cart', (tester) async {
+      await tester.pumpWidget(_home());
+      await _type(tester, '15');
+      await _addToCart(tester);
+      await openCheckout(tester);
+
+      await tester.tap(find.text('Back to Cart'));
+      await tester.pumpAndSettle();
+      expect(find.text('1 ITEM'), findsOneWidget);
+    });
+
+    testWidgets('Discard Sale clears the cart, with undo', (tester) async {
+      await tester.pumpWidget(_home());
+      await _type(tester, '15');
+      await _addToCart(tester);
+      await openCheckout(tester);
+
+      await tester.tap(find.text('Discard Sale'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Discard'));
+      await tester.pumpAndSettle();
+      expect(find.text('0 ITEMS'), findsOneWidget);
+
+      await tester.tap(find.text('UNDO'));
+      await tester.pumpAndSettle();
+      expect(find.text('1 ITEM'), findsOneWidget);
+    });
   });
 
   group('DashboardScreen', () {

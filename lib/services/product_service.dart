@@ -234,7 +234,101 @@ class StockAdjustment {
   };
 }
 
-enum ProductOpKind { create, update, delete }
+/// One line of a completed sale, frozen as it was rung up: a later rename
+/// or price change leaves the record of what was sold alone.
+class SaleItem {
+  const SaleItem({
+    required this.name,
+    required this.unitCentavos,
+    required this.quantity,
+    this.productId,
+  });
+
+  factory SaleItem.fromJson(Map<String, dynamic> json) => SaleItem(
+    productId: json['productId'] as String?,
+    name: json['name'] as String,
+    unitCentavos: (json['unitCentavos'] as num).round(),
+    quantity: (json['quantity'] as num).round(),
+  );
+
+  /// The inventory product sold; null for a keypad "Manual Entry", which
+  /// moves no stock.
+  final String? productId;
+  final String name;
+  final int unitCentavos;
+  final int quantity;
+
+  int get totalCentavos => unitCentavos * quantity;
+
+  Map<String, dynamic> toJson() => {
+    'productId': productId,
+    'name': name,
+    'unitCentavos': unitCentavos,
+    'quantity': quantity,
+  };
+}
+
+/// A completed sale, as recorded in `stores/{storeId}/sales/{id}` for the
+/// Transactions and Analytics tabs to come.
+class Sale {
+  const Sale({
+    required this.id,
+    required this.items,
+    required this.receivedCentavos,
+    required this.completedAt,
+    this.paymentMethod = 'cash',
+  });
+
+  factory Sale.fromJson(Map<String, dynamic> json) => Sale(
+    id: json['id'] as String,
+    items: [
+      for (final item in json['items'] as List<dynamic>)
+        SaleItem.fromJson(Map<String, dynamic>.from(item as Map)),
+    ],
+    receivedCentavos: (json['receivedCentavos'] as num).round(),
+    completedAt: DateTime.fromMillisecondsSinceEpoch(
+      (json['completedAt'] as num).round(),
+    ),
+    paymentMethod: json['paymentMethod'] as String? ?? 'cash',
+  );
+
+  final String id;
+  final List<SaleItem> items;
+
+  /// Cash handed over; at least [totalCentavos].
+  final int receivedCentavos;
+
+  /// This device's clock when the sale was completed. The server also stamps
+  /// its own time, but a sale made offline belongs to when it happened.
+  final DateTime completedAt;
+  final String paymentMethod;
+
+  int get totalCentavos =>
+      items.fold(0, (total, item) => total + item.totalCentavos);
+  int get changeCentavos => receivedCentavos - totalCentavos;
+  int get itemCount => items.fold(0, (total, item) => total + item.quantity);
+
+  /// Units sold per inventory product; manual entries move no stock.
+  Map<String, int> get soldByProduct {
+    final sold = <String, int>{};
+    for (final item in items) {
+      final id = item.productId;
+      if (id == null) continue;
+      sold.update(id, (n) => n + item.quantity, ifAbsent: () => item.quantity);
+    }
+    return sold;
+  }
+
+  Map<String, dynamic> toJson() => {
+    'id': id,
+    'items': [for (final item in items) item.toJson()],
+    'receivedCentavos': receivedCentavos,
+    'completedAt': completedAt.millisecondsSinceEpoch,
+    'paymentMethod': paymentMethod,
+  };
+}
+
+enum ProductOpKind { create, update, delete, sale }
 
 /// One change to the catalog made on this device, queued until the server
 /// has it — the unit a sync layer works in.
@@ -249,6 +343,7 @@ class ProductOp {
     this.fields,
     this.stockDelta, [
     this.adjustment,
+    this.sale,
   ]);
 
   /// [product] as a whole, opening stock included: the document is new, so
@@ -266,6 +361,12 @@ class ProductOp {
   const ProductOp.delete(String productId)
     : this._(ProductOpKind.delete, productId, const {}, 0);
 
+  /// A completed sale: recorded, and every inventory line's stock taken
+  /// down by its quantity. Keyed by the sale's id, since it touches many
+  /// products.
+  ProductOp.sale(Sale sale)
+    : this._(ProductOpKind.sale, sale.id, const {}, 0, null, sale);
+
   factory ProductOp.fromJson(Map<String, dynamic> json) => ProductOp._(
     ProductOpKind.values.byName(json['kind'] as String),
     json['productId'] as String,
@@ -276,6 +377,9 @@ class ProductOp {
         : StockAdjustment.fromJson(
             Map<String, dynamic>.from(json['adjustment'] as Map),
           ),
+    json['sale'] == null
+        ? null
+        : Sale.fromJson(Map<String, dynamic>.from(json['sale'] as Map)),
   );
 
   final ProductOpKind kind;
@@ -289,12 +393,16 @@ class ProductOp {
   /// Set on a direct stock update: the log entry it leaves alongside.
   final StockAdjustment? adjustment;
 
+  /// Set on a sale op.
+  final Sale? sale;
+
   Map<String, dynamic> toJson() => {
     'kind': kind.name,
     'productId': productId,
     'fields': fields,
     'stockDelta': stockDelta,
     if (adjustment != null) 'adjustment': adjustment!.toJson(),
+    if (sale != null) 'sale': sale!.toJson(),
   };
 
   /// [products] with this change applied, as the device sees it.
@@ -321,6 +429,18 @@ class ProductOp {
                 ...p.toMap(),
                 ...fields,
                 'stock': p.stock + stockDelta,
+              }),
+        ];
+      case ProductOpKind.sale:
+        final sold = sale!.soldByProduct;
+        return [
+          for (final p in products)
+            if (!sold.containsKey(p.id))
+              p
+            else
+              Product.fromMap(p.id, {
+                ...p.toMap(),
+                'stock': p.stock - sold[p.id]!,
               }),
         ];
     }
@@ -374,6 +494,40 @@ class ProductService implements ProductRemote {
           .collection('stores')
           .doc(storeId)
           .collection('stockAdjustments');
+
+  /// Completed sales, for Transactions and Analytics.
+  CollectionReference<Map<String, dynamic>> get _sales => FirebaseFirestore
+      .instance
+      .collection('stores')
+      .doc(storeId)
+      .collection('sales');
+
+  /// The sale record, then each sold product's stock taken down by an
+  /// increment. Separate writes rather than one batch on purpose: a product
+  /// deleted on another device fails only its own stock write, instead of
+  /// taking the record of the sale down with it. The record's id is fixed on
+  /// the device, so a resend overwrites rather than duplicates it.
+  Future<void> _sendSale(Sale sale) {
+    final writes = <Future<void>>[
+      _sales.doc(sale.id).set({
+        ...sale.toJson()..remove('id'),
+        'totalCentavos': sale.totalCentavos,
+        'changeCentavos': sale.changeCentavos,
+        'itemCount': sale.itemCount,
+        'createdAt': FieldValue.serverTimestamp(),
+      }),
+    ];
+    for (final MapEntry(key: id, value: quantity)
+        in sale.soldByProduct.entries) {
+      writes.add(
+        _products.doc(id).update({
+          'stock': FieldValue.increment(-quantity),
+          'updatedAt': FieldValue.serverTimestamp(),
+        }),
+      );
+    }
+    return Future.wait(writes);
+  }
 
   /// Generated on the device, so it works with no connection.
   @override
@@ -441,6 +595,8 @@ class ProductService implements ProductRemote {
         }
       case ProductOpKind.delete:
         write = doc.delete();
+      case ProductOpKind.sale:
+        write = _sendSale(op.sale!);
     }
     unawaited(
       write.catchError((Object error) {

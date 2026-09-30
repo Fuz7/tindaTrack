@@ -56,6 +56,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   late final Widget _homeTab = HomeScreen(
     products: _products.watch(),
     lowStockThreshold: widget.watchLowStockThreshold(widget.storeId),
+    onCompleteSale: _products.recordSale,
   );
 
   @override

@@ -50,7 +50,10 @@ class ProductRepository {
   List<ProductOp> get pendingOps => List.unmodifiable(_ops);
 
   /// Products with a change the server doesn't have yet.
-  Set<String> get pendingIds => {for (final op in _ops) op.productId};
+  Set<String> get pendingIds => {
+    for (final op in _ops)
+      if (op.kind != ProductOpKind.sale) op.productId,
+  };
 
   /// The catalog sorted by name: the current copy straight away (once
   /// loaded), then every change.
@@ -168,6 +171,27 @@ class ProductRepository {
         ),
       ),
     );
+  }
+
+  /// Records a completed sale and takes each sold product's stock down by
+  /// its quantity, on the device at once and on the server when it can.
+  /// Returns the sale as recorded.
+  Future<Sale> recordSale({
+    required List<SaleItem> items,
+    required int receivedCentavos,
+  }) async {
+    final sale = Sale(
+      id: remote.newId(),
+      items: List.unmodifiable(items),
+      receivedCentavos: receivedCentavos,
+      completedAt: DateTime.now(),
+    );
+    if (sale.items.isEmpty) throw ArgumentError('A sale needs items.');
+    if (sale.changeCentavos < 0) {
+      throw ArgumentError('Received less than the total.');
+    }
+    await _apply(ProductOp.sale(sale));
+    return sale;
   }
 
   Future<void> delete(String productId) => _apply(ProductOp.delete(productId));
