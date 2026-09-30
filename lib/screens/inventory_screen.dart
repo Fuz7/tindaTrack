@@ -69,6 +69,8 @@ class _InventoryScreenState extends State<InventoryScreen> {
   /// Null is "All Items".
   String? _category;
 
+  _StockFilter _stock = _StockFilter.all;
+
   @override
   void initState() {
     super.initState();
@@ -99,9 +101,14 @@ class _InventoryScreenState extends State<InventoryScreen> {
 
   Widget _buildList(AsyncSnapshot<List<Product>> snapshot, int threshold) {
     final products = snapshot.data ?? const <Product>[];
-    // Every category any product is filed under, main or not.
-    final categories = {for (final p in products) ...p.categories}.toList()
-      ..sort();
+    // Products per category, for the filter's ranking and the sheet's counts.
+    final counts = <String, int>{};
+    for (final p in products) {
+      for (final c in p.categories) {
+        counts.update(c, (n) => n + 1, ifAbsent: () => 1);
+      }
+    }
+    final categories = counts.keys.toList()..sort();
     // A category that disappeared (renamed, last product deleted) falls back
     // to All Items instead of showing an empty list with no chip selected.
     final category = categories.contains(_category) ? _category : null;
@@ -112,10 +119,20 @@ class _InventoryScreenState extends State<InventoryScreen> {
     ];
     // The same forgiving search as the Home tab, best matches first.
     final query = _search.text.trim();
-    final visible = query.isEmpty
+    final searched = query.isEmpty
         ? inCategory
         : [for (final m in searchProducts(inCategory, query)) m.product];
-    final alerts = products.where((p) => p.needsAlert(threshold)).length;
+    final visible = [
+      for (final p in searched)
+        if (_stock.matches(p, threshold)) p,
+    ];
+    // Over the whole catalog, so the sheet's numbers don't shift as other
+    // filters change.
+    final stockCounts = {
+      for (final f in _StockFilter.values)
+        f: products.where((p) => f.matches(p, threshold)).length,
+    };
+    final alerts = stockCounts[_StockFilter.attention]!;
 
     final Widget listBody;
     if (snapshot.hasError) {
@@ -139,7 +156,7 @@ class _InventoryScreenState extends State<InventoryScreen> {
       listBody = const _Message(
         icon: Icons.search_off,
         title: 'No matching products',
-        body: 'Try another name, SKU or category.',
+        body: 'Try another name, SKU, category or stock filter.',
       );
     } else {
       listBody = Column(
@@ -166,10 +183,14 @@ class _InventoryScreenState extends State<InventoryScreen> {
       children: [
         _SearchField(controller: _search),
         const SizedBox(height: 12),
-        _CategoryChips(
-          categories: categories,
-          selected: category,
-          onSelected: (value) => setState(() => _category = value),
+        _FilterBar(
+          counts: counts,
+          total: products.length,
+          category: category,
+          onCategory: (value) => setState(() => _category = value),
+          stock: _stock,
+          stockCounts: stockCounts,
+          onStock: (value) => setState(() => _stock = value),
         ),
         const SizedBox(height: AppSpacing.stackMd),
         Row(
@@ -191,6 +212,13 @@ class _InventoryScreenState extends State<InventoryScreen> {
                 background: AppColors.errorContainer,
                 labelColor: AppColors.onErrorContainer,
                 valueColor: AppColors.error,
+                // A shortcut to exactly what it counts; tap again to clear.
+                active: _stock == _StockFilter.attention,
+                onTap: () => setState(
+                  () => _stock = _stock == _StockFilter.attention
+                      ? _StockFilter.all
+                      : _StockFilter.attention,
+                ),
               ),
             ),
           ],
@@ -369,57 +397,482 @@ class _SearchField extends StatelessWidget {
   }
 }
 
-class _CategoryChips extends StatelessWidget {
-  const _CategoryChips({
-    required this.categories,
-    required this.selected,
-    required this.onSelected,
+/// Stock-level filters, alongside the category one.
+enum _StockFilter {
+  all('All stock'),
+  attention('Needs attention'),
+  low('Low stock'),
+  out('Out of stock');
+
+  const _StockFilter(this.label);
+  final String label;
+
+  /// "Needs attention" is exactly what the Alerts tile counts; "Out of
+  /// stock" includes products with alerts off, since the shelf is empty
+  /// either way.
+  bool matches(Product p, int threshold) => switch (this) {
+    all => true,
+    attention => p.needsAlert(threshold),
+    low => p.statusFor(threshold) == StockStatus.lowStock,
+    out => p.stock <= 0,
+  };
+}
+
+/// The filter row: an active stock filter as a removable chip, then All
+/// Items and as many of the busiest categories as fit, then a pinned
+/// Filters button that opens everything.
+///
+/// The row never scrolls. It measures its chips and shows only those that
+/// fit the width, so nothing hides past the edge; the rest are counted on
+/// the button and listed in [_FilterSheet]. The selected category always
+/// makes the row, whatever its rank.
+class _FilterBar extends StatelessWidget {
+  const _FilterBar({
+    required this.counts,
+    required this.total,
+    required this.category,
+    required this.onCategory,
+    required this.stock,
+    required this.stockCounts,
+    required this.onStock,
   });
 
-  final List<String> categories;
-  final String? selected;
-  final ValueChanged<String?> onSelected;
+  /// Products per category.
+  final Map<String, int> counts;
+
+  /// All products, for "All Items".
+  final int total;
+  final String? category;
+  final ValueChanged<String?> onCategory;
+
+  final _StockFilter stock;
+  final Map<_StockFilter, int> stockCounts;
+  final ValueChanged<_StockFilter> onStock;
+
+  static const _chipGap = AppSpacing.stackSm;
+  static const _chipPadding = 16.0;
+
+  /// Categories by product count, most first (ties alphabetical).
+  List<String> get _ranked => counts.keys.toList()
+    ..sort((a, b) {
+      final byCount = counts[b]!.compareTo(counts[a]!);
+      return byCount != 0 ? byCount : a.compareTo(b);
+    });
+
+  Future<void> _openSheet(BuildContext context) {
+    return showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: AppColors.surface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(12)),
+      ),
+      builder: (_) => _FilterSheet(
+        counts: counts,
+        total: total,
+        category: category,
+        onCategory: onCategory,
+        stock: stock,
+        stockCounts: stockCounts,
+        onStock: onStock,
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
-    Widget chip(String label, String? value) {
-      final active = value == selected;
-      return Padding(
-        padding: const EdgeInsets.only(right: AppSpacing.stackSm),
-        child: Material(
-          color: active ? AppColors.primary : AppColors.surfaceContainer,
-          elevation: active ? 1 : 0,
-          shape: StadiumBorder(
-            side: active
-                ? BorderSide.none
-                : const BorderSide(color: AppColors.outlineVariant),
-          ),
-          child: InkWell(
-            customBorder: const StadiumBorder(),
-            onTap: () => onSelected(value),
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-              child: Text(
-                label,
-                style: AppTypography.labelCaps.copyWith(
-                  color: active
-                      ? AppColors.onPrimary
-                      : AppColors.onSurfaceVariant,
+    final textScaler = MediaQuery.textScalerOf(context);
+    double chipWidth(String label, {bool removable = false}) {
+      final painter = TextPainter(
+        text: TextSpan(text: label, style: AppTypography.labelCaps),
+        textDirection: TextDirection.ltr,
+        textScaler: textScaler,
+        maxLines: 1,
+      )..layout();
+      return painter.width +
+          2 * _chipPadding +
+          (removable ? 20 : 0) + // close icon and its gap
+          _chipGap;
+    }
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final ranked = _ranked;
+        // Room for the chips, after the pinned button (≈ icon + "+NN").
+        var room = constraints.maxWidth - 72;
+        final shown = <String>[];
+
+        // Always shown, in this order: the stock filter, All Items, and the
+        // selected category.
+        if (stock != _StockFilter.all) {
+          room -= chipWidth(stock.label, removable: true);
+        }
+        room -= chipWidth('All Items');
+        if (category != null) {
+          shown.add(category!);
+          room -= chipWidth(category!);
+        }
+        for (final c in ranked) {
+          if (c == category) continue;
+          final w = chipWidth(c);
+          if (w > room) break;
+          shown.add(c);
+          room -= w;
+        }
+        // Busiest first, with the selected category in its ranked place.
+        shown.sort((a, b) => ranked.indexOf(a).compareTo(ranked.indexOf(b)));
+        final hidden = counts.length - shown.length;
+
+        return Row(
+          children: [
+            Expanded(
+              // Not scrollable: the chips were picked to fit. This only
+              // guards a squeeze (huge text) from an overflow error.
+              child: SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                physics: const NeverScrollableScrollPhysics(),
+                child: Row(
+                  children: [
+                    if (stock != _StockFilter.all)
+                      _Pill(
+                        label: stock.label,
+                        active: true,
+                        tone: _PillTone.alert,
+                        removeTooltip: 'Clear stock filter',
+                        onTap: () => onStock(_StockFilter.all),
+                      ),
+                    _Pill(
+                      label: 'All Items',
+                      active: category == null,
+                      onTap: () => onCategory(null),
+                    ),
+                    for (final c in shown)
+                      _Pill(
+                        label: c,
+                        active: c == category,
+                        onTap: () => onCategory(c),
+                      ),
+                  ],
                 ),
               ),
             ),
+            const SizedBox(width: _chipGap),
+            Tooltip(
+              message: 'Filters',
+              child: Material(
+                color: AppColors.surfaceContainerLowest,
+                shape: const StadiumBorder(
+                  side: BorderSide(color: AppColors.outlineVariant),
+                ),
+                child: InkWell(
+                  customBorder: const StadiumBorder(),
+                  onTap: () => _openSheet(context),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 4,
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(
+                          Icons.tune,
+                          size: 18,
+                          color: AppColors.primary,
+                        ),
+                        if (hidden > 0) ...[
+                          const SizedBox(width: 4),
+                          Text(
+                            '+$hidden',
+                            style: AppTypography.labelCaps.copyWith(
+                              color: AppColors.primary,
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+}
+
+enum _PillTone { normal, alert }
+
+/// A filter chip. [removeTooltip] adds a ✕ and marks it as clearing.
+class _Pill extends StatelessWidget {
+  const _Pill({
+    required this.label,
+    required this.active,
+    required this.onTap,
+    this.tone = _PillTone.normal,
+    this.removeTooltip,
+  });
+
+  final String label;
+  final bool active;
+  final VoidCallback onTap;
+  final _PillTone tone;
+  final String? removeTooltip;
+
+  @override
+  Widget build(BuildContext context) {
+    final (background, foreground) = !active
+        ? (AppColors.surfaceContainer, AppColors.onSurfaceVariant)
+        : tone == _PillTone.alert
+        ? (AppColors.errorContainer, AppColors.onErrorContainer)
+        : (AppColors.primary, AppColors.onPrimary);
+
+    final chip = Padding(
+      padding: const EdgeInsets.only(right: _FilterBar._chipGap),
+      child: Material(
+        color: background,
+        elevation: active && tone == _PillTone.normal ? 1 : 0,
+        shape: StadiumBorder(
+          side: active
+              ? BorderSide.none
+              : const BorderSide(color: AppColors.outlineVariant),
+        ),
+        child: InkWell(
+          customBorder: const StadiumBorder(),
+          onTap: onTap,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(
+              horizontal: _FilterBar._chipPadding,
+              vertical: 6,
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  label,
+                  maxLines: 1,
+                  style: AppTypography.labelCaps.copyWith(color: foreground),
+                ),
+                if (removeTooltip != null) ...[
+                  const SizedBox(width: 4),
+                  Icon(Icons.close, size: 16, color: foreground),
+                ],
+              ],
+            ),
           ),
+        ),
+      ),
+    );
+    return removeTooltip == null
+        ? chip
+        : Tooltip(message: removeTooltip!, child: chip);
+  }
+}
+
+/// Every filter: stock level as chips (applied at once, sheet stays open),
+/// then every category with its product count, alphabetical, searchable
+/// once the list is long (applied and closed).
+class _FilterSheet extends StatefulWidget {
+  const _FilterSheet({
+    required this.counts,
+    required this.total,
+    required this.category,
+    required this.onCategory,
+    required this.stock,
+    required this.stockCounts,
+    required this.onStock,
+  });
+
+  final Map<String, int> counts;
+  final int total;
+  final String? category;
+  final ValueChanged<String?> onCategory;
+  final _StockFilter stock;
+  final Map<_StockFilter, int> stockCounts;
+  final ValueChanged<_StockFilter> onStock;
+
+  /// Past this many categories, a search box earns its space.
+  static const searchFrom = 8;
+
+  @override
+  State<_FilterSheet> createState() => _FilterSheetState();
+}
+
+class _FilterSheetState extends State<_FilterSheet> {
+  final _search = TextEditingController();
+
+  /// Mirrors the screen's stock filter, so the sheet's chips update in place.
+  late _StockFilter _stock = widget.stock;
+
+  @override
+  void dispose() {
+    _search.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final query = _search.text.trim().toLowerCase();
+    final categories =
+        widget.counts.keys
+            .where((c) => query.isEmpty || c.toLowerCase().contains(query))
+            .toList()
+          ..sort((a, b) => a.toLowerCase().compareTo(b.toLowerCase()));
+
+    Widget sectionLabel(String text) => Padding(
+      padding: const EdgeInsets.only(top: 12, bottom: AppSpacing.stackSm),
+      child: Text(
+        text,
+        style: AppTypography.labelCaps.copyWith(
+          color: AppColors.onSurfaceVariant,
+        ),
+      ),
+    );
+
+    Widget tile(String label, String? value, int count) {
+      final active = value == widget.category;
+      return ListTile(
+        onTap: () {
+          widget.onCategory(value);
+          Navigator.pop(context);
+        },
+        contentPadding: const EdgeInsets.symmetric(horizontal: 8),
+        title: Text(
+          label,
+          style: AppTypography.bodyLg.copyWith(
+            color: active ? AppColors.primary : AppColors.onSurface,
+            fontWeight: active ? FontWeight.w700 : null,
+          ),
+        ),
+        trailing: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              '$count',
+              style: AppTypography.bodySm.copyWith(
+                color: AppColors.onSurfaceVariant,
+              ),
+            ),
+            const SizedBox(width: 12),
+            SizedBox(
+              width: 24,
+              child: active
+                  ? const Icon(Icons.check, color: AppColors.primary)
+                  : null,
+            ),
+          ],
         ),
       );
     }
 
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      child: Row(
-        children: [
-          chip('All Items', null),
-          for (final category in categories) chip(category, category),
-        ],
+    return Padding(
+      padding: EdgeInsets.only(bottom: MediaQuery.viewInsetsOf(context).bottom),
+      child: SafeArea(
+        child: ConstrainedBox(
+          constraints: BoxConstraints(
+            maxHeight: MediaQuery.sizeOf(context).height * 0.8,
+          ),
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(
+              AppSpacing.gutter,
+              AppSpacing.stackMd,
+              AppSpacing.gutter,
+              AppSpacing.stackSm,
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        'Filters',
+                        style: AppTypography.headlineMd.copyWith(
+                          color: AppColors.onSurface,
+                        ),
+                      ),
+                    ),
+                    IconButton(
+                      tooltip: 'Close',
+                      icon: const Icon(Icons.close),
+                      onPressed: () => Navigator.pop(context),
+                    ),
+                  ],
+                ),
+                sectionLabel('STOCK'),
+                Wrap(
+                  spacing: AppSpacing.stackSm,
+                  runSpacing: AppSpacing.stackSm,
+                  children: [
+                    for (final f in _StockFilter.values)
+                      _Pill(
+                        label: f == _StockFilter.all
+                            ? f.label
+                            : '${f.label} (${widget.stockCounts[f] ?? 0})',
+                        active: f == _stock,
+                        tone: f == _StockFilter.all
+                            ? _PillTone.normal
+                            : _PillTone.alert,
+                        onTap: () {
+                          setState(() => _stock = f);
+                          widget.onStock(f);
+                        },
+                      ),
+                  ],
+                ),
+                sectionLabel('CATEGORY'),
+                if (widget.counts.length > _FilterSheet.searchFrom) ...[
+                  TextField(
+                    controller: _search,
+                    onChanged: (_) => setState(() {}),
+                    style: AppTypography.bodySm.copyWith(
+                      color: AppColors.onSurface,
+                    ),
+                    decoration: InputDecoration(
+                      hintText: 'Find a category',
+                      prefixIcon: const Icon(Icons.search),
+                      isDense: true,
+                      filled: true,
+                      fillColor: AppColors.surfaceContainerLow,
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(AppRadius.base),
+                        borderSide: const BorderSide(
+                          color: AppColors.outlineVariant,
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: AppSpacing.stackSm),
+                ],
+                Flexible(
+                  child: ListView(
+                    shrinkWrap: true,
+                    children: [
+                      if (query.isEmpty) ...[
+                        tile('All Items', null, widget.total),
+                        const Divider(height: 1),
+                      ],
+                      for (final c in categories) tile(c, c, widget.counts[c]!),
+                      if (categories.isEmpty)
+                        Padding(
+                          padding: const EdgeInsets.all(AppSpacing.stackMd),
+                          child: Text(
+                            'No category matches “${_search.text.trim()}”.',
+                            textAlign: TextAlign.center,
+                            style: AppTypography.bodySm.copyWith(
+                              color: AppColors.onSurfaceVariant,
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
       ),
     );
   }
@@ -432,6 +885,8 @@ class _StatTile extends StatelessWidget {
     required this.background,
     required this.labelColor,
     required this.valueColor,
+    this.active = false,
+    this.onTap,
   });
 
   final String label;
@@ -440,28 +895,63 @@ class _StatTile extends StatelessWidget {
   final Color labelColor;
   final Color valueColor;
 
+  /// Outlined in [valueColor] while the filter it stands for is on.
+  final bool active;
+
+  /// Makes the tile a filter shortcut.
+  final VoidCallback? onTap;
+
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
+    final radius = BorderRadius.circular(AppRadius.md);
+    return Semantics(
+      button: onTap != null,
+      selected: active,
+      child: Material(
         color: background,
-        borderRadius: BorderRadius.circular(AppRadius.md),
-        border: Border.all(color: AppColors.outlineVariant),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            label,
-            style: AppTypography.labelCaps.copyWith(color: labelColor),
+        shape: RoundedRectangleBorder(
+          borderRadius: radius,
+          side: active
+              ? BorderSide(color: valueColor, width: 2)
+              : const BorderSide(color: AppColors.outlineVariant),
+        ),
+        child: InkWell(
+          borderRadius: radius,
+          onTap: onTap,
+          child: Padding(
+            padding: const EdgeInsets.all(12),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        label,
+                        style: AppTypography.labelCaps.copyWith(
+                          color: labelColor,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        value,
+                        style: AppTypography.headlineLg.copyWith(
+                          color: valueColor,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                if (onTap != null)
+                  Icon(
+                    active ? Icons.filter_alt : Icons.filter_alt_outlined,
+                    size: 18,
+                    color: labelColor,
+                  ),
+              ],
+            ),
           ),
-          const SizedBox(height: 4),
-          Text(
-            value,
-            style: AppTypography.headlineLg.copyWith(color: valueColor),
-          ),
-        ],
+        ),
       ),
     );
   }
