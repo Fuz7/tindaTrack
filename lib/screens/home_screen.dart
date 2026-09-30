@@ -1,4 +1,5 @@
 import 'dart:math' as math;
+import 'dart:ui' show ImageFilter;
 
 import 'package:flutter/material.dart';
 
@@ -123,85 +124,103 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     final query = _search.text.trim();
-    // While searching, results take the keypad's and cart's place: the
-    // keyboard is up, and there is no room for both.
+    // While searching, the screen stays put behind a dimmed, blurred scrim
+    // and the results float over it, as in the "home-search-results-unified"
+    // design. Tapping the scrim leaves search.
     final searching = _searchFocus.hasFocus || query.isNotEmpty;
 
     return Column(
       children: [
-        if (!searching) _EntryDisplay(centavos: _entryCentavos),
+        _SearchScrim(
+          visible: searching,
+          onTap: _closeSearch,
+          child: _EntryDisplay(centavos: _entryCentavos),
+        ),
         _SearchBar(
-          // Keyed so hiding the display above doesn't rebuild the field and
-          // drop its focus mid-typing.
-          key: const ValueKey('search'),
           controller: _search,
           focusNode: _searchFocus,
           onClose: _closeSearch,
           searching: searching,
         ),
         Expanded(
-          child: searching
-              ? _SearchResults(query: query)
-              : LayoutBuilder(
-                  builder: (context, constraints) {
-                    final keypad = _Keypad(
-                      onDigit: _typeDigit,
-                      onClear: _clearEntry,
-                      onAdd: _entry.isEmpty ? null : _addEntryToCart,
-                    );
-                    final minKeypad = _Keypad.heightFor(_Keypad.minRowHeight);
-                    final available = constraints.maxHeight;
-
-                    // Too short for a tappable keypad plus a visible cart:
-                    // scroll the two together rather than squash either.
-                    if (available < minKeypad + _CartSection.minHeight) {
-                      return SingleChildScrollView(
-                        child: Column(
-                          children: [
-                            SizedBox(height: minKeypad, child: keypad),
-                            _CartSection(
-                              lines: _lines,
-                              itemCount: _itemCount,
-                              onRemove: _removeLine,
-                              shrinkWrap: true,
-                            ),
-                          ],
-                        ),
-                      );
-                    }
-
-                    // Designed at 72px rows; on shorter phones the keypad
-                    // gives way first, down to a tappable 44px, and always
-                    // leaves the cart room for its header and a row.
-                    final keypadHeight = math.min(
-                      (available * 0.55).clamp(
-                        minKeypad,
-                        _Keypad.heightFor(_Keypad.rowHeight),
+          child: Stack(
+            children: [
+              Positioned.fill(
+                child: _SearchScrim(
+                  visible: searching,
+                  onTap: _closeSearch,
+                  child: Column(
+                    children: [
+                      Expanded(child: _buildKeypadAndCart()),
+                      _CartFooter(
+                        totalCentavos: _totalCentavos,
+                        onClear: _lines.isEmpty ? null : _clearCart,
+                        onComplete: _lines.isEmpty ? null : _completeSale,
                       ),
-                      available - _CartSection.minHeight,
-                    );
-                    return Column(
-                      children: [
-                        SizedBox(height: keypadHeight, child: keypad),
-                        Expanded(
-                          child: _CartSection(
-                            lines: _lines,
-                            itemCount: _itemCount,
-                            onRemove: _removeLine,
-                          ),
-                        ),
-                      ],
-                    );
-                  },
+                    ],
+                  ),
                 ),
-        ),
-        if (!searching)
-          _CartFooter(
-            totalCentavos: _totalCentavos,
-            onClear: _lines.isEmpty ? null : _clearCart,
-            onComplete: _lines.isEmpty ? null : _completeSale,
+              ),
+              if (searching) _SearchResults(query: query),
+            ],
           ),
+        ),
       ],
+    );
+  }
+
+  Widget _buildKeypadAndCart() {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final keypad = _Keypad(
+          onDigit: _typeDigit,
+          onClear: _clearEntry,
+          onAdd: _entry.isEmpty ? null : _addEntryToCart,
+        );
+        final minKeypad = _Keypad.heightFor(_Keypad.minRowHeight);
+        final available = constraints.maxHeight;
+
+        // Too short for a tappable keypad plus a visible cart: scroll the two
+        // together rather than squash either.
+        if (available < minKeypad + _CartSection.minHeight) {
+          return SingleChildScrollView(
+            child: Column(
+              children: [
+                SizedBox(height: minKeypad, child: keypad),
+                _CartSection(
+                  lines: _lines,
+                  itemCount: _itemCount,
+                  onRemove: _removeLine,
+                  shrinkWrap: true,
+                ),
+              ],
+            ),
+          );
+        }
+
+        // Designed at 72px rows; on shorter phones the keypad gives way
+        // first, down to a tappable 44px, and always leaves the cart room for
+        // its header and a row.
+        final keypadHeight = math.min(
+          (available * 0.55).clamp(
+            minKeypad,
+            _Keypad.heightFor(_Keypad.rowHeight),
+          ),
+          available - _CartSection.minHeight,
+        );
+        return Column(
+          children: [
+            SizedBox(height: keypadHeight, child: keypad),
+            Expanded(
+              child: _CartSection(
+                lines: _lines,
+                itemCount: _itemCount,
+                onRemove: _removeLine,
+              ),
+            ),
+          ],
+        );
+      },
     );
   }
 }
@@ -277,7 +296,6 @@ class _EntryDisplay extends StatelessWidget {
 
 class _SearchBar extends StatelessWidget {
   const _SearchBar({
-    super.key,
     required this.controller,
     required this.focusNode,
     required this.onClose,
@@ -291,11 +309,12 @@ class _SearchBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    OutlineInputBorder border(Color color, [double width = 1]) =>
-        OutlineInputBorder(
-          borderRadius: BorderRadius.circular(AppRadius.base),
-          borderSide: BorderSide(color: color, width: width),
-        );
+    // Styled after the "home-search-results-unified" design: a 48px, 12px-
+    // radius field with a 2px border and a soft drop shadow.
+    OutlineInputBorder border(Color color) => OutlineInputBorder(
+      borderRadius: BorderRadius.circular(AppRadius.md),
+      borderSide: BorderSide(color: color, width: 2),
+    );
 
     return Container(
       padding: const EdgeInsets.symmetric(
@@ -306,37 +325,57 @@ class _SearchBar extends StatelessWidget {
         color: AppColors.surfaceContainerLow,
         border: Border(bottom: BorderSide(color: AppColors.outlineVariant)),
       ),
-      child: TextField(
-        controller: controller,
-        focusNode: focusNode,
-        textInputAction: TextInputAction.search,
-        style: AppTypography.bodySm.copyWith(color: AppColors.onSurface),
-        decoration: InputDecoration(
-          hintText: 'Search products...',
-          hintStyle: AppTypography.bodySm.copyWith(
-            color: AppColors.onSurfaceVariant,
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(AppRadius.md),
+          boxShadow: const [
+            BoxShadow(
+              color: Color(0x14000000),
+              blurRadius: 12,
+              offset: Offset(0, 4),
+            ),
+          ],
+        ),
+        child: SizedBox(
+          height: AppSpacing.touchTarget,
+          child: TextField(
+            controller: controller,
+            focusNode: focusNode,
+            textInputAction: TextInputAction.search,
+            textAlignVertical: TextAlignVertical.center,
+            style: AppTypography.bodyLg.copyWith(color: AppColors.onBackground),
+            decoration: InputDecoration(
+              hintText: 'Search products...',
+              hintStyle: AppTypography.bodyLg.copyWith(
+                color: AppColors.onSurfaceVariant,
+              ),
+              prefixIcon: Icon(
+                Icons.search,
+                color: searching
+                    ? AppColors.primary
+                    : AppColors.onSurfaceVariant,
+              ),
+              // One button both clears and leaves search, so the keypad is
+              // always a single tap away.
+              suffixIcon: searching
+                  ? IconButton(
+                      tooltip: 'Close search',
+                      icon: const Icon(Icons.cancel_outlined),
+                      color: AppColors.onSurfaceVariant,
+                      onPressed: onClose,
+                    )
+                  : null,
+              isDense: true,
+              contentPadding: EdgeInsets.zero,
+              filled: true,
+              fillColor: AppColors.surfaceContainerLowest,
+              border: border(AppColors.outlineVariant),
+              enabledBorder: border(
+                searching ? AppColors.primary : AppColors.outlineVariant,
+              ),
+              focusedBorder: border(AppColors.primary),
+            ),
           ),
-          prefixIcon: const Icon(
-            Icons.search,
-            color: AppColors.onSurfaceVariant,
-          ),
-          // One button both clears and leaves search, so the keypad is
-          // always a single tap away.
-          suffixIcon: searching
-              ? IconButton(
-                  tooltip: 'Close search',
-                  icon: const Icon(Icons.cancel_outlined),
-                  color: AppColors.onSurfaceVariant,
-                  onPressed: onClose,
-                )
-              : null,
-          isDense: true,
-          contentPadding: const EdgeInsets.symmetric(vertical: 10),
-          filled: true,
-          fillColor: AppColors.surfaceContainerLowest,
-          border: border(AppColors.outlineVariant),
-          enabledBorder: border(AppColors.outlineVariant),
-          focusedBorder: border(AppColors.primary, 2),
         ),
       ),
     );
@@ -362,30 +401,103 @@ class _SearchResults extends StatelessWidget {
             'Products you add in Inventory will show up here.',
           );
 
-    return ColoredBox(
-      color: AppColors.surfaceContainerLow,
-      child: SingleChildScrollView(
-        padding: const EdgeInsets.all(32),
-        child: Column(
-          children: [
-            Icon(icon, size: 40, color: AppColors.outline),
-            const SizedBox(height: AppSpacing.stackMd),
-            Text(
-              title,
-              textAlign: TextAlign.center,
-              style: AppTypography.bodyLg.copyWith(color: AppColors.onSurface),
+    // Result cards float over the scrim, styled like the design's result
+    // rows: white, 12px radius, hairline border, small shadow. Until there is
+    // a catalog, the only card is this status one.
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(AppSpacing.gutter),
+      child: Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: AppColors.surfaceContainerLowest,
+          borderRadius: BorderRadius.circular(AppRadius.md),
+          border: Border.all(color: AppColors.outlineVariant),
+          boxShadow: const [
+            BoxShadow(
+              color: Color(0x0D000000),
+              blurRadius: 2,
+              offset: Offset(0, 1),
             ),
-            const SizedBox(height: AppSpacing.stackSm),
-            Text(
-              body,
-              textAlign: TextAlign.center,
-              style: AppTypography.bodySm.copyWith(
-                color: AppColors.onSurfaceVariant,
+          ],
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 48,
+              height: 48,
+              decoration: BoxDecoration(
+                color: AppColors.surfaceContainer,
+                borderRadius: BorderRadius.circular(AppRadius.base),
+              ),
+              child: Icon(icon, color: AppColors.outline),
+            ),
+            const SizedBox(width: AppSpacing.stackMd),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: AppTypography.bodyLg.copyWith(
+                      color: AppColors.onBackground,
+                    ),
+                  ),
+                  Text(
+                    body,
+                    style: AppTypography.bodySm.copyWith(
+                      color: AppColors.onSurfaceVariant,
+                    ),
+                  ),
+                ],
               ),
             ),
           ],
         ),
       ),
+    );
+  }
+}
+
+/// Lays a dimmed, lightly blurred scrim over [child] while search is open —
+/// the screen stays in view for context but can't be tapped. Tapping the
+/// scrim itself calls [onTap].
+class _SearchScrim extends StatelessWidget {
+  const _SearchScrim({
+    required this.visible,
+    required this.onTap,
+    required this.child,
+  });
+
+  final bool visible;
+  final VoidCallback onTap;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return Stack(
+      children: [
+        child,
+        Positioned.fill(
+          child: IgnorePointer(
+            ignoring: !visible,
+            child: AnimatedOpacity(
+              opacity: visible ? 1 : 0,
+              duration: const Duration(milliseconds: 150),
+              child: GestureDetector(
+                behavior: HitTestBehavior.opaque,
+                onTap: onTap,
+                child: ClipRect(
+                  child: BackdropFilter(
+                    filter: ImageFilter.blur(sigmaX: 2, sigmaY: 2),
+                    // on-background (#171D19) at 40%.
+                    child: const ColoredBox(color: Color(0x66171D19)),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ],
     );
   }
 }

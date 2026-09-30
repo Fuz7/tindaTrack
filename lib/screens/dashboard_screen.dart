@@ -2,27 +2,68 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
 import '../services/auth_service.dart';
+import '../services/product_service.dart';
+import '../services/store_service.dart';
 import '../theme/app_theme.dart';
 import 'home_screen.dart';
+import 'inventory_screen.dart';
 
 /// The signed-in, store-ready shell: TindaTrack app bar on top, the four-tab
-/// bottom navigation below, and the Home (POS) tab in between — the frame of
+/// bottom navigation below, and the selected tab in between — the frame of
 /// the Stitch "Home - Active Cart" design.
 ///
-/// Only Home exists so far. The other tabs render as the design shows them and
-/// say they are not built yet when tapped, rather than silently doing nothing.
-class DashboardScreen extends StatelessWidget {
-  const DashboardScreen({super.key, required this.user});
+/// Home and Inventory exist so far. The other tabs render as the design shows
+/// them and say they are not built yet when tapped, rather than silently doing
+/// nothing.
+class DashboardScreen extends StatefulWidget {
+  const DashboardScreen({super.key, required this.user, required this.storeId});
 
   final User user;
+  final String storeId;
+
+  @override
+  State<DashboardScreen> createState() => _DashboardScreenState();
+}
+
+class _DashboardScreenState extends State<DashboardScreen> {
+  static const _home = 0;
+  static const _inventory = 1;
+
+  int _tab = _home;
+
+  /// Built on first visit, then kept in the [IndexedStack] so switching tabs
+  /// neither drops the cart nor re-subscribes to the catalog.
+  Widget? _inventoryTab;
+
+  void _select(int tab) {
+    setState(() {
+      _tab = tab;
+      if (tab == _inventory) {
+        _inventoryTab ??= InventoryScreen(
+          products: ProductService.watch(widget.storeId),
+          lowStockThreshold: StoreService.lowStockThresholdOf(widget.storeId),
+        );
+      }
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.background,
-      appBar: _TopBar(user: user),
-      body: const HomeScreen(),
-      bottomNavigationBar: const _BottomNav(),
+      appBar: _TopBar(user: widget.user),
+      body: IndexedStack(
+        index: _tab,
+        children: [
+          const HomeScreen(),
+          _inventoryTab ?? const SizedBox.shrink(),
+        ],
+      ),
+      bottomNavigationBar: _BottomNav(
+        selected: _tab,
+        onSelect: _select,
+        builtTabs: const {_home, _inventory},
+      ),
     );
   }
 }
@@ -153,14 +194,36 @@ class _SettingsMenu extends StatelessWidget {
 }
 
 class _BottomNav extends StatelessWidget {
-  const _BottomNav();
+  const _BottomNav({
+    required this.selected,
+    required this.onSelect,
+    required this.builtTabs,
+  });
 
   static const _tabs = [
-    (icon: Icons.home, label: 'Home'),
-    (icon: Icons.inventory_2_outlined, label: 'Inventory'),
-    (icon: Icons.receipt_long_outlined, label: 'Transactions'),
-    (icon: Icons.analytics_outlined, label: 'Analytics'),
+    (icon: Icons.home_outlined, selectedIcon: Icons.home, label: 'Home'),
+    (
+      icon: Icons.inventory_2_outlined,
+      selectedIcon: Icons.inventory_2,
+      label: 'Inventory',
+    ),
+    (
+      icon: Icons.receipt_long_outlined,
+      selectedIcon: Icons.receipt_long,
+      label: 'Transactions',
+    ),
+    (
+      icon: Icons.analytics_outlined,
+      selectedIcon: Icons.analytics,
+      label: 'Analytics',
+    ),
   ];
+
+  final int selected;
+  final ValueChanged<int> onSelect;
+
+  /// Tabs that exist; tapping any other says it is not built yet.
+  final Set<int> builtTabs;
 
   @override
   Widget build(BuildContext context) {
@@ -178,9 +241,12 @@ class _BottomNav extends StatelessWidget {
             children: [
               for (final (index, tab) in _tabs.indexed)
                 _NavItem(
-                  icon: tab.icon,
+                  icon: index == selected ? tab.selectedIcon : tab.icon,
                   label: tab.label,
-                  selected: index == 0,
+                  selected: index == selected,
+                  onTap: builtTabs.contains(index)
+                      ? () => onSelect(index)
+                      : null,
                 ),
             ],
           ),
@@ -195,11 +261,15 @@ class _NavItem extends StatelessWidget {
     required this.icon,
     required this.label,
     required this.selected,
+    required this.onTap,
   });
 
   final IconData icon;
   final String label;
   final bool selected;
+
+  /// Null for a tab that is not built yet.
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
@@ -212,13 +282,14 @@ class _NavItem extends StatelessWidget {
           borderRadius: BorderRadius.circular(AppRadius.md),
           onTap: selected
               ? null
-              : () {
-                  ScaffoldMessenger.of(context)
-                    ..hideCurrentSnackBar()
-                    ..showSnackBar(
-                      SnackBar(content: Text('$label is not built yet.')),
-                    );
-                },
+              : onTap ??
+                    () {
+                      ScaffoldMessenger.of(context)
+                        ..hideCurrentSnackBar()
+                        ..showSnackBar(
+                          SnackBar(content: Text('$label is not built yet.')),
+                        );
+                    },
           child: Padding(
             padding: const EdgeInsets.all(8),
             child: Icon(

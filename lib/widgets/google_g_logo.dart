@@ -143,14 +143,7 @@ class _SvgCursor {
   }
 
   /// `C x1 y1 x2 y2 x y`
-  void curveTo(
-    double x1,
-    double y1,
-    double x2,
-    double y2,
-    double x,
-    double y,
-  ) {
+  void curveTo(double x1, double y1, double x2, double y2, double x, double y) {
     path.cubicTo(x1, y1, x2, y2, x, y);
     _ctrlX = x2;
     _ctrlY = y2;

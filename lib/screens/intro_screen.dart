@@ -96,9 +96,8 @@ class _IntroScreenState extends State<IntroScreen> {
                     controller: _controller,
                     itemCount: IntroScreen.pages.length,
                     onPageChanged: (i) => setState(() => _index = i),
-                    itemBuilder: (context, i) => _IntroPage(
-                      data: IntroScreen.pages[i],
-                    ),
+                    itemBuilder: (context, i) =>
+                        _IntroPage(data: IntroScreen.pages[i]),
                   ),
                 ),
                 _buildFooter(),
@@ -121,7 +120,10 @@ class _IntroScreenState extends State<IntroScreen> {
             onPressed: widget.onDone,
             style: TextButton.styleFrom(
               foregroundColor: AppColors.onSurfaceVariant,
-              minimumSize: const Size(AppSpacing.touchTarget, AppSpacing.touchTarget),
+              minimumSize: const Size(
+                AppSpacing.touchTarget,
+                AppSpacing.touchTarget,
+              ),
               shape: const RoundedRectangleBorder(
                 borderRadius: BorderRadius.all(Radius.circular(AppRadius.base)),
               ),
@@ -174,23 +176,24 @@ class _IntroScreenState extends State<IntroScreen> {
             height: 56,
             child: FilledButton(
               onPressed: _next,
-              style: FilledButton.styleFrom(
-                backgroundColor: AppColors.primary,
-                foregroundColor: AppColors.onPrimary,
-                minimumSize: const Size.fromHeight(56),
-                shape: const RoundedRectangleBorder(
-                  borderRadius: BorderRadius.all(
-                    Radius.circular(AppRadius.base),
+              style:
+                  FilledButton.styleFrom(
+                    backgroundColor: AppColors.primary,
+                    foregroundColor: AppColors.onPrimary,
+                    minimumSize: const Size.fromHeight(56),
+                    shape: const RoundedRectangleBorder(
+                      borderRadius: BorderRadius.all(
+                        Radius.circular(AppRadius.base),
+                      ),
+                    ),
+                  ).copyWith(
+                    // active:bg-primary-container
+                    overlayColor: WidgetStateProperty.resolveWith(
+                      (states) => states.contains(WidgetState.pressed)
+                          ? AppColors.primaryContainer
+                          : null,
+                    ),
                   ),
-                ),
-              ).copyWith(
-                // active:bg-primary-container
-                overlayColor: WidgetStateProperty.resolveWith(
-                  (states) => states.contains(WidgetState.pressed)
-                      ? AppColors.primaryContainer
-                      : null,
-                ),
-              ),
               child: Text(
                 _isLast ? 'Get Started' : 'Next',
                 style: AppTypography.bodyLg.copyWith(

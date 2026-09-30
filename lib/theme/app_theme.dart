@@ -277,10 +277,7 @@ abstract final class AppTheme {
       bodyMedium: AppTypography.bodySm,
       bodySmall: AppTypography.bodySm,
       labelSmall: AppTypography.labelCaps,
-    ).apply(
-      bodyColor: AppColors.onSurface,
-      displayColor: AppColors.onSurface,
-    ),
+    ).apply(bodyColor: AppColors.onSurface, displayColor: AppColors.onSurface),
     // Design system: no shadows, 1px outlines, 8px radius.
     filledButtonTheme: FilledButtonThemeData(
       style: FilledButton.styleFrom(

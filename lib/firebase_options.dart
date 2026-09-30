@@ -62,8 +62,10 @@ class DefaultFirebaseOptions {
     messagingSenderId: '930423513347',
     projectId: 'tindatrack-73678',
     storageBucket: 'tindatrack-73678.firebasestorage.app',
-    androidClientId: '930423513347-hf86t5dl6ctij4k0v6osekcvr36p9a7u.apps.googleusercontent.com',
-    iosClientId: '930423513347-tlp8am9b0rebnemne1so9se7lhlp1unn.apps.googleusercontent.com',
+    androidClientId:
+        '930423513347-hf86t5dl6ctij4k0v6osekcvr36p9a7u.apps.googleusercontent.com',
+    iosClientId:
+        '930423513347-tlp8am9b0rebnemne1so9se7lhlp1unn.apps.googleusercontent.com',
     iosBundleId: 'com.tindatrack.tindaTrack',
   );
 }

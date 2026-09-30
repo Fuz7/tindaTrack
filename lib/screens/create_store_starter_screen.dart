@@ -637,8 +637,7 @@ class _CleanSlateCard extends StatelessWidget {
           const SizedBox(height: 12),
           const Text(
             'Your tindahan launches immediately with an empty catalog. You can '
-            'scan barcodes or quick-add custom products directly on the POS '
-            'screen anytime.',
+            'add products from the Inventory tab anytime.',
             style: TextStyle(
               fontSize: 12,
               height: 1.6,

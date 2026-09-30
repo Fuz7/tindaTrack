@@ -140,26 +140,46 @@ void main() {
     expect(find.text('1 ITEM'), findsOneWidget);
   });
 
-  testWidgets('search swaps the keypad for results and back', (tester) async {
+  testWidgets('search floats results over a scrim that blocks the keypad', (
+    tester,
+  ) async {
     await tester.pumpWidget(_home());
 
     await tester.enterText(find.byType(TextField), 'piattos');
-    await tester.pump();
+    await tester.pumpAndSettle();
 
     expect(find.text('No products match “piattos”'), findsOneWidget);
-    expect(find.byTooltip('Add to cart'), findsNothing);
+    // The keypad stays in view behind the scrim but can't be tapped.
+    expect(find.text('Active Cart'), findsOneWidget);
+    await tester.tap(find.text('5'), warnIfMissed: false);
+    await tester.pump();
+    expect(find.text('0.00'), findsOneWidget);
 
     await tester.tap(find.byTooltip('Close search'));
-    await tester.pump();
+    await tester.pumpAndSettle();
 
-    expect(find.byTooltip('Add to cart'), findsOneWidget);
-    expect(find.text('Active Cart'), findsOneWidget);
+    expect(find.text('No products match “piattos”'), findsNothing);
+    await tester.tap(find.text('5'));
+    await tester.pump();
+    expect(find.text('5.00'), findsOneWidget);
+  });
+
+  testWidgets('tapping the scrim leaves search', (tester) async {
+    await tester.pumpWidget(_home());
+
+    await tester.enterText(find.byType(TextField), 'piattos');
+    await tester.pumpAndSettle();
+    await tester.tapAt(tester.getCenter(find.text('Active Cart')));
+    await tester.pumpAndSettle();
+
+    expect(find.text('No products match “piattos”'), findsNothing);
+    expect(find.byTooltip('Close search'), findsNothing);
   });
 
   group('DashboardScreen', () {
     Widget shell() => MaterialApp(
       theme: AppTheme.light,
-      home: DashboardScreen(user: _FakeUser()),
+      home: DashboardScreen(user: _FakeUser(), storeId: 'store-1'),
     );
 
     testWidgets('shows the home tab under the app bar and nav', (tester) async {
@@ -174,10 +194,10 @@ void main() {
     testWidgets('unbuilt tabs say so', (tester) async {
       await tester.pumpWidget(shell());
 
-      await tester.tap(find.byTooltip('Inventory'));
+      await tester.tap(find.byTooltip('Transactions'));
       await tester.pump();
 
-      expect(find.text('Inventory is not built yet.'), findsOneWidget);
+      expect(find.text('Transactions is not built yet.'), findsOneWidget);
     });
 
     testWidgets('fits a small phone with a full entry and cart', (

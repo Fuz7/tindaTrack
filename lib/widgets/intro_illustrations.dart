@@ -42,8 +42,16 @@ class InventoryIllustration extends StatelessWidget {
                 _Shelf(
                   unit: unit,
                   items: [
-                    _ShelfItem(width: 1.2, height: 2.0, color: AppColors.primary),
-                    _ShelfItem(width: 0.9, height: 1.4, color: AppColors.tertiary),
+                    _ShelfItem(
+                      width: 1.2,
+                      height: 2.0,
+                      color: AppColors.primary,
+                    ),
+                    _ShelfItem(
+                      width: 0.9,
+                      height: 1.4,
+                      color: AppColors.tertiary,
+                    ),
                     _ShelfItem(
                       width: 1.5,
                       height: 1.6,
@@ -136,7 +144,9 @@ class ProfitIllustration extends StatelessWidget {
                     ],
                   ],
                 ),
-                CustomPaint(painter: _TrendArrowPainter(strokeWidth: unit * 0.4)),
+                CustomPaint(
+                  painter: _TrendArrowPainter(strokeWidth: unit * 0.4),
+                ),
               ],
             ),
           );
@@ -149,7 +159,10 @@ class ProfitIllustration extends StatelessWidget {
 /// Shared 1:1 backdrop: a soft gradient panel with a hairline border, per the
 /// `.illustration-container` rule in the Stitch markup.
 class _IllustrationFrame extends StatelessWidget {
-  const _IllustrationFrame({required this.child, this.shape = BoxShape.rectangle});
+  const _IllustrationFrame({
+    required this.child,
+    this.shape = BoxShape.rectangle,
+  });
 
   final Widget child;
   final BoxShape shape;
@@ -358,14 +371,8 @@ class _ReceiptCalculatorPainter extends CustomPainter {
     canvas
       // A gap in the frame colour lifts the calculator off the receipt
       // without resorting to a shadow (the design system has none).
-      ..drawRRect(
-        body.inflate(0.018 * s),
-        fill(AppColors.surfaceContainerLow),
-      )
-      ..drawRRect(
-        body.inflate(0.018 * s),
-        stroke(AppColors.surfaceBorder, 1),
-      )
+      ..drawRRect(body.inflate(0.018 * s), fill(AppColors.surfaceContainerLow))
+      ..drawRRect(body.inflate(0.018 * s), stroke(AppColors.surfaceBorder, 1))
       ..drawRRect(body, fill(AppColors.primary));
 
     // Display with a right-aligned running total.

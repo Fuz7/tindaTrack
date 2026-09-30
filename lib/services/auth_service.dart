@@ -15,8 +15,8 @@ class AuthService {
 
   /// Fires on sign-in, sign-out, and once on startup with the restored user
   /// (or null). This is what lets a returning user skip the sign-in screen.
-  static final Stream<User?> authState =
-      FirebaseAuth.instance.authStateChanges();
+  static final Stream<User?> authState = FirebaseAuth.instance
+      .authStateChanges();
 
   static User? get currentUser => FirebaseAuth.instance.currentUser;
 

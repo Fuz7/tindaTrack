@@ -45,7 +45,7 @@ class StoreGate extends StatelessWidget {
           );
         }
 
-        return DashboardScreen(user: user);
+        return DashboardScreen(user: user, storeId: membership.storeId!);
       },
     );
   }

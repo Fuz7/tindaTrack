@@ -42,7 +42,7 @@ class StoreDraft {
     this.phone,
     this.currency = 'PHP',
     this.address,
-    this.lowStockThreshold = 5,
+    this.lowStockThreshold = defaultLowStockThreshold,
   });
 
   final String name;
@@ -52,6 +52,8 @@ class StoreDraft {
   /// ISO 4217 code, e.g. `PHP`.
   final String currency;
   final String? address;
+
+  static const defaultLowStockThreshold = 5;
 
   /// Stock at or below this count is flagged as low.
   final int lowStockThreshold;
@@ -105,6 +107,17 @@ class StoreService {
 
           return StoreMembership.joined(raw);
         });
+  }
+
+  /// Watches the store's `lowStockThreshold`, falling back to the create
+  /// flow's default of 5 while it loads or if the field is missing.
+  static Stream<int> lowStockThresholdOf(String storeId) {
+    return _db.collection(storesCollection).doc(storeId).snapshots().map((
+      snapshot,
+    ) {
+      final raw = snapshot.data()?['lowStockThreshold'];
+      return raw is num ? raw.round() : StoreDraft.defaultLowStockThreshold;
+    });
   }
 
   /// Creates `stores/{id}` from [draft] and points `users/{uid}` at it, as one
