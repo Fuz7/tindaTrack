@@ -17,8 +17,8 @@ class ProductMatch {
 
 /// Finds products the way a cashier types: fast, abbreviated and misspelled.
 ///
-/// Every word of [query] has to land on some word of the product's name or
-/// its SKU, in any order. A word lands when it is
+/// Every word of [query] has to land on some word of the product's name,
+/// size or SKU, in any order. A word lands when it is
 /// - the start of a word — "san mig" finds San Miguel,
 /// - inside a word, from two letters up — "guel",
 /// - or close to the start of a word, allowing one typo from three letters
@@ -64,13 +64,17 @@ List<_Word> _words(String text) => [
 
 ProductMatch? _match(Product product, List<String> tokens, String squashed) {
   final nameWords = _words(product.name);
+  final sizeWords = _words(product.size ?? '');
   final skuWords = _words(product.sku ?? '');
 
   var score = 0;
   final highlights = <(int, int)>[];
   var allMatched = true;
   for (final token in tokens) {
-    final hit = _bestHit(token, nameWords) ?? _bestHit(token, skuWords);
+    final hit =
+        _bestHit(token, nameWords) ??
+        _bestHit(token, sizeWords) ??
+        _bestHit(token, skuWords);
     if (hit == null) {
       allMatched = false;
       break;

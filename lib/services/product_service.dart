@@ -16,14 +16,18 @@ class Product {
     required this.stock,
     required this.sellCentavos,
     this.buyCentavos,
+    this.size,
     this.sku,
-    this.category,
+    this.categories = const [],
     this.imageUrl,
   });
 
   /// Reads a product defensively, from Firestore or local JSON alike: both
   /// hand back `dynamic`, and one malformed field should not take the whole
   /// list down.
+  ///
+  /// Products saved before multiple categories carry a single `category`
+  /// string; it is read as a one-item [categories].
   factory Product.fromMap(String id, Map<String, dynamic> data) {
     String? text(String key) {
       final value = data[key];
@@ -35,14 +39,24 @@ class Product {
       return value is num ? value.round() : null;
     }
 
+    final rawCategories = data['categories'];
+    final legacyCategory = text('category');
+    final categories = rawCategories is List
+        ? [
+            for (final c in rawCategories)
+              if (c is String && c.trim().isNotEmpty) c.trim(),
+          ]
+        : [?legacyCategory];
+
     return Product(
       id: id,
       name: text('name') ?? 'Unnamed product',
       stock: whole('stock') ?? 0,
       sellCentavos: whole('sellCentavos') ?? 0,
       buyCentavos: whole('buyCentavos'),
+      size: text('size'),
       sku: text('sku'),
-      category: text('category'),
+      categories: List.unmodifiable(categories),
       imageUrl: text('imageUrl'),
     );
   }
@@ -58,9 +72,23 @@ class Product {
   final int stock;
   final int sellCentavos;
   final int? buyCentavos;
+
+  /// Free text such as `330ml`, `40g` or `Large`; null when the product has
+  /// no size.
+  final String? size;
   final String? sku;
-  final String? category;
+
+  /// Every category the product is filed under, main one first. Empty when
+  /// uncategorized.
+  final List<String> categories;
   final String? imageUrl;
+
+  /// The main category: the one the SKU is built from.
+  String? get mainCategory => categories.isEmpty ? null : categories.first;
+
+  /// The name with its size, for the cart and anywhere else one line has to
+  /// tell sizes apart: `Piattos Cheese · 40g`.
+  String get displayName => size == null ? name : '$name · $size';
 
   /// Every field but [id], which is the document or storage key.
   Map<String, dynamic> toMap() => {
@@ -68,8 +96,9 @@ class Product {
     'stock': stock,
     'sellCentavos': sellCentavos,
     'buyCentavos': buyCentavos,
+    'size': size,
     'sku': sku,
-    'category': category,
+    'categories': categories,
     'imageUrl': imageUrl,
   };
 
@@ -85,21 +114,27 @@ class Product {
 }
 
 /// What the "Add New Product" form collects before anything is written.
-/// Optional fields are null rather than empty, as on [Product].
+/// Optional fields are null or empty, as on [Product].
 class ProductDraft {
   const ProductDraft({
     required this.name,
     required this.sellCentavos,
     this.buyCentavos,
     this.stock = 0,
-    this.category,
+    this.size,
+    this.sku,
+    this.categories = const [],
   });
 
   final String name;
   final int sellCentavos;
   final int? buyCentavos;
   final int stock;
-  final String? category;
+  final String? size;
+  final String? sku;
+
+  /// Main category first.
+  final List<String> categories;
 
   Product toProduct(String id) => Product(
     id: id,
@@ -107,7 +142,9 @@ class ProductDraft {
     stock: stock,
     sellCentavos: sellCentavos,
     buyCentavos: buyCentavos,
-    category: category,
+    size: size,
+    sku: sku,
+    categories: List.unmodifiable(categories),
   );
 }
 

@@ -105,7 +105,7 @@ class _HomeScreenState extends State<HomeScreen> {
       final existing = _lines.where((l) => l.productId == product.id);
       final line = existing.isEmpty
           ? _CartLine(
-              name: product.name,
+              name: product.displayName,
               unitCentavos: product.sellCentavos,
               productId: product.id,
             )
@@ -637,7 +637,8 @@ class _SearchResultCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final details = [
-      if (product.sku != null) product.sku!,
+      ?product.size,
+      ?product.sku,
       '${product.stock} in stock',
     ].join(' • ');
 

@@ -74,17 +74,16 @@ class _InventoryScreenState extends State<InventoryScreen> {
 
   Widget _buildList(AsyncSnapshot<List<Product>> snapshot, int threshold) {
     final products = snapshot.data ?? const <Product>[];
-    final categories = {
-      for (final p in products)
-        if (p.category != null) p.category!,
-    }.toList()..sort();
+    // Every category any product is filed under, main or not.
+    final categories = {for (final p in products) ...p.categories}.toList()
+      ..sort();
     // A category that disappeared (renamed, last product deleted) falls back
     // to All Items instead of showing an empty list with no chip selected.
     final category = categories.contains(_category) ? _category : null;
 
     final inCategory = [
       for (final p in products)
-        if (category == null || p.category == category) p,
+        if (category == null || p.categories.contains(category)) p,
     ];
     // The same forgiving search as the Home tab, best matches first.
     final query = _search.text.trim();
@@ -187,7 +186,9 @@ class _InventoryScreenState extends State<InventoryScreen> {
                 ),
               ),
               TextButton.icon(
-                onPressed: () => _openAddProduct(categories),
+                onPressed: () => _openAddProduct(categories, {
+                  for (final p in products) ?p.sku,
+                }),
                 icon: const Icon(Icons.add_circle_outline, size: 18),
                 label: Text('ADD NEW', style: AppTypography.labelCaps),
                 style: TextButton.styleFrom(
@@ -207,12 +208,13 @@ class _InventoryScreenState extends State<InventoryScreen> {
     );
   }
 
-  void _openAddProduct(List<String> categories) {
+  void _openAddProduct(List<String> categories, Set<String> skus) {
     Navigator.of(context).push(
       MaterialPageRoute<void>(
         builder: (_) => AddProductScreen(
           onSave: widget.onSaveProduct,
           existingCategories: categories,
+          existingSkus: skus,
         ),
       ),
     );
@@ -444,8 +446,21 @@ class _ProductCard extends StatelessWidget {
                           color: AppColors.onSurface,
                         ),
                       ),
-                      Text(
-                        'Stock: ${_units(product.stock)}',
+                      Text.rich(
+                        TextSpan(
+                          children: [
+                            if (product.size != null)
+                              TextSpan(
+                                text: '${product.size} • ',
+                                style: const TextStyle(
+                                  color: AppColors.onSurfaceVariant,
+                                ),
+                              ),
+                            TextSpan(text: 'Stock: ${_units(product.stock)}'),
+                          ],
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                         style: AppTypography.bodySm.copyWith(
                           color: status.color,
                         ),
@@ -583,6 +598,13 @@ class _ProductDrawer extends StatelessWidget {
                                 color: AppColors.onSurface,
                               ),
                             ),
+                            if (product.size != null)
+                              Text(
+                                product.size!,
+                                style: AppTypography.bodySm.copyWith(
+                                  color: AppColors.onSurfaceVariant,
+                                ),
+                              ),
                             const SizedBox(height: 4),
                             Container(
                               padding: const EdgeInsets.symmetric(
@@ -628,11 +650,45 @@ class _ProductDrawer extends StatelessWidget {
                       Expanded(
                         child: _InfoTile(
                           label: 'CATEGORY',
-                          value: product.category ?? '—',
+                          // The tile has room for one; the rest are listed
+                          // below the tiles.
+                          value: product.mainCategory ?? '—',
                         ),
                       ),
                     ],
                   ),
+                  if (product.categories.length > 1) ...[
+                    const SizedBox(height: 12),
+                    Wrap(
+                      spacing: AppSpacing.stackSm,
+                      runSpacing: AppSpacing.stackSm,
+                      children: [
+                        for (final (i, category) in product.categories.indexed)
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 10,
+                              vertical: 4,
+                            ),
+                            decoration: BoxDecoration(
+                              color: i == 0
+                                  ? AppColors.primaryContainer
+                                  : AppColors.surfaceContainer,
+                              borderRadius: BorderRadius.circular(
+                                AppRadius.full,
+                              ),
+                            ),
+                            child: Text(
+                              i == 0 ? '$category · MAIN' : category,
+                              style: AppTypography.bodySm.copyWith(
+                                color: i == 0
+                                    ? AppColors.onPrimaryContainer
+                                    : AppColors.onSurfaceVariant,
+                              ),
+                            ),
+                          ),
+                      ],
+                    ),
+                  ],
                   const SizedBox(height: 24),
                   Text(
                     'PRICING DETAILS',

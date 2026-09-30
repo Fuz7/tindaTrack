@@ -2,20 +2,24 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../services/product_service.dart';
+import '../services/sku.dart';
 import '../theme/app_theme.dart';
 
 /// "Add New Product" — a Flutter build of the Stitch design of that name
-/// (project 14772063175572299152): photo slot, name, buy and sell prices,
-/// opening stock, and a category, saved with a pinned button.
+/// (project 14772063175572299152): photo slot, name, optional size, buy and
+/// sell prices, opening stock, categories and a SKU, saved with a pinned
+/// button.
 ///
-/// The design's categories look multi-select, but a product has one category
-/// — it is what the Inventory chips filter on — so picking one replaces the
-/// last. Photo upload and the stock tally calculator are not built yet.
+/// Categories are multi-select; the first one picked is the product's main
+/// category, marked MAIN, and is what the SKU is built from. The SKU fills
+/// itself in from the name, size and main category until the owner types
+/// their own. Photo upload and the stock tally calculator are not built yet.
 class AddProductScreen extends StatefulWidget {
   const AddProductScreen({
     super.key,
     required this.onSave,
     this.existingCategories = const [],
+    this.existingSkus = const {},
   });
 
   /// Saves the product to the on-device catalog, which reaches the server on
@@ -26,6 +30,9 @@ class AddProductScreen extends StatefulWidget {
 
   /// Categories the store already uses, offered next to the defaults.
   final List<String> existingCategories;
+
+  /// SKUs already in the catalog; a new one must differ, ignoring case.
+  final Set<String> existingSkus;
 
   static const defaultCategories = [
     'Snacks',
@@ -45,13 +52,33 @@ class _AddProductScreenState extends State<AddProductScreen> {
   final _buy = TextEditingController();
   final _sell = TextEditingController();
   final _stock = TextEditingController();
+  final _size = TextEditingController();
+  final _sku = TextEditingController();
 
   late final List<String> _categories = [
     ...AddProductScreen.defaultCategories,
     for (final c in widget.existingCategories)
       if (!AddProductScreen.defaultCategories.contains(c)) c,
   ];
-  String? _category;
+
+  /// Picked categories in the order picked; the first is the main one.
+  final _selected = <String>[];
+
+  /// The random end of the suggested SKU, rolled once so the suggestion
+  /// doesn't flicker as the owner types.
+  late String _skuTag = randomSkuTag();
+
+  /// The SKU last filled in automatically. While the field still holds it
+  /// (or is blank), it keeps following the name, size and main category;
+  /// once the owner types something else, it is theirs and is left alone.
+  String _autoSku = '';
+
+  @override
+  void initState() {
+    super.initState();
+    _name.addListener(_refreshSku);
+    _size.addListener(_refreshSku);
+  }
 
   @override
   void dispose() {
@@ -59,7 +86,43 @@ class _AddProductScreenState extends State<AddProductScreen> {
     _buy.dispose();
     _sell.dispose();
     _stock.dispose();
+    _size.dispose();
+    _sku.dispose();
     super.dispose();
+  }
+
+  bool get _skuIsAuto => _sku.text.isEmpty || _sku.text == _autoSku;
+
+  void _refreshSku() {
+    if (!_skuIsAuto) return;
+    final suggestion =
+        generateSku(
+          name: _name.text,
+          size: _size.text,
+          mainCategory: _selected.firstOrNull,
+          tag: _skuTag,
+          taken: widget.existingSkus,
+        ) ??
+        '';
+    // Keep the rolled tag if a clash forced a new one.
+    if (suggestion.isNotEmpty) _skuTag = suggestion.split('-').last;
+    _autoSku = suggestion;
+    if (_sku.text != suggestion) _sku.text = suggestion;
+    if (mounted) setState(() {}); // the helper line follows auto vs. own
+  }
+
+  void _toggleCategory(String category) {
+    setState(() {
+      if (!_selected.remove(category)) _selected.add(category);
+    });
+    _refreshSku();
+  }
+
+  String? _validateSku(String? value) {
+    final sku = normalizeSku(value ?? '');
+    if (sku.isEmpty) return null; // optional
+    final taken = widget.existingSkus.any((s) => s.toUpperCase() == sku);
+    return taken ? 'Another product already uses this SKU.' : null;
   }
 
   void _notBuilt(String feature) {
@@ -80,9 +143,11 @@ class _AddProductScreenState extends State<AddProductScreen> {
       final existing = _categories.where(
         (c) => c.toLowerCase() == name.toLowerCase(),
       );
-      if (existing.isEmpty) _categories.add(name);
-      _category = existing.isEmpty ? name : existing.first;
+      final category = existing.isEmpty ? name : existing.first;
+      if (existing.isEmpty) _categories.add(category);
+      if (!_selected.contains(category)) _selected.add(category);
     });
+    _refreshSku();
   }
 
   void _save() {
@@ -93,7 +158,9 @@ class _AddProductScreenState extends State<AddProductScreen> {
       sellCentavos: parseCentavos(_sell.text)!,
       buyCentavos: parseCentavos(_buy.text),
       stock: int.tryParse(_stock.text) ?? 0,
-      category: _category,
+      size: _size.text.trim().isEmpty ? null : _size.text.trim(),
+      sku: normalizeSku(_sku.text).isEmpty ? null : normalizeSku(_sku.text),
+      categories: List.of(_selected),
     );
 
     final messenger = ScaffoldMessenger.of(context);
@@ -158,11 +225,24 @@ class _AddProductScreenState extends State<AddProductScreen> {
                           textCapitalization: TextCapitalization.words,
                           style: _inputStyle,
                           decoration: _decoration(
-                            'e.g., San Miguel Beer 330ml',
+                            'e.g., San Miguel Pale Pilsen',
                           ),
                           validator: (value) => (value ?? '').trim().isEmpty
                               ? 'Enter a product name.'
                               : null,
+                        ),
+                      ),
+                      const SizedBox(height: 24),
+                      _Field(
+                        label: 'SIZE (OPTIONAL)',
+                        child: TextFormField(
+                          controller: _size,
+                          textInputAction: TextInputAction.next,
+                          style: _inputStyle,
+                          inputFormatters: [
+                            LengthLimitingTextInputFormatter(20),
+                          ],
+                          decoration: _decoration('e.g., 330ml, 40g, Large'),
                         ),
                       ),
                       const SizedBox(height: 24),
@@ -219,7 +299,7 @@ class _AddProductScreenState extends State<AddProductScreen> {
                         children: [
                           Expanded(
                             child: Text(
-                              'CATEGORY',
+                              'CATEGORIES',
                               style: AppTypography.labelCaps.copyWith(
                                 color: AppColors.onSurfaceVariant,
                               ),
@@ -249,16 +329,45 @@ class _AddProductScreenState extends State<AddProductScreen> {
                           for (final category in _categories)
                             _CategoryTag(
                               label: category,
-                              selected: category == _category,
-                              // Tapping the selected tag clears it: category is
-                              // optional.
-                              onTap: () => setState(
-                                () => _category = category == _category
-                                    ? null
-                                    : category,
-                              ),
+                              selected: _selected.contains(category),
+                              main: _selected.firstOrNull == category,
+                              onTap: () => _toggleCategory(category),
                             ),
                         ],
+                      ),
+                      if (_selected.isNotEmpty) ...[
+                        const SizedBox(height: AppSpacing.stackSm),
+                        Text(
+                          'The first category picked is the main one.',
+                          style: AppTypography.bodySm.copyWith(
+                            color: AppColors.onSurfaceVariant,
+                          ),
+                        ),
+                      ],
+                      const SizedBox(height: 24),
+                      _Field(
+                        label: 'SKU',
+                        child: TextFormField(
+                          controller: _sku,
+                          textCapitalization: TextCapitalization.characters,
+                          style: _inputStyle,
+                          inputFormatters: [
+                            FilteringTextInputFormatter.deny(RegExp(r'\s')),
+                            LengthLimitingTextInputFormatter(24),
+                          ],
+                          // Rebuild so the helper line tracks auto vs. own.
+                          onChanged: (_) => setState(() {}),
+                          decoration: _decoration('Fills in from the name')
+                              .copyWith(
+                                helperText: _skuIsAuto && _sku.text.isNotEmpty
+                                    ? 'Suggested — type over it to use your own code.'
+                                    : null,
+                                helperStyle: AppTypography.bodySm.copyWith(
+                                  color: AppColors.onSurfaceVariant,
+                                ),
+                              ),
+                          validator: _validateSku,
+                        ),
                       ),
                     ],
                   ),
@@ -482,18 +591,26 @@ class _CategoryTag extends StatelessWidget {
   const _CategoryTag({
     required this.label,
     required this.selected,
+    required this.main,
     required this.onTap,
   });
 
   final String label;
   final bool selected;
+
+  /// The main category: tagged MAIN.
+  final bool main;
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
+    final textColor = selected
+        ? AppColors.onPrimaryContainer
+        : AppColors.onSurface;
     return Semantics(
       selected: selected,
       button: true,
+      hint: main ? 'Main category' : null,
       child: Material(
         color: selected
             ? AppColors.primaryContainer
@@ -508,13 +625,34 @@ class _CategoryTag extends StatelessWidget {
           onTap: onTap,
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-            child: Text(
-              label,
-              style: AppTypography.bodySm.copyWith(
-                color: selected
-                    ? AppColors.onPrimaryContainer
-                    : AppColors.onSurface,
-              ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  label,
+                  style: AppTypography.bodySm.copyWith(color: textColor),
+                ),
+                if (main) ...[
+                  const SizedBox(width: 6),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 6,
+                      vertical: 1,
+                    ),
+                    decoration: BoxDecoration(
+                      color: AppColors.onPrimaryContainer,
+                      borderRadius: BorderRadius.circular(AppRadius.full),
+                    ),
+                    child: Text(
+                      'MAIN',
+                      style: AppTypography.labelCaps.copyWith(
+                        fontSize: 9,
+                        color: AppColors.primary,
+                      ),
+                    ),
+                  ),
+                ],
+              ],
             ),
           ),
         ),

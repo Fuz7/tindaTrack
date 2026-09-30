@@ -14,14 +14,14 @@ const _products = [
     sellCentavos: 8500,
     buyCentavos: 6500,
     sku: 'RT-001',
-    category: 'Drinks',
+    categories: ['Drinks'],
   ),
   Product(
     id: 'b',
     name: 'Lucky Me! Pancit Canton',
     stock: 4,
     sellCentavos: 1800,
-    category: 'Pantry',
+    categories: ['Pantry'],
   ),
   Product(id: 'c', name: 'Gardenia White Bread', stock: 0, sellCentavos: 7500),
 ];

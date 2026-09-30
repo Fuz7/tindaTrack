@@ -71,4 +71,25 @@ void main() {
     expect(_ids(''), isEmpty);
     expect(_ids('   '), isEmpty);
   });
+
+  test('matches the size too', () {
+    const small = Product(
+      id: 'p40',
+      name: 'Piattos Cheese',
+      stock: 1,
+      sellCentavos: 100,
+      size: '40g',
+    );
+    const big = Product(
+      id: 'p85',
+      name: 'Piattos Cheese',
+      stock: 1,
+      sellCentavos: 100,
+      size: '85g',
+    );
+    final ids = [
+      for (final m in searchProducts([small, big], 'piattos 40')) m.product.id,
+    ];
+    expect(ids, ['p40']);
+  });
 }
