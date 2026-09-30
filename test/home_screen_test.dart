@@ -52,6 +52,15 @@ Widget _home({List<Product> products = _catalog}) => MaterialApp(
   ),
 );
 
+/// The product drawer's quantity field.
+Finder get _qtyField => find.descendant(
+  of: find.byType(BottomSheet),
+  matching: find.byType(TextField),
+);
+
+String _qtyText(WidgetTester tester) =>
+    tester.widget<TextField>(_qtyField).controller!.text;
+
 Future<void> _search(WidgetTester tester, String query) async {
   await tester.enterText(find.byType(TextField), query);
   await tester.pumpAndSettle();
@@ -242,35 +251,228 @@ void main() {
     expect(find.text('OUT OF STOCK'), findsOneWidget);
   });
 
-  testWidgets('tapping a result rings it up; again adds a unit', (
+  testWidgets('tapping a result opens its details first', (tester) async {
+    await tester.pumpWidget(_home());
+    await _search(tester, 'mismo');
+
+    await tester.tap(find.bySemanticsLabel(RegExp('^Open Coke Mismo')));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Product Details'), findsOneWidget);
+    expect(find.text('₱20.00'), findsWidgets);
+    expect(find.text('12 in stock'), findsOneWidget);
+    expect(find.text('Quantity'), findsOneWidget);
+    // Nothing is rung up until Add to Cart.
+    expect(find.text('0 ITEMS'), findsOneWidget);
+  });
+
+  testWidgets('the drawer adds the chosen quantity; again adds more', (
     tester,
   ) async {
     await tester.pumpWidget(_home());
 
-    for (var i = 0; i < 2; i++) {
+    Future<void> addMismo(int quantity) async {
       await _search(tester, 'mismo');
-      await tester.tap(
-        find.bySemanticsLabel(RegExp('^Add Coke Mismo to cart')),
-      );
+      await tester.tap(find.bySemanticsLabel(RegExp('^Open Coke Mismo')));
+      await tester.pumpAndSettle();
+      for (var i = 1; i < quantity; i++) {
+        await tester.tap(find.byTooltip('Increase quantity'));
+      }
+      await tester.pump();
+      await tester.tap(find.text('Add to Cart'));
       await tester.pumpAndSettle();
     }
 
-    // Search closed, and one row with a quantity of two.
+    await addMismo(3);
     expect(find.byTooltip('Close search'), findsNothing);
+    expect(find.text('Qty: 3 × ₱20.00'), findsOneWidget);
+
+    await addMismo(1);
+    // Still one row for the product.
     expect(find.text('Coke Mismo'), findsOneWidget);
-    expect(find.text('Qty: 2 × ₱20.00'), findsOneWidget);
-    expect(find.text('2 ITEMS'), findsOneWidget);
+    expect(find.text('Qty: 4 × ₱20.00'), findsOneWidget);
+    expect(find.text('4 ITEMS'), findsOneWidget);
   });
 
-  testWidgets('enter rings up the top match', (tester) async {
+  Future<void> openResult(
+    WidgetTester tester,
+    String query,
+    String name,
+  ) async {
+    await _search(tester, query);
+    await tester.tap(find.bySemanticsLabel(RegExp('^Open $name')));
+    await tester.pumpAndSettle();
+  }
+
+  Future<void> tapTimes(WidgetTester tester, String tooltip, int times) async {
+    for (var i = 0; i < times; i++) {
+      await tester.tap(find.byTooltip(tooltip));
+    }
+    await tester.pump();
+  }
+
+  testWidgets('quantity runs from 1 up to the stock', (tester) async {
+    await tester.pumpWidget(_home());
+    await openResult(tester, 'canton', 'Lucky Me Pancit Canton'); // 3 in stock
+
+    await tapTimes(tester, 'Decrease quantity', 1);
+    expect(_qtyText(tester), '1');
+
+    await tapTimes(tester, 'Increase quantity', 5);
+    expect(_qtyText(tester), '3');
+  });
+
+  testWidgets('what is already in the cart counts against the stock', (
+    tester,
+  ) async {
+    await tester.pumpWidget(_home());
+
+    await openResult(tester, 'canton', 'Lucky Me Pancit Canton');
+    await tapTimes(tester, 'Increase quantity', 1);
+    await tester.tap(find.text('Add to Cart'));
+    await tester.pumpAndSettle();
+
+    await openResult(tester, 'canton', 'Lucky Me Pancit Canton');
+    expect(find.text('2 already in cart'), findsOneWidget);
+    await tapTimes(tester, 'Increase quantity', 3);
+    expect(_qtyText(tester), '1');
+    await tester.tap(find.text('Add to Cart'));
+    await tester.pumpAndSettle();
+    expect(find.text('Qty: 3 × ₱18.00'), findsOneWidget);
+
+    // All three are in the cart now.
+    await openResult(tester, 'canton', 'Lucky Me Pancit Canton');
+    expect(find.text('All in Cart'), findsOneWidget);
+    await tester.tap(find.text('All in Cart'));
+    await tester.pumpAndSettle();
+    expect(find.text('Qty: 3 × ₱18.00'), findsOneWidget);
+  });
+
+  testWidgets('the quantity can be typed, and snaps to the max', (
+    tester,
+  ) async {
+    await tester.pumpWidget(_home());
+    await openResult(tester, 'mismo', 'Coke Mismo'); // 12 in stock
+
+    await tester.enterText(_qtyField, '5');
+    await tester.pump();
+    expect(_qtyText(tester), '5');
+
+    // The stepper carries on from the typed number.
+    await tapTimes(tester, 'Increase quantity', 1);
+    expect(_qtyText(tester), '6');
+
+    await tester.enterText(_qtyField, '50');
+    await tester.pump();
+    expect(_qtyText(tester), '12');
+    await tapTimes(tester, 'Increase quantity', 1);
+    expect(_qtyText(tester), '12');
+
+    await tester.enterText(_qtyField, 'abc');
+    await tester.pump();
+    expect(_qtyText(tester), isEmpty);
+
+    await tester.enterText(_qtyField, '7');
+    await tester.testTextInput.receiveAction(TextInputAction.done);
+    await tester.pumpAndSettle();
+    expect(find.text('Qty: 7 × ₱20.00'), findsOneWidget);
+  });
+
+  testWidgets('a blank quantity cannot be added and resets to 1', (
+    tester,
+  ) async {
+    await tester.pumpWidget(_home());
+    await openResult(tester, 'mismo', 'Coke Mismo');
+
+    await tester.enterText(_qtyField, '');
+    await tester.pump();
+    await tester.tap(find.text('Add to Cart'));
+    await tester.pumpAndSettle();
+    expect(find.text('Product Details'), findsOneWidget);
+
+    // Tapping away from the field puts it back to 1.
+    await tester.tap(find.text('Quantity'));
+    await tester.pump();
+    expect(_qtyText(tester), '1');
+  });
+
+  testWidgets('the typed max also counts what is in the cart', (tester) async {
+    await tester.pumpWidget(_home());
+    await openResult(tester, 'mismo', 'Coke Mismo');
+    await tester.enterText(_qtyField, '10');
+    await tester.tap(find.text('Add to Cart'));
+    await tester.pumpAndSettle();
+
+    await openResult(tester, 'mismo', 'Coke Mismo');
+    await tester.enterText(_qtyField, '9');
+    await tester.pump();
+    expect(_qtyText(tester), '2');
+  });
+
+  testWidgets('an out-of-stock product cannot be added', (tester) async {
+    await tester.pumpWidget(_home());
+    await openResult(tester, 'kopiko', 'Kopiko Blanca'); // 0 in stock
+
+    expect(find.text('Out of Stock'), findsOneWidget);
+    expect(_qtyText(tester), '0');
+    await tester.tap(find.text('Out of Stock'));
+    await tester.pumpAndSettle();
+    expect(find.text('Product Details'), findsOneWidget);
+    expect(find.text('0 ITEMS'), findsOneWidget);
+  });
+
+  testWidgets('removing the line frees the stock again', (tester) async {
+    await tester.pumpWidget(_home());
+    await openResult(tester, 'canton', 'Lucky Me Pancit Canton');
+    await tapTimes(tester, 'Increase quantity', 2);
+    await tester.tap(find.text('Add to Cart'));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byTooltip('Remove Lucky Me Pancit Canton'));
+    await tester.pumpAndSettle();
+
+    await openResult(tester, 'canton', 'Lucky Me Pancit Canton');
+    expect(find.text('Add to Cart'), findsOneWidget);
+    expect(find.textContaining('already in cart'), findsNothing);
+  });
+
+  testWidgets('closing the drawer keeps the search open', (tester) async {
+    await tester.pumpWidget(_home());
+    await _search(tester, 'mismo');
+    await tester.tap(find.bySemanticsLabel(RegExp('^Open Coke Mismo')));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byTooltip('Close'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Product Details'), findsNothing);
+    expect(find.byTooltip('Close search'), findsOneWidget);
+    expect(find.text('0 ITEMS'), findsOneWidget);
+  });
+
+  testWidgets('enter opens the top match', (tester) async {
     await tester.pumpWidget(_home());
     await _search(tester, 'co');
 
     await tester.testTextInput.receiveAction(TextInputAction.search);
     await tester.pumpAndSettle();
+    expect(find.text('Product Details'), findsOneWidget);
 
+    await tester.tap(find.text('Add to Cart'));
+    await tester.pumpAndSettle();
     expect(find.text('Coke Mismo'), findsOneWidget);
     expect(find.text('1 ITEM'), findsOneWidget);
+  });
+
+  testWidgets('the drawer fits a small phone', (tester) async {
+    _smallPhone(tester);
+    await tester.pumpWidget(_home());
+    await _search(tester, 'mismo');
+    await tester.tap(find.bySemanticsLabel(RegExp('^Open Coke Mismo')));
+    await tester.pumpAndSettle();
+
+    expect(tester.takeException(), isNull);
+    expect(find.text('Add to Cart').hitTestable(), findsOneWidget);
   });
 
   testWidgets('an empty catalog points to the Inventory tab', (tester) async {

@@ -3,6 +3,7 @@ import 'dart:math' as math;
 import 'dart:ui' show ImageFilter;
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../services/product_search.dart';
 import '../services/product_service.dart';
@@ -16,9 +17,10 @@ import '../widgets/product_visuals.dart';
 ///
 /// Ringing up is keypad-first: type the price, tap the cart key, and a
 /// "Manual Entry" line lands at the top of the cart. Search finds products
-/// from the store's inventory by name or SKU; tapping one, or pressing enter
-/// for the top match, rings it up at its sell price. The cart lives in memory
-/// until checkout, which is not built yet.
+/// from the store's inventory by name, size or SKU; tapping one, or pressing
+/// enter for the top match, opens its details drawer to pick a quantity and
+/// add it at its sell price. The cart lives in memory until checkout, which
+/// is not built yet.
 class HomeScreen extends StatefulWidget {
   const HomeScreen({
     super.key,
@@ -98,18 +100,43 @@ class _HomeScreenState extends State<HomeScreen> {
     super.dispose();
   }
 
-  /// Rings up [product] at its sell price. A product already in the cart
-  /// gains a unit and moves to the top, rather than adding a second row.
-  void _addProductToCart(Product product) {
+  /// Opens the "Product Details" drawer for a search result; adding from it
+  /// rings the product up and leaves search. Dismissing it keeps the search
+  /// open, so the cashier can pick another result.
+  Future<void> _showProductDetails(Product product) async {
+    final quantity = await showModalBottomSheet<int>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: AppColors.surfaceContainerLowest,
+      barrierColor: const Color(0x99000000), // black/60
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (_) => _ProductDetailsSheet(
+        product: product,
+        status: product.statusFor(_lowStockThreshold),
+        inCart: _lines
+            .where((l) => l.productId == product.id)
+            .fold(0, (sum, l) => sum + l.quantity),
+      ),
+    );
+    if (quantity == null || !mounted) return;
+    _addProductToCart(product, quantity);
+  }
+
+  /// Rings up [quantity] of [product] at its sell price. A product already in
+  /// the cart gains the units and moves to the top, rather than adding a
+  /// second row.
+  void _addProductToCart(Product product, int quantity) {
     setState(() {
       final existing = _lines.where((l) => l.productId == product.id);
       final line = existing.isEmpty
-          ? _CartLine(
+          ? (_CartLine(
               name: product.displayName,
               unitCentavos: product.sellCentavos,
               productId: product.id,
-            )
-          : (existing.first..quantity += 1);
+            )..quantity = quantity)
+          : (existing.first..quantity += quantity);
       _lines
         ..remove(line)
         ..insert(0, line);
@@ -200,9 +227,9 @@ class _HomeScreenState extends State<HomeScreen> {
           controller: _search,
           focusNode: _searchFocus,
           onClose: _closeSearch,
-          // Enter rings up the top match — the highlighted card.
+          // Enter opens the top match — the highlighted card.
           onSubmitted: () {
-            if (matches.isNotEmpty) _addProductToCart(matches.first.product);
+            if (matches.isNotEmpty) _showProductDetails(matches.first.product);
           },
           searching: searching,
         ),
@@ -232,7 +259,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   catalogLoaded: _products != null,
                   catalogEmpty: _products?.isEmpty ?? false,
                   lowStockThreshold: _lowStockThreshold,
-                  onSelect: _addProductToCart,
+                  onSelect: _showProductDetails,
                 ),
             ],
           ),
@@ -644,7 +671,7 @@ class _SearchResultCard extends StatelessWidget {
 
     return Semantics(
       button: true,
-      label: 'Add ${product.name} to cart',
+      label: 'Open ${product.name}',
       child: _ResultFrame(
         highlighted: highlighted,
         onTap: onTap,
@@ -697,6 +724,410 @@ class _SearchResultCard extends StatelessWidget {
               ],
             ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+/// The Stitch "Home - Product Details Drawer": a search result's photo,
+/// name, price and stock, a quantity stepper, and Add to Cart. Pops with the
+/// chosen quantity, or null when dismissed.
+///
+/// The stepper stops at the stock this device knows about, less what the
+/// active cart already holds, so one sale can't ring up more than is on the
+/// shelf. (Two devices selling the last few at once can still take stock
+/// below zero; that is settled by increments, not blocked here.)
+class _ProductDetailsSheet extends StatefulWidget {
+  const _ProductDetailsSheet({
+    required this.product,
+    required this.status,
+    required this.inCart,
+  });
+
+  final Product product;
+  final StockStatus status;
+
+  /// Units of this product already in the active cart.
+  final int inCart;
+
+  @override
+  State<_ProductDetailsSheet> createState() => _ProductDetailsSheetState();
+}
+
+class _ProductDetailsSheetState extends State<_ProductDetailsSheet> {
+  /// How many more can go in the cart; 0 when none are left.
+  late final int _available = math.max(0, widget.product.stock - widget.inCart);
+  late int _quantity = _available > 0 ? 1 : 0;
+
+  /// The quantity is typeable as well as steppable; this holds the typed
+  /// text, which may briefly be blank mid-edit.
+  late final _quantityText = TextEditingController(text: '$_quantity');
+  final _quantityFocus = FocusNode();
+
+  @override
+  void initState() {
+    super.initState();
+    // Leaving the field blank or at 0 puts it back to 1 rather than leaving
+    // an Add button that can't be pressed for no visible reason.
+    _quantityFocus.addListener(() {
+      if (!_quantityFocus.hasFocus && _quantity < 1 && _available > 0) {
+        _setQuantity(1);
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _quantityText.dispose();
+    _quantityFocus.dispose();
+    super.dispose();
+  }
+
+  void _setQuantity(int value) {
+    setState(() => _quantity = value);
+    final text = '$value';
+    if (_quantityText.text != text) {
+      _quantityText.value = TextEditingValue(
+        text: text,
+        selection: TextSelection.collapsed(offset: text.length),
+      );
+    }
+  }
+
+  /// Clamped here, not only by disabling the buttons: taps landing before
+  /// the next frame would otherwise step past the limit.
+  void _step(int by) {
+    final next = math.min(
+      math.max(_quantity + by, math.min(1, _available)),
+      _available,
+    );
+    if (next != _quantity) _setQuantity(next);
+  }
+
+  /// Digits only, and never more than [_available]: typing past it snaps to
+  /// the max, so the field can't hold a number the cart would refuse.
+  late final _quantityFormatter = TextInputFormatter.withFunction((
+    oldValue,
+    newValue,
+  ) {
+    if (newValue.text.isEmpty) return newValue;
+    final typed = int.tryParse(newValue.text);
+    if (typed == null) return oldValue;
+    // Also drops leading zeros: "05" reads back as 5.
+    final text = '${math.min(typed, _available)}';
+    return TextEditingValue(
+      text: text,
+      selection: TextSelection.collapsed(offset: text.length),
+    );
+  });
+
+  void _addToCart() {
+    if (_quantity >= 1) Navigator.pop(context, _quantity);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final product = widget.product;
+    final title = product.size == null
+        ? product.name
+        : '${product.name} (${product.size})';
+
+    // Lift the sheet above the keyboard while the quantity is being typed.
+    return Padding(
+      padding: EdgeInsets.only(bottom: MediaQuery.viewInsetsOf(context).bottom),
+      child: SafeArea(
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              // Drag handle; tapping it closes, as in the design.
+              GestureDetector(
+                behavior: HitTestBehavior.opaque,
+                onTap: () => Navigator.pop(context),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                  child: Center(
+                    child: Container(
+                      width: 48,
+                      height: 6,
+                      decoration: BoxDecoration(
+                        color: AppColors.outlineVariant,
+                        borderRadius: BorderRadius.circular(AppRadius.full),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(
+                  AppSpacing.gutter,
+                  8,
+                  AppSpacing.gutter,
+                  32,
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            'Product Details',
+                            style: AppTypography.headlineMd.copyWith(
+                              color: AppColors.onSurface,
+                            ),
+                          ),
+                        ),
+                        IconButton(
+                          tooltip: 'Close',
+                          icon: const Icon(Icons.close),
+                          color: AppColors.onSurface,
+                          onPressed: () => Navigator.pop(context),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 24),
+                    Container(
+                      padding: const EdgeInsets.all(AppSpacing.stackMd),
+                      decoration: BoxDecoration(
+                        color: AppColors.surfaceContainerLow,
+                        borderRadius: BorderRadius.circular(AppRadius.md),
+                      ),
+                      child: Column(
+                        children: [
+                          DecoratedBox(
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(
+                                AppRadius.base,
+                              ),
+                              boxShadow: const [
+                                BoxShadow(
+                                  color: Color(0x0D000000),
+                                  blurRadius: 2,
+                                  offset: Offset(0, 1),
+                                ),
+                              ],
+                            ),
+                            child: ProductImage(
+                              url: product.imageUrl,
+                              // w-48, shrunk on a short screen so the stepper
+                              // and button stay in view.
+                              size: math.min(
+                                192,
+                                MediaQuery.sizeOf(context).height * 0.22,
+                              ),
+                              radius: AppRadius.base,
+                              grayscale:
+                                  widget.status == StockStatus.outOfStock,
+                            ),
+                          ),
+                          const SizedBox(height: AppSpacing.stackMd),
+                          Text(
+                            title,
+                            textAlign: TextAlign.center,
+                            style: AppTypography.headlineLg.copyWith(
+                              color: AppColors.onSurface,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Wrap(
+                            alignment: WrapAlignment.center,
+                            crossAxisAlignment: WrapCrossAlignment.center,
+                            spacing: AppSpacing.stackSm,
+                            children: [
+                              Text(
+                                formatPeso(product.sellCentavos),
+                                style: AppTypography.displayPrice.copyWith(
+                                  fontSize: 28,
+                                  height: 36 / 28,
+                                  letterSpacing: -0.02 * 28,
+                                  color: AppColors.primary,
+                                ),
+                              ),
+                              Container(
+                                width: 1,
+                                height: 16,
+                                color: AppColors.outlineVariant,
+                              ),
+                              Text(
+                                '${product.stock} in stock',
+                                style: AppTypography.bodyLg.copyWith(
+                                  color: widget.status.color,
+                                ),
+                              ),
+                            ],
+                          ),
+                          if (widget.inCart > 0) ...[
+                            const SizedBox(height: 4),
+                            Text(
+                              '${widget.inCart} already in cart',
+                              style: AppTypography.bodySm.copyWith(
+                                color: AppColors.onSurfaceVariant,
+                              ),
+                            ),
+                          ],
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 24),
+                    Container(
+                      padding: const EdgeInsets.all(AppSpacing.stackMd),
+                      decoration: BoxDecoration(
+                        color: AppColors.surfaceContainer,
+                        borderRadius: BorderRadius.circular(AppRadius.md),
+                      ),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              'Quantity',
+                              style: AppTypography.bodyLg.copyWith(
+                                color: AppColors.onSurfaceVariant,
+                              ),
+                            ),
+                          ),
+                          _StepButton(
+                            icon: Icons.remove,
+                            tooltip: 'Decrease quantity',
+                            onPressed: _quantity > 1 ? () => _step(-1) : null,
+                          ),
+                          SizedBox(width: AppSpacing.stackMd),
+                          SizedBox(
+                            width: 64,
+                            child: TextField(
+                              controller: _quantityText,
+                              focusNode: _quantityFocus,
+                              enabled: _available > 0,
+                              textAlign: TextAlign.center,
+                              keyboardType: TextInputType.number,
+                              textInputAction: TextInputAction.done,
+                              inputFormatters: [
+                                FilteringTextInputFormatter.digitsOnly,
+                                _quantityFormatter,
+                              ],
+                              onChanged: (text) => setState(
+                                () => _quantity = int.tryParse(text) ?? 0,
+                              ),
+                              onSubmitted: (_) => _addToCart(),
+                              // Tapping elsewhere in the sheet closes the keyboard (and so
+                              // resets a blank quantity); Flutter only does this for mice.
+                              onTapOutside: (_) => _quantityFocus.unfocus(),
+                              style: AppTypography.displayPrice.copyWith(
+                                fontSize: 24,
+                                height: 1,
+                                letterSpacing: 0,
+                                color: AppColors.onSurface,
+                              ),
+                              decoration: InputDecoration(
+                                isDense: true,
+                                contentPadding: const EdgeInsets.symmetric(
+                                  vertical: 8,
+                                ),
+                                filled: true,
+                                fillColor: AppColors.surfaceContainerLowest,
+                                semanticCounterText: '',
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(
+                                    AppRadius.base,
+                                  ),
+                                  borderSide: BorderSide.none,
+                                ),
+                                focusedBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(
+                                    AppRadius.base,
+                                  ),
+                                  borderSide: const BorderSide(
+                                    color: AppColors.primary,
+                                    width: 2,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: AppSpacing.stackMd),
+
+                          _StepButton(
+                            icon: Icons.add,
+                            tooltip: 'Increase quantity',
+                            onPressed: _quantity < _available
+                                ? () => _step(1)
+                                : null,
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 24),
+                    SizedBox(
+                      height: 56,
+                      child: FilledButton.icon(
+                        onPressed: _quantity >= 1 ? _addToCart : null,
+                        icon: const Icon(Icons.shopping_cart),
+                        // Says why it can't be tapped rather than just greying.
+                        label: Text(
+                          _available > 0
+                              ? 'Add to Cart'
+                              : product.stock <= 0
+                              ? 'Out of Stock'
+                              : 'All in Cart',
+                          style: AppTypography.headlineMd.copyWith(
+                            color: _available > 0
+                                ? AppColors.onPrimary
+                                : AppColors.onSurfaceVariant,
+                          ),
+                        ),
+                        style: FilledButton.styleFrom(
+                          backgroundColor: AppColors.primary,
+                          foregroundColor: AppColors.onPrimary,
+                          disabledBackgroundColor:
+                              AppColors.surfaceContainerHigh,
+                          disabledForegroundColor: AppColors.onSurfaceVariant,
+                          elevation: 4,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(AppRadius.md),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// The stepper's round, outlined − and + buttons.
+class _StepButton extends StatelessWidget {
+  const _StepButton({
+    required this.icon,
+    required this.tooltip,
+    required this.onPressed,
+  });
+
+  final IconData icon;
+  final String tooltip;
+
+  /// Null greys the button out, as the design does at a quantity of 1.
+  final VoidCallback? onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    return Opacity(
+      opacity: onPressed == null ? 0.3 : 1,
+      child: IconButton(
+        tooltip: tooltip,
+        onPressed: onPressed,
+        icon: Icon(icon),
+        color: AppColors.onSurface,
+        disabledColor: AppColors.onSurface,
+        style: IconButton.styleFrom(
+          fixedSize: const Size.square(48),
+          shape: const CircleBorder(side: BorderSide(color: AppColors.outline)),
         ),
       ),
     );
