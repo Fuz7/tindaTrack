@@ -186,15 +186,18 @@
 <!-- Section: Payment Method -->
 <section class="mb-8">
 <h2 class="font-label-caps text-label-caps text-on-surface-variant mb-4">PAYMENT METHOD</h2>
-<div class="grid grid-cols-2 gap-4">
-<button class="flex flex-col items-center justify-center p-4 rounded-xl border-2 border-primary bg-primary-container text-on-primary-container transition-all" id="payCash">
-<span class="material-symbols-outlined text-3xl mb-1">payments</span>
-<span class="font-label-caps text-label-caps">CASH</span>
-</button>
-<button class="flex flex-col items-center justify-center p-4 rounded-xl border-2 border-slate-200 bg-surface-container-low text-on-surface-variant transition-all" id="payGCash">
-<span class="material-symbols-outlined text-3xl mb-1">qr_code_2</span>
-<span class="font-label-caps text-label-caps">G-CASH</span>
-</button>
+<div class="grid gap-4">
+<div class="w-full flex items-center justify-between p-4 rounded-xl border-2 border-primary bg-primary-container text-on-primary-container" id="payCash">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-3xl">payments</span>
+<div>
+<span class="font-label-caps text-label-caps font-bold block">CASH</span>
+<span class="text-xs text-on-primary-container/80">Primary Payment Method</span>
+</div>
+</div>
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">check_circle</span>
+</div>
+
 </div>
 </section>
 <!-- Section: Payment Details -->
@@ -313,6 +316,8 @@
             }, 1200);
         });
     </script>
+
+
 
 
 
