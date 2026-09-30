@@ -86,4 +86,33 @@ void main() {
       expect(back.displayName, 'Coke · 1.5L');
     });
   });
+
+  group('stock alerts', () {
+    Product p({required int stock, bool alerts = true}) => Product(
+      id: 'a',
+      name: 'X',
+      stock: stock,
+      sellCentavos: 100,
+      stockAlerts: alerts,
+    );
+
+    test('off: never low stock, but out of stock still shows', () {
+      expect(p(stock: 2, alerts: false).statusFor(5), StockStatus.inStock);
+      expect(p(stock: 0, alerts: false).statusFor(5), StockStatus.outOfStock);
+      expect(p(stock: 2).statusFor(5), StockStatus.lowStock);
+    });
+
+    test('off: never counted in the alerts', () {
+      expect(p(stock: 0, alerts: false).needsAlert(5), isFalse);
+      expect(p(stock: 2, alerts: false).needsAlert(5), isFalse);
+      expect(p(stock: 0).needsAlert(5), isTrue);
+      expect(p(stock: 9).needsAlert(5), isFalse);
+    });
+
+    test('defaults to on, including for older saved products', () {
+      expect(Product.fromMap('a', {'name': 'X'}).stockAlerts, isTrue);
+      final off = p(stock: 1, alerts: false);
+      expect(Product.fromMap('a', off.toMap()).stockAlerts, isFalse);
+    });
+  });
 }

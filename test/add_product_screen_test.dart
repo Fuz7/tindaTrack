@@ -230,6 +230,23 @@ void main() {
     expect(saved.single.sku, 'MINE2');
   });
 
+  testWidgets('low-stock alerts are on unless unticked', (tester) async {
+    var saved = await _open(tester);
+    await tester.enterText(_field('e.g., San Miguel Pale Pilsen'), 'Coke');
+    await tester.enterText(_field('0.00').last, '20');
+    await _save(tester);
+    expect(saved.single.stockAlerts, isTrue);
+
+    saved = await _open(tester);
+    await tester.enterText(_field('e.g., San Miguel Pale Pilsen'), 'Tawas');
+    await tester.enterText(_field('0.00').last, '5');
+    await tester.ensureVisible(find.text('Low-stock alerts'));
+    await tester.tap(find.text('Low-stock alerts'));
+    await tester.pump();
+    await _save(tester);
+    expect(saved.single.stockAlerts, isFalse);
+  });
+
   testWidgets('a failed write is reported after closing', (tester) async {
     final write = Completer<void>();
     await _open(tester, onSave: (_) => write.future);

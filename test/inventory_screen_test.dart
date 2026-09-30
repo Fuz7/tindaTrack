@@ -144,4 +144,51 @@ void main() {
     // Categories the store already uses are offered alongside the defaults.
     expect(find.text('Drinks'), findsOneWidget);
   });
+
+  testWidgets('products with alerts off are left out of the alerts', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      _inventory(
+        products: Stream.value(const [
+          Product(id: 'a', name: 'Tracked Low', stock: 2, sellCentavos: 100),
+          Product(
+            id: 'b',
+            name: 'Untracked Low',
+            stock: 2,
+            sellCentavos: 100,
+            stockAlerts: false,
+          ),
+          Product(
+            id: 'c',
+            name: 'Untracked Out',
+            stock: 0,
+            sellCentavos: 100,
+            stockAlerts: false,
+          ),
+        ]),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    // Only "Tracked Low" counts.
+    final alerts = find.ancestor(
+      of: find.text('ALERTS'),
+      matching: find.byType(Column),
+    );
+    expect(
+      find.descendant(of: alerts.first, matching: find.text('1')),
+      findsOneWidget,
+    );
+    expect(find.byIcon(Icons.notifications_off_outlined), findsNWidgets(2));
+
+    // Untracked stock isn't flagged amber.
+    Color colorOf(String text) =>
+        tester.widget<Text>(find.textContaining(text).first).style!.color!;
+    expect(colorOf('Stock: 2'), AppColors.statusLowStock); // tracked one
+    await tester.tap(find.text('Untracked Low'));
+    await tester.pumpAndSettle();
+    expect(find.text('IN STOCK'), findsOneWidget);
+    expect(find.text('Low-stock alerts off'), findsOneWidget);
+  });
 }

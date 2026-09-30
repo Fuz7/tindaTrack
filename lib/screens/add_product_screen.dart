@@ -64,6 +64,9 @@ class _AddProductScreenState extends State<AddProductScreen> {
   /// Picked categories in the order picked; the first is the main one.
   final _selected = <String>[];
 
+  /// Low-stock alerts on by default; off for items rarely sold.
+  bool _stockAlerts = true;
+
   /// The random end of the suggested SKU, rolled once so the suggestion
   /// doesn't flicker as the owner types.
   late String _skuTag = randomSkuTag();
@@ -78,6 +81,10 @@ class _AddProductScreenState extends State<AddProductScreen> {
     super.initState();
     _name.addListener(_refreshSku);
     _size.addListener(_refreshSku);
+    // A leftover "… added." from the last save would sit over Save Product.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) ScaffoldMessenger.maybeOf(context)?.hideCurrentSnackBar();
+    });
   }
 
   @override
@@ -161,6 +168,7 @@ class _AddProductScreenState extends State<AddProductScreen> {
       size: _size.text.trim().isEmpty ? null : _size.text.trim(),
       sku: normalizeSku(_sku.text).isEmpty ? null : normalizeSku(_sku.text),
       categories: List.of(_selected),
+      stockAlerts: _stockAlerts,
     );
 
     final messenger = ScaffoldMessenger.of(context);
@@ -293,6 +301,12 @@ class _AddProductScreenState extends State<AddProductScreen> {
                             ),
                           ),
                         ),
+                      ),
+                      const SizedBox(height: AppSpacing.stackSm),
+                      _AlertsCheckbox(
+                        value: _stockAlerts,
+                        onChanged: (value) =>
+                            setState(() => _stockAlerts = value),
                       ),
                       const SizedBox(height: 24),
                       Row(
@@ -583,6 +597,44 @@ class _PriceField extends StatelessWidget {
       style: _inputStyle,
       decoration: _decoration('0.00'),
       validator: validator,
+    );
+  }
+}
+
+/// "Low-stock alerts" on or off, with a line saying what off means.
+class _AlertsCheckbox extends StatelessWidget {
+  const _AlertsCheckbox({required this.value, required this.onChanged});
+
+  final bool value;
+  final ValueChanged<bool> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: AppColors.surfaceContainerLowest,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(AppRadius.base),
+        side: const BorderSide(color: AppColors.surfaceBorder),
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: CheckboxListTile(
+        value: value,
+        onChanged: (v) => onChanged(v ?? true),
+        activeColor: AppColors.primary,
+        controlAffinity: ListTileControlAffinity.leading,
+        contentPadding: const EdgeInsets.symmetric(horizontal: 8),
+        title: Text(
+          'Low-stock alerts',
+          style: AppTypography.bodyLg.copyWith(color: AppColors.onSurface),
+        ),
+        subtitle: Text(
+          'Untick for items you keep but rarely sell. They won\'t show as '
+          'low stock or count toward Inventory alerts.',
+          style: AppTypography.bodySm.copyWith(
+            color: AppColors.onSurfaceVariant,
+          ),
+        ),
+      ),
     );
   }
 }

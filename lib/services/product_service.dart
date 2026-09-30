@@ -20,6 +20,7 @@ class Product {
     this.sku,
     this.categories = const [],
     this.imageUrl,
+    this.stockAlerts = true,
   });
 
   /// Reads a product defensively, from Firestore or local JSON alike: both
@@ -58,6 +59,10 @@ class Product {
       sku: text('sku'),
       categories: List.unmodifiable(categories),
       imageUrl: text('imageUrl'),
+      // Missing on products saved before the setting existed: on.
+      stockAlerts: data['stockAlerts'] is bool
+          ? data['stockAlerts'] as bool
+          : true,
     );
   }
 
@@ -83,6 +88,11 @@ class Product {
   final List<String> categories;
   final String? imageUrl;
 
+  /// Whether the product can be flagged LOW STOCK and counted in the
+  /// Inventory alerts. Off for items the store keeps but rarely sells, so
+  /// they don't bury the ones that matter.
+  final bool stockAlerts;
+
   /// The main category: the one the SKU is built from.
   String? get mainCategory => categories.isEmpty ? null : categories.first;
 
@@ -100,17 +110,24 @@ class Product {
     'sku': sku,
     'categories': categories,
     'imageUrl': imageUrl,
+    'stockAlerts': stockAlerts,
   };
 
   /// Sell minus buy price, or null when the buy price is unknown.
   int? get marginCentavos =>
       buyCentavos == null ? null : sellCentavos - buyCentavos!;
 
+  /// Out of stock is a fact about the shelf and always shows; low stock is a
+  /// warning, so only products with [stockAlerts] on get it.
   StockStatus statusFor(int lowStockThreshold) {
     if (stock <= 0) return StockStatus.outOfStock;
-    if (stock <= lowStockThreshold) return StockStatus.lowStock;
+    if (stockAlerts && stock <= lowStockThreshold) return StockStatus.lowStock;
     return StockStatus.inStock;
   }
+
+  /// Whether this product counts toward the Inventory alerts.
+  bool needsAlert(int lowStockThreshold) =>
+      stockAlerts && statusFor(lowStockThreshold) != StockStatus.inStock;
 }
 
 /// What the "Add New Product" form collects before anything is written.
@@ -124,6 +141,7 @@ class ProductDraft {
     this.size,
     this.sku,
     this.categories = const [],
+    this.stockAlerts = true,
   });
 
   final String name;
@@ -135,6 +153,7 @@ class ProductDraft {
 
   /// Main category first.
   final List<String> categories;
+  final bool stockAlerts;
 
   Product toProduct(String id) => Product(
     id: id,
@@ -145,6 +164,7 @@ class ProductDraft {
     size: size,
     sku: sku,
     categories: List.unmodifiable(categories),
+    stockAlerts: stockAlerts,
   );
 }
 

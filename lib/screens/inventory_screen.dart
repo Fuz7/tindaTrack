@@ -90,9 +90,7 @@ class _InventoryScreenState extends State<InventoryScreen> {
     final visible = query.isEmpty
         ? inCategory
         : [for (final m in searchProducts(inCategory, query)) m.product];
-    final alerts = products
-        .where((p) => p.statusFor(threshold) != StockStatus.inStock)
-        .length;
+    final alerts = products.where((p) => p.needsAlert(threshold)).length;
 
     final Widget listBody;
     if (snapshot.hasError) {
@@ -457,6 +455,19 @@ class _ProductCard extends StatelessWidget {
                                 ),
                               ),
                             TextSpan(text: 'Stock: ${_units(product.stock)}'),
+                            if (!product.stockAlerts)
+                              const WidgetSpan(
+                                alignment: PlaceholderAlignment.middle,
+                                child: Padding(
+                                  padding: EdgeInsets.only(left: 6),
+                                  child: Icon(
+                                    Icons.notifications_off_outlined,
+                                    size: 14,
+                                    color: AppColors.outline,
+                                    semanticLabel: 'Low-stock alerts off',
+                                  ),
+                                ),
+                              ),
                           ],
                         ),
                         maxLines: 1,
@@ -625,6 +636,25 @@ class _ProductDrawer extends StatelessWidget {
                                 ),
                               ),
                             ),
+                            if (!product.stockAlerts) ...[
+                              const SizedBox(height: 4),
+                              Row(
+                                children: [
+                                  const Icon(
+                                    Icons.notifications_off_outlined,
+                                    size: 14,
+                                    color: AppColors.outline,
+                                  ),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    'Low-stock alerts off',
+                                    style: AppTypography.bodySm.copyWith(
+                                      color: AppColors.onSurfaceVariant,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
                           ],
                         ),
                       ),
