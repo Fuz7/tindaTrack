@@ -14,7 +14,9 @@ class FakeProductRemote implements ProductRemote {
   bool offline = false;
 
   var _nextId = 0;
-  final saves = <String>[];
+
+  /// Every op the server accepted, in order.
+  final sent = <ProductOp>[];
 
   @override
   String newId() => 'new-${_nextId++}';
@@ -26,9 +28,15 @@ class FakeProductRemote implements ProductRemote {
   }
 
   @override
-  Future<void> save(Product product) async {
+  Future<void> send(ProductOp op) async {
     if (offline) throw StateError('offline');
-    saves.add(product.id);
-    server[product.id] = product;
+    if (op.kind == ProductOpKind.update && !server.containsKey(op.productId)) {
+      throw ProductMissing(op.productId);
+    }
+    sent.add(op);
+    final applied = op.applyTo(server.values.toList());
+    server
+      ..clear()
+      ..addAll({for (final p in applied) p.id: p});
   }
 }

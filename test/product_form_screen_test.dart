@@ -2,11 +2,11 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:tinda_track/screens/add_product_screen.dart';
+import 'package:tinda_track/screens/product_form_screen.dart';
 import 'package:tinda_track/services/product_service.dart';
 import 'package:tinda_track/theme/app_theme.dart';
 
-/// Opens [AddProductScreen] from a launcher page, so saving has somewhere to
+/// Opens [ProductFormScreen] from a launcher page, so saving has somewhere to
 /// pop back to.
 Future<List<ProductDraft>> _open(
   WidgetTester tester, {
@@ -23,7 +23,7 @@ Future<List<ProductDraft>> _open(
           body: TextButton(
             onPressed: () => Navigator.of(context).push(
               MaterialPageRoute<void>(
-                builder: (_) => AddProductScreen(
+                builder: (_) => ProductFormScreen(
                   existingCategories: existingCategories,
                   existingSkus: existingSkus,
                   onSave: (draft) {
@@ -259,6 +259,19 @@ void main() {
     write.completeError(Exception('permission-denied'));
     await tester.pumpAndSettle();
     expect(find.text('Could not save “Coke”. Try again.'), findsOneWidget);
+  });
+
+  testWidgets('adding has no Delete button', (tester) async {
+    await _open(tester);
+    expect(find.text('Delete Product'), findsNothing);
+    expect(find.text('Add New Product'), findsOneWidget);
+  });
+
+  test('centavosToInput writes what parseCentavos reads', () {
+    for (final c in [0, 5, 1850, 100000]) {
+      expect(parseCentavos(centavosToInput(c)), c);
+    }
+    expect(centavosToInput(1850), '18.50');
   });
 
   testWidgets('fits a small phone without overflowing', (tester) async {

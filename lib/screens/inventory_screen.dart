@@ -1,28 +1,35 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../services/product_search.dart';
 import '../services/product_service.dart';
 import '../services/store_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/product_visuals.dart';
-import 'add_product_screen.dart';
 import 'home_screen.dart' show formatPeso;
+import 'product_form_screen.dart';
 
 /// The Inventory tab — a Flutter build of the Stitch "Inventory - Product
 /// Detail Drawer" design (project 14772063175572299152): search, category
 /// chips, SKU and alert counts, the product list, and a bottom drawer with a
 /// product's stock and pricing.
 ///
-/// The catalog is read live from Firestore, and "Add New" opens
-/// [AddProductScreen]. Editing and restocking are not built yet, so those
-/// controls say so when tapped. The design's barcode
-/// scan button is left out on purpose: TindaTrack does not use scanning.
+/// The catalog comes from the on-device [ProductRepository]. "Add New" and
+/// the drawer's "Edit Product" open [ProductFormScreen]; "Update Stock"
+/// swaps the drawer's buttons for a stock stepper. The design's barcode
+/// scan button
+/// is left out on purpose: TindaTrack does not use scanning.
 class InventoryScreen extends StatefulWidget {
   const InventoryScreen({
     super.key,
     required this.products,
     required this.lowStockThreshold,
     required this.onSaveProduct,
+    required this.onUpdateProduct,
+    required this.onDeleteProduct,
+    required this.onAdjustStock,
   });
 
   /// Streams rather than a store id so tests can drive the screen without
@@ -33,6 +40,24 @@ class InventoryScreen extends StatefulWidget {
 
   /// Saves a new product; the dashboard passes [ProductRepository.add].
   final Future<void> Function(ProductDraft draft) onSaveProduct;
+
+  /// Saves edits to a product, given it as the form opened it; the
+  /// dashboard passes [ProductRepository.update].
+  final Future<void> Function(Product original, ProductDraft draft)
+  onUpdateProduct;
+
+  /// The dashboard passes [ProductRepository.delete].
+  final Future<void> Function(String productId) onDeleteProduct;
+
+  /// Sets a product's stock to a counted total, given the product as the
+  /// drawer showed it; the dashboard passes [ProductRepository.adjustStock].
+  final Future<void> Function(
+    Product original,
+    int newStock, {
+    StockReason? reason,
+    String? note,
+  })
+  onAdjustStock;
 
   @override
   State<InventoryScreen> createState() => _InventoryScreenState();
@@ -123,7 +148,7 @@ class _InventoryScreenState extends State<InventoryScreen> {
             _ProductCard(
               product: product,
               status: product.statusFor(threshold),
-              onTap: () => _openDetails(product, threshold),
+              onTap: () => _openDetails(product, threshold, products),
             ),
             const SizedBox(height: AppSpacing.stackSm),
           ],
@@ -209,7 +234,7 @@ class _InventoryScreenState extends State<InventoryScreen> {
   void _openAddProduct(List<String> categories, Set<String> skus) {
     Navigator.of(context).push(
       MaterialPageRoute<void>(
-        builder: (_) => AddProductScreen(
+        builder: (_) => ProductFormScreen(
           onSave: widget.onSaveProduct,
           existingCategories: categories,
           existingSkus: skus,
@@ -218,7 +243,26 @@ class _InventoryScreenState extends State<InventoryScreen> {
     );
   }
 
-  void _openDetails(Product product, int threshold) {
+  void _openEditProduct(Product product, List<Product> all) {
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => ProductFormScreen(
+          initial: product,
+          onSave: (draft) => widget.onUpdateProduct(product, draft),
+          onDelete: () => widget.onDeleteProduct(product.id),
+          existingCategories: {for (final p in all) ...p.categories}.toList()
+            ..sort(),
+          // Its own SKU isn't a clash.
+          existingSkus: {
+            for (final p in all)
+              if (p.id != product.id) ?p.sku,
+          },
+        ),
+      ),
+    );
+  }
+
+  void _openDetails(Product product, int threshold, List<Product> all) {
     showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
@@ -235,22 +279,49 @@ class _InventoryScreenState extends State<InventoryScreen> {
         // hidden by it.
         onEdit: () {
           Navigator.pop(sheetContext);
-          _notBuilt(context, 'Editing products');
+          _openEditProduct(product, all);
         },
-        onUpdateStock: () {
+        onSaveStock: (update) {
+          final count = update.count;
           Navigator.pop(sheetContext);
-          _notBuilt(context, 'Updating stock');
+          final messenger = ScaffoldMessenger.of(context);
+          widget
+              .onAdjustStock(
+                product,
+                count,
+                reason: update.reason,
+                note: update.note,
+              )
+              .catchError((Object _) {
+                messenger
+                  ..hideCurrentSnackBar()
+                  ..showSnackBar(
+                    SnackBar(
+                      content: Text(
+                        'Could not update “${product.name}”. Try again.',
+                      ),
+                    ),
+                  );
+              });
+          messenger
+            ..hideCurrentSnackBar()
+            ..showSnackBar(
+              SnackBar(
+                content: Text(
+                  '“${product.name}” stock: ${product.stock} → $count'
+                  '${update.reason == null ? '' : ' (${update.reason!.label})'}.',
+                ),
+              ),
+            );
         },
       ),
     );
   }
-
-  static void _notBuilt(BuildContext context, String feature) {
-    ScaffoldMessenger.of(context)
-      ..hideCurrentSnackBar()
-      ..showSnackBar(SnackBar(content: Text('$feature is not built yet.')));
-  }
 }
+
+/// What the stock updater hands back: the counted total and, for a
+/// decrease, why.
+typedef _StockUpdate = ({int count, StockReason? reason, String? note});
 
 String _units(int stock) => '$stock ${stock == 1 ? 'unit' : 'units'}';
 
@@ -531,18 +602,31 @@ class _Message extends StatelessWidget {
 
 // --- detail drawer ----------------------------------------------------------
 
-class _ProductDrawer extends StatelessWidget {
+class _ProductDrawer extends StatefulWidget {
   const _ProductDrawer({
     required this.product,
     required this.status,
     required this.onEdit,
-    required this.onUpdateStock,
+    required this.onSaveStock,
   });
 
   final Product product;
   final StockStatus status;
   final VoidCallback onEdit;
-  final VoidCallback onUpdateStock;
+
+  /// Saves a new stock count, typed or stepped to in the stock updater.
+  final ValueChanged<_StockUpdate> onSaveStock;
+
+  @override
+  State<_ProductDrawer> createState() => _ProductDrawerState();
+}
+
+class _ProductDrawerState extends State<_ProductDrawer> {
+  /// "Update Stock" swaps the action buttons for the design's stock updater.
+  bool _updatingStock = false;
+
+  Product get product => widget.product;
+  StockStatus get status => widget.status;
 
   @override
   Widget build(BuildContext context) {
@@ -554,263 +638,639 @@ class _ProductDrawer extends StatelessWidget {
         : '${formatPeso(margin)} '
               '(${(margin / product.sellCentavos * 100).toStringAsFixed(1)}%)';
 
-    return SafeArea(
-      child: SingleChildScrollView(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            // Close handle.
-            Semantics(
-              button: true,
-              label: 'Close',
-              child: GestureDetector(
-                behavior: HitTestBehavior.opaque,
-                onTap: () => Navigator.pop(context),
-                child: Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.symmetric(vertical: 12),
-                  alignment: Alignment.center,
+    // Lift the drawer above the keyboard while a stock count is typed.
+    return Padding(
+      padding: EdgeInsets.only(bottom: MediaQuery.viewInsetsOf(context).bottom),
+      child: SafeArea(
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Close handle.
+              Semantics(
+                button: true,
+                label: 'Close',
+                child: GestureDetector(
+                  behavior: HitTestBehavior.opaque,
+                  onTap: () => Navigator.pop(context),
                   child: Container(
-                    width: 48,
-                    height: 6,
-                    decoration: BoxDecoration(
-                      color: AppColors.outlineVariant,
-                      borderRadius: BorderRadius.circular(AppRadius.full),
+                    width: double.infinity,
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    alignment: Alignment.center,
+                    child: Container(
+                      width: 48,
+                      height: 6,
+                      decoration: BoxDecoration(
+                        color: AppColors.outlineVariant,
+                        borderRadius: BorderRadius.circular(AppRadius.full),
+                      ),
                     ),
                   ),
                 ),
               ),
-            ),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(
-                AppSpacing.gutter,
-                0,
-                AppSpacing.gutter,
-                32,
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Row(
-                    children: [
-                      ProductImage(
-                        url: product.imageUrl,
-                        size: 80,
-                        radius: AppRadius.base,
-                      ),
-                      const SizedBox(width: AppSpacing.stackMd),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              product.name,
-                              style: AppTypography.headlineMd.copyWith(
-                                color: AppColors.onSurface,
-                              ),
-                            ),
-                            if (product.size != null)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(
+                  AppSpacing.gutter,
+                  0,
+                  AppSpacing.gutter,
+                  32,
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Row(
+                      children: [
+                        ProductImage(
+                          url: product.imageUrl,
+                          size: 80,
+                          radius: AppRadius.base,
+                        ),
+                        const SizedBox(width: AppSpacing.stackMd),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
                               Text(
-                                product.size!,
-                                style: AppTypography.bodySm.copyWith(
-                                  color: AppColors.onSurfaceVariant,
+                                product.name,
+                                style: AppTypography.headlineMd.copyWith(
+                                  color: AppColors.onSurface,
                                 ),
                               ),
-                            const SizedBox(height: 4),
+                              if (product.size != null)
+                                Text(
+                                  product.size!,
+                                  style: AppTypography.bodySm.copyWith(
+                                    color: AppColors.onSurfaceVariant,
+                                  ),
+                                ),
+                              const SizedBox(height: 4),
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 8,
+                                  vertical: 2,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: status.color.withValues(alpha: 0.1),
+                                  borderRadius: BorderRadius.circular(
+                                    AppRadius.sm,
+                                  ),
+                                ),
+                                child: Text(
+                                  status.label,
+                                  style: AppTypography.labelCaps.copyWith(
+                                    fontSize: 10,
+                                    color: status.color,
+                                  ),
+                                ),
+                              ),
+                              if (!product.stockAlerts) ...[
+                                const SizedBox(height: 4),
+                                Row(
+                                  children: [
+                                    const Icon(
+                                      Icons.notifications_off_outlined,
+                                      size: 14,
+                                      color: AppColors.outline,
+                                    ),
+                                    const SizedBox(width: 4),
+                                    Text(
+                                      'Low-stock alerts off',
+                                      style: AppTypography.bodySm.copyWith(
+                                        color: AppColors.onSurfaceVariant,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 24),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: _InfoTile(
+                            label: 'STOCK',
+                            value: _units(product.stock),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: _InfoTile(
+                            label: 'SKU',
+                            value: product.sku ?? '—',
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: _InfoTile(
+                            label: 'CATEGORY',
+                            // The tile has room for one; the rest are listed
+                            // below the tiles.
+                            value: product.mainCategory ?? '—',
+                          ),
+                        ),
+                      ],
+                    ),
+                    if (product.categories.length > 1) ...[
+                      const SizedBox(height: 12),
+                      Wrap(
+                        spacing: AppSpacing.stackSm,
+                        runSpacing: AppSpacing.stackSm,
+                        children: [
+                          for (final (i, category)
+                              in product.categories.indexed)
                             Container(
                               padding: const EdgeInsets.symmetric(
-                                horizontal: 8,
-                                vertical: 2,
+                                horizontal: 10,
+                                vertical: 4,
                               ),
                               decoration: BoxDecoration(
-                                color: status.color.withValues(alpha: 0.1),
+                                color: i == 0
+                                    ? AppColors.primaryContainer
+                                    : AppColors.surfaceContainer,
                                 borderRadius: BorderRadius.circular(
-                                  AppRadius.sm,
+                                  AppRadius.full,
                                 ),
                               ),
                               child: Text(
-                                status.label,
-                                style: AppTypography.labelCaps.copyWith(
-                                  fontSize: 10,
-                                  color: status.color,
+                                i == 0 ? '$category · MAIN' : category,
+                                style: AppTypography.bodySm.copyWith(
+                                  color: i == 0
+                                      ? AppColors.onPrimaryContainer
+                                      : AppColors.onSurfaceVariant,
                                 ),
                               ),
                             ),
-                            if (!product.stockAlerts) ...[
-                              const SizedBox(height: 4),
-                              Row(
-                                children: [
-                                  const Icon(
-                                    Icons.notifications_off_outlined,
-                                    size: 14,
-                                    color: AppColors.outline,
-                                  ),
-                                  const SizedBox(width: 4),
-                                  Text(
-                                    'Low-stock alerts off',
-                                    style: AppTypography.bodySm.copyWith(
-                                      color: AppColors.onSurfaceVariant,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ],
-                          ],
-                        ),
+                        ],
                       ),
                     ],
-                  ),
-                  const SizedBox(height: 24),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: _InfoTile(
-                          label: 'STOCK',
-                          value: _units(product.stock),
-                        ),
+                    const SizedBox(height: 24),
+                    Text(
+                      'PRICING DETAILS',
+                      style: AppTypography.labelCaps.copyWith(
+                        color: AppColors.onSurfaceVariant,
                       ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: _InfoTile(
-                          label: 'SKU',
-                          value: product.sku ?? '—',
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: _InfoTile(
-                          label: 'CATEGORY',
-                          // The tile has room for one; the rest are listed
-                          // below the tiles.
-                          value: product.mainCategory ?? '—',
-                        ),
-                      ),
-                    ],
-                  ),
-                  if (product.categories.length > 1) ...[
+                    ),
                     const SizedBox(height: 12),
-                    Wrap(
-                      spacing: AppSpacing.stackSm,
-                      runSpacing: AppSpacing.stackSm,
-                      children: [
-                        for (final (i, category) in product.categories.indexed)
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 10,
-                              vertical: 4,
-                            ),
-                            decoration: BoxDecoration(
-                              color: i == 0
-                                  ? AppColors.primaryContainer
-                                  : AppColors.surfaceContainer,
-                              borderRadius: BorderRadius.circular(
-                                AppRadius.full,
+                    Container(
+                      clipBehavior: Clip.antiAlias,
+                      decoration: BoxDecoration(
+                        color: AppColors.surfaceContainerLowest,
+                        borderRadius: BorderRadius.circular(AppRadius.base),
+                        border: Border.all(color: AppColors.outlineVariant),
+                      ),
+                      child: Column(
+                        children: [
+                          _PriceRow(
+                            label: 'Buy Price',
+                            value: product.buyCentavos == null
+                                ? '—'
+                                : formatPeso(product.buyCentavos!),
+                          ),
+                          const Divider(
+                            height: 1,
+                            color: AppColors.outlineVariant,
+                          ),
+                          _PriceRow(
+                            label: 'Sell Price',
+                            value: formatPeso(product.sellCentavos),
+                          ),
+                          const Divider(
+                            height: 1,
+                            color: AppColors.outlineVariant,
+                          ),
+                          _PriceRow(
+                            label: 'Margin',
+                            value: marginText,
+                            highlight: true,
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 32),
+                    if (_updatingStock)
+                      _StockUpdater(
+                        current: product.stock,
+                        onSave: widget.onSaveStock,
+                        onCancel: () => setState(() => _updatingStock = false),
+                      )
+                    else
+                      Row(
+                        children: [
+                          Expanded(
+                            child: OutlinedButton(
+                              onPressed: widget.onEdit,
+                              style: OutlinedButton.styleFrom(
+                                foregroundColor: AppColors.primary,
+                                side: const BorderSide(
+                                  color: AppColors.primary,
+                                ),
+                                minimumSize: const Size.fromHeight(48),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(
+                                    AppRadius.base,
+                                  ),
+                                ),
                               ),
-                            ),
-                            child: Text(
-                              i == 0 ? '$category · MAIN' : category,
-                              style: AppTypography.bodySm.copyWith(
-                                color: i == 0
-                                    ? AppColors.onPrimaryContainer
-                                    : AppColors.onSurfaceVariant,
+                              child: Text(
+                                'EDIT PRODUCT',
+                                style: AppTypography.labelCaps,
                               ),
                             ),
                           ),
-                      ],
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: FilledButton(
+                              onPressed: () =>
+                                  setState(() => _updatingStock = true),
+                              style: FilledButton.styleFrom(
+                                backgroundColor: AppColors.primary,
+                                foregroundColor: AppColors.onPrimary,
+                                elevation: 1,
+                                minimumSize: const Size.fromHeight(48),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(
+                                    AppRadius.base,
+                                  ),
+                                ),
+                              ),
+                              child: Text(
+                                'UPDATE STOCK',
+                                style: AppTypography.labelCaps,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// The Stitch "Inventory - Direct Stock Update" controls: − / CURRENT STOCK
+/// / + over Save Stock, with Cancel back to the drawer's usual buttons.
+///
+/// The owner sets the count they see on the shelf; only the difference from
+/// [current] is saved, so a sale rung up elsewhere meanwhile still counts.
+class _StockUpdater extends StatefulWidget {
+  const _StockUpdater({
+    required this.current,
+    required this.onSave,
+    required this.onCancel,
+  });
+
+  /// The count when the drawer opened. Can be negative after an oversell.
+  final int current;
+  final ValueChanged<_StockUpdate> onSave;
+  final VoidCallback onCancel;
+
+  /// Five digits, as on the add form.
+  static const maxStock = 99999;
+
+  @override
+  State<_StockUpdater> createState() => _StockUpdaterState();
+}
+
+class _StockUpdaterState extends State<_StockUpdater> {
+  // A negative count starts the field at 0: it can't be typed, and 0 is
+  // the honest floor for a recount.
+  late int? _count = math.max(0, widget.current);
+  late final _text = TextEditingController(text: '$_count');
+
+  /// Why the count is going down; asked for only then.
+  StockReason? _reason;
+  final _note = TextEditingController();
+
+  @override
+  void dispose() {
+    _text.dispose();
+    _note.dispose();
+    super.dispose();
+  }
+
+  void _step(int by) {
+    final next = ((_count ?? 0) + by).clamp(0, _StockUpdater.maxStock).toInt();
+    setState(() => _count = next);
+    _text.value = TextEditingValue(
+      text: '$next',
+      selection: TextSelection.collapsed(offset: '$next'.length),
+    );
+  }
+
+  /// A decrease needs a reason, and "Other" needs a note saying what.
+  bool get _reasonComplete =>
+      _reason != null &&
+      (_reason != StockReason.other || _note.text.trim().isNotEmpty);
+
+  void _save() {
+    final count = _count!;
+    final decrease = count < widget.current;
+    widget.onSave((
+      count: count,
+      reason: decrease ? _reason : null,
+      note: decrease && _note.text.trim().isNotEmpty ? _note.text.trim() : null,
+    ));
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final count = _count;
+    final change = count == null ? 0 : count - widget.current;
+    final canSave =
+        count != null && change != 0 && (change > 0 || _reasonComplete);
+
+    OutlineInputBorder border(Color color, [double width = 1]) =>
+        OutlineInputBorder(
+          borderRadius: BorderRadius.circular(AppRadius.sm),
+          borderSide: BorderSide(color: color, width: width),
+        );
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Container(
+          padding: const EdgeInsets.all(4),
+          decoration: BoxDecoration(
+            color: AppColors.surfaceContainerLow,
+            borderRadius: BorderRadius.circular(AppRadius.base),
+            border: Border.all(color: AppColors.outlineVariant),
+          ),
+          child: Row(
+            children: [
+              _SquareStepButton(
+                icon: Icons.remove,
+                tooltip: 'Remove one',
+                onPressed: (count ?? 0) > 0 ? () => _step(-1) : null,
+              ),
+              Expanded(
+                child: Column(
+                  children: [
+                    Text(
+                      'CURRENT STOCK',
+                      style: AppTypography.labelCaps.copyWith(
+                        color: AppColors.outline,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    SizedBox(
+                      width: 96,
+                      child: TextField(
+                        controller: _text,
+                        textAlign: TextAlign.center,
+                        keyboardType: TextInputType.number,
+                        textInputAction: TextInputAction.done,
+                        inputFormatters: [
+                          FilteringTextInputFormatter.digitsOnly,
+                          LengthLimitingTextInputFormatter(5),
+                        ],
+                        onChanged: (text) =>
+                            setState(() => _count = int.tryParse(text)),
+                        onSubmitted: (_) {
+                          if (canSave) _save();
+                        },
+                        onTapOutside: (_) =>
+                            FocusManager.instance.primaryFocus?.unfocus(),
+                        style: AppTypography.headlineLg.copyWith(
+                          color: AppColors.onSurface,
+                        ),
+                        decoration: InputDecoration(
+                          isDense: true,
+                          contentPadding: const EdgeInsets.symmetric(
+                            vertical: 4,
+                          ),
+                          filled: true,
+                          fillColor: AppColors.surfaceContainerLowest,
+                          border: border(AppColors.outlineVariant),
+                          enabledBorder: border(AppColors.outlineVariant),
+                          focusedBorder: border(AppColors.primary, 2),
+                        ),
+                      ),
                     ),
                   ],
-                  const SizedBox(height: 24),
-                  Text(
-                    'PRICING DETAILS',
-                    style: AppTypography.labelCaps.copyWith(
-                      color: AppColors.onSurfaceVariant,
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  Container(
-                    clipBehavior: Clip.antiAlias,
-                    decoration: BoxDecoration(
-                      color: AppColors.surfaceContainerLowest,
-                      borderRadius: BorderRadius.circular(AppRadius.base),
-                      border: Border.all(color: AppColors.outlineVariant),
-                    ),
-                    child: Column(
-                      children: [
-                        _PriceRow(
-                          label: 'Buy Price',
-                          value: product.buyCentavos == null
-                              ? '—'
-                              : formatPeso(product.buyCentavos!),
-                        ),
-                        const Divider(
-                          height: 1,
-                          color: AppColors.outlineVariant,
-                        ),
-                        _PriceRow(
-                          label: 'Sell Price',
-                          value: formatPeso(product.sellCentavos),
-                        ),
-                        const Divider(
-                          height: 1,
-                          color: AppColors.outlineVariant,
-                        ),
-                        _PriceRow(
-                          label: 'Margin',
-                          value: marginText,
-                          highlight: true,
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 32),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: OutlinedButton(
-                          onPressed: onEdit,
-                          style: OutlinedButton.styleFrom(
-                            foregroundColor: AppColors.primary,
-                            side: const BorderSide(color: AppColors.primary),
-                            minimumSize: const Size.fromHeight(48),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(
-                                AppRadius.base,
-                              ),
-                            ),
-                          ),
-                          child: Text(
-                            'EDIT PRODUCT',
-                            style: AppTypography.labelCaps,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: FilledButton(
-                          onPressed: onUpdateStock,
-                          style: FilledButton.styleFrom(
-                            backgroundColor: AppColors.primary,
-                            foregroundColor: AppColors.onPrimary,
-                            elevation: 1,
-                            minimumSize: const Size.fromHeight(48),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(
-                                AppRadius.base,
-                              ),
-                            ),
-                          ),
-                          child: Text(
-                            'UPDATE STOCK',
-                            style: AppTypography.labelCaps,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
+                ),
               ),
+              _SquareStepButton(
+                icon: Icons.add,
+                tooltip: 'Add one',
+                onPressed: (count ?? 0) < _StockUpdater.maxStock
+                    ? () => _step(1)
+                    : null,
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: AppSpacing.stackSm),
+        // What saving will do, since only the difference is recorded.
+        Text(
+          count == null
+              ? 'Enter the count on the shelf.'
+              : change == 0
+              ? 'No change from ${widget.current}.'
+              : '${change > 0 ? '+' : '−'}${change.abs()} from '
+                    '${widget.current}',
+          textAlign: TextAlign.center,
+          style: AppTypography.bodySm.copyWith(
+            color: change > 0
+                ? AppColors.statusInStock
+                : change < 0
+                ? AppColors.actionDestructive
+                : AppColors.onSurfaceVariant,
+          ),
+        ),
+        if (change < 0) ...[
+          const SizedBox(height: AppSpacing.stackMd),
+          _ReasonPicker(
+            selected: _reason,
+            onSelected: (reason) => setState(() => _reason = reason),
+            note: _note,
+            onNoteChanged: () => setState(() {}),
+          ),
+        ],
+        const SizedBox(height: 12),
+        FilledButton.icon(
+          onPressed: canSave ? _save : null,
+          icon: const Icon(Icons.check_circle_outline),
+          label: Text('Save Stock', style: AppTypography.bodyLg),
+          style: FilledButton.styleFrom(
+            backgroundColor: AppColors.primary,
+            foregroundColor: AppColors.onPrimary,
+            elevation: 4,
+            minimumSize: const Size.fromHeight(AppSpacing.touchTarget),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(AppRadius.base),
             ),
+          ),
+        ),
+        const SizedBox(height: AppSpacing.stackSm),
+        OutlinedButton(
+          onPressed: widget.onCancel,
+          style: OutlinedButton.styleFrom(
+            foregroundColor: AppColors.onSurfaceVariant,
+            side: const BorderSide(color: AppColors.outlineVariant),
+            minimumSize: const Size.fromHeight(AppSpacing.touchTarget),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(AppRadius.base),
+            ),
+          ),
+          child: Text('Cancel', style: AppTypography.bodyLg),
+        ),
+      ],
+    );
+  }
+}
+
+/// "Reason for decrease": one required pick, and a note — optional, except
+/// for Other, where it is the reason.
+class _ReasonPicker extends StatelessWidget {
+  const _ReasonPicker({
+    required this.selected,
+    required this.onSelected,
+    required this.note,
+    required this.onNoteChanged,
+  });
+
+  final StockReason? selected;
+  final ValueChanged<StockReason> onSelected;
+  final TextEditingController note;
+  final VoidCallback onNoteChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final other = selected == StockReason.other;
+    OutlineInputBorder border(Color color, [double width = 1]) =>
+        OutlineInputBorder(
+          borderRadius: BorderRadius.circular(AppRadius.base),
+          borderSide: BorderSide(color: color, width: width),
+        );
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Text(
+          'REASON FOR DECREASE',
+          style: AppTypography.labelCaps.copyWith(
+            color: AppColors.onSurfaceVariant,
+          ),
+        ),
+        const SizedBox(height: AppSpacing.stackSm),
+        Wrap(
+          spacing: AppSpacing.stackSm,
+          runSpacing: AppSpacing.stackSm,
+          children: [
+            for (final reason in StockReason.values)
+              Semantics(
+                selected: reason == selected,
+                button: true,
+                child: Material(
+                  color: reason == selected
+                      ? AppColors.primaryContainer
+                      : AppColors.surfaceContainerLowest,
+                  shape: StadiumBorder(
+                    side: BorderSide(
+                      color: reason == selected
+                          ? AppColors.primary
+                          : AppColors.outlineVariant,
+                    ),
+                  ),
+                  child: InkWell(
+                    customBorder: const StadiumBorder(),
+                    onTap: () => onSelected(reason),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 8,
+                      ),
+                      child: Text(
+                        reason.label,
+                        style: AppTypography.bodySm.copyWith(
+                          color: reason == selected
+                              ? AppColors.onPrimaryContainer
+                              : AppColors.onSurface,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
           ],
+        ),
+        const SizedBox(height: 12),
+        TextField(
+          controller: note,
+          onChanged: (_) => onNoteChanged(),
+          onTapOutside: (_) => FocusManager.instance.primaryFocus?.unfocus(),
+          maxLength: 120,
+          textCapitalization: TextCapitalization.sentences,
+          style: AppTypography.bodySm.copyWith(color: AppColors.onSurface),
+          decoration: InputDecoration(
+            hintText: other
+                ? 'What happened? (required)'
+                : 'Note (optional), e.g. dropped by delivery',
+            hintStyle: AppTypography.bodySm.copyWith(color: AppColors.outline),
+            isDense: true,
+            counterText: '',
+            filled: true,
+            fillColor: AppColors.surfaceContainerLowest,
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 12,
+              vertical: 10,
+            ),
+            border: border(AppColors.outlineVariant),
+            enabledBorder: border(AppColors.outlineVariant),
+            focusedBorder: border(AppColors.primary, 2),
+          ),
+        ),
+        if (selected == null || (other && note.text.trim().isEmpty)) ...[
+          const SizedBox(height: 4),
+          Text(
+            selected == null
+                ? 'Pick a reason to save a decrease.'
+                : 'Add a note for "Other".',
+            style: AppTypography.bodySm.copyWith(
+              color: AppColors.onSurfaceVariant,
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+}
+
+/// The updater's white, square-ish − and + keys.
+class _SquareStepButton extends StatelessWidget {
+  const _SquareStepButton({
+    required this.icon,
+    required this.tooltip,
+    required this.onPressed,
+  });
+
+  final IconData icon;
+  final String tooltip;
+  final VoidCallback? onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    return IconButton(
+      tooltip: tooltip,
+      onPressed: onPressed,
+      icon: Icon(icon),
+      color: AppColors.primary,
+      style: IconButton.styleFrom(
+        fixedSize: const Size.square(48),
+        backgroundColor: AppColors.surfaceContainerLowest,
+        disabledBackgroundColor: AppColors.surfaceContainerLowest,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppRadius.base),
+          side: const BorderSide(color: AppColors.outlineVariant),
         ),
       ),
     );

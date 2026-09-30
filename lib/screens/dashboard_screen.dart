@@ -72,6 +72,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
           products: _products.watch(),
           lowStockThreshold: widget.watchLowStockThreshold(widget.storeId),
           onSaveProduct: _products.add,
+          onUpdateProduct: _products.update,
+          onDeleteProduct: _products.delete,
+          onAdjustStock: _products.adjustStock,
         );
       }
     });

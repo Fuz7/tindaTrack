@@ -5,19 +5,23 @@ import '../services/product_service.dart';
 import '../services/sku.dart';
 import '../theme/app_theme.dart';
 
-/// "Add New Product" — a Flutter build of the Stitch design of that name
-/// (project 14772063175572299152): photo slot, name, optional size, buy and
-/// sell prices, opening stock, categories and a SKU, saved with a pinned
-/// button.
+/// The product form, in two modes — Flutter builds of the Stitch "Add New
+/// Product" and "Edit Product" designs (project 14772063175572299152): photo
+/// slot, name, optional size, buy and sell prices, opening stock (adding
+/// only — edits leave stock to Update Stock), low-stock alerts,
+/// categories and a SKU, saved with a pinned button.
 ///
 /// Categories are multi-select; the first one picked is the product's main
 /// category, marked MAIN, and is what the SKU is built from. The SKU fills
 /// itself in from the name, size and main category until the owner types
-/// their own. Photo upload and the stock tally calculator are not built yet.
-class AddProductScreen extends StatefulWidget {
-  const AddProductScreen({
+/// their own; an existing product's SKU is kept as it is. Photo upload and
+/// the stock tally calculator are not built yet.
+class ProductFormScreen extends StatefulWidget {
+  const ProductFormScreen({
     super.key,
     required this.onSave,
+    this.initial,
+    this.onDelete,
     this.existingCategories = const [],
     this.existingSkus = const {},
   });
@@ -28,10 +32,16 @@ class AddProductScreen extends StatefulWidget {
   /// shown as a snackbar on the screen underneath.
   final Future<void> Function(ProductDraft draft) onSave;
 
+  /// The product being edited; null when adding a new one.
+  final Product? initial;
+
+  /// Deletes [initial]; offered, behind a confirmation, only when editing.
+  final Future<void> Function()? onDelete;
+
   /// Categories the store already uses, offered next to the defaults.
   final List<String> existingCategories;
 
-  /// SKUs already in the catalog; a new one must differ, ignoring case.
+  /// SKUs other products use; this one's must differ, ignoring case.
   final Set<String> existingSkus;
 
   static const defaultCategories = [
@@ -43,10 +53,10 @@ class AddProductScreen extends StatefulWidget {
   ];
 
   @override
-  State<AddProductScreen> createState() => _AddProductScreenState();
+  State<ProductFormScreen> createState() => _ProductFormScreenState();
 }
 
-class _AddProductScreenState extends State<AddProductScreen> {
+class _ProductFormScreenState extends State<ProductFormScreen> {
   final _formKey = GlobalKey<FormState>();
   final _name = TextEditingController();
   final _buy = TextEditingController();
@@ -55,11 +65,13 @@ class _AddProductScreenState extends State<AddProductScreen> {
   final _size = TextEditingController();
   final _sku = TextEditingController();
 
-  late final List<String> _categories = [
-    ...AddProductScreen.defaultCategories,
-    for (final c in widget.existingCategories)
-      if (!AddProductScreen.defaultCategories.contains(c)) c,
-  ];
+  late final List<String> _categories = {
+    ...ProductFormScreen.defaultCategories,
+    ...widget.existingCategories,
+    ...?widget.initial?.categories,
+  }.toList();
+
+  bool get _editing => widget.initial != null;
 
   /// Picked categories in the order picked; the first is the main one.
   final _selected = <String>[];
@@ -79,8 +91,24 @@ class _AddProductScreenState extends State<AddProductScreen> {
   @override
   void initState() {
     super.initState();
+    final initial = widget.initial;
+    if (initial != null) {
+      _name.text = initial.name;
+      _size.text = initial.size ?? '';
+      _sell.text = centavosToInput(initial.sellCentavos);
+      _buy.text = initial.buyCentavos == null
+          ? ''
+          : centavosToInput(initial.buyCentavos!);
+
+      _sku.text = initial.sku ?? '';
+      _selected.addAll(initial.categories);
+      _stockAlerts = initial.stockAlerts;
+    }
     _name.addListener(_refreshSku);
     _size.addListener(_refreshSku);
+    // A product saved without a SKU gets a suggestion; one with a SKU keeps
+    // it, since it isn't blank and never matched a suggestion.
+    _refreshSku();
     // A leftover "… added." from the last save would sit over Save Product.
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) ScaffoldMessenger.maybeOf(context)?.hideCurrentSnackBar();
@@ -164,26 +192,68 @@ class _AddProductScreenState extends State<AddProductScreen> {
       name: _name.text.trim(),
       sellCentavos: parseCentavos(_sell.text)!,
       buyCentavos: parseCentavos(_buy.text),
-      stock: int.tryParse(_stock.text) ?? 0,
+      // Editing leaves stock as the form found it, so the save carries no
+      // stock change at all.
+      stock: widget.initial?.stock ?? int.tryParse(_stock.text) ?? 0,
       size: _size.text.trim().isEmpty ? null : _size.text.trim(),
       sku: normalizeSku(_sku.text).isEmpty ? null : normalizeSku(_sku.text),
       categories: List.of(_selected),
       stockAlerts: _stockAlerts,
     );
 
+    _run(
+      widget.onSave(draft),
+      done: '“${draft.name}” ${_editing ? 'updated' : 'added'}.',
+      failed: 'Could not save “${draft.name}”. Try again.',
+    );
+  }
+
+  Future<void> _delete() async {
+    final name = widget.initial!.name;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('Delete “$name”?'),
+        content: const Text(
+          'It will be removed from your inventory and search. This can\'t be '
+          'undone.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: TextButton.styleFrom(
+              foregroundColor: AppColors.actionDestructive,
+            ),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+    _run(
+      widget.onDelete!(),
+      done: '“$name” deleted.',
+      failed: 'Could not delete “$name”. Try again.',
+    );
+  }
+
+  /// Closes the form at once and reports on the screen underneath; a later
+  /// failure replaces, rather than queues behind, the optimistic message.
+  void _run(Future<void> work, {required String done, required String failed}) {
     final messenger = ScaffoldMessenger.of(context);
-    widget.onSave(draft).catchError((Object _) {
-      // Replace, not queue behind, the optimistic "added" message.
+    work.catchError((Object _) {
       messenger
         ..hideCurrentSnackBar()
-        ..showSnackBar(
-          SnackBar(content: Text('Could not save “${draft.name}”. Try again.')),
-        );
+        ..showSnackBar(SnackBar(content: Text(failed)));
     });
     Navigator.of(context).pop();
     messenger
       ..hideCurrentSnackBar()
-      ..showSnackBar(SnackBar(content: Text('“${draft.name}” added.')));
+      ..showSnackBar(SnackBar(content: Text(done)));
   }
 
   @override
@@ -210,14 +280,16 @@ class _AddProductScreenState extends State<AddProductScreen> {
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
                       Text(
-                        'Add New Product',
+                        _editing ? 'Edit Product' : 'Add New Product',
                         style: AppTypography.headlineMd.copyWith(
                           color: AppColors.onSurface,
                         ),
                       ),
                       const SizedBox(height: 4),
                       Text(
-                        'Register a new item to your store inventory.',
+                        _editing
+                            ? 'Update product details and stock information.'
+                            : 'Register a new item to your store inventory.',
                         style: AppTypography.bodySm.copyWith(
                           color: AppColors.onSurfaceVariant,
                         ),
@@ -282,27 +354,32 @@ class _AddProductScreenState extends State<AddProductScreen> {
                         ],
                       ),
                       const SizedBox(height: 24),
-                      _Field(
-                        label: 'INITIAL STOCK COUNT',
-                        child: TextFormField(
-                          controller: _stock,
-                          keyboardType: TextInputType.number,
-                          inputFormatters: [
-                            FilteringTextInputFormatter.digitsOnly,
-                            LengthLimitingTextInputFormatter(5),
-                          ],
-                          style: _inputStyle,
-                          decoration: _decoration('0').copyWith(
-                            suffixIcon: IconButton(
-                              tooltip: 'Tally stock',
-                              icon: const Icon(Icons.calculate_outlined),
-                              color: AppColors.onSurfaceVariant,
-                              onPressed: () => _notBuilt('The stock tally'),
+                      // Only when adding: an existing product's stock changes
+                      // through Update Stock, as a count of what came in or
+                      // went out, never by retyping the total here.
+                      if (!_editing) ...[
+                        _Field(
+                          label: 'INITIAL STOCK COUNT',
+                          child: TextFormField(
+                            controller: _stock,
+                            keyboardType: TextInputType.number,
+                            inputFormatters: [
+                              FilteringTextInputFormatter.digitsOnly,
+                              LengthLimitingTextInputFormatter(5),
+                            ],
+                            style: _inputStyle,
+                            decoration: _decoration('0').copyWith(
+                              suffixIcon: IconButton(
+                                tooltip: 'Tally stock',
+                                icon: const Icon(Icons.calculate_outlined),
+                                color: AppColors.onSurfaceVariant,
+                                onPressed: () => _notBuilt('The stock tally'),
+                              ),
                             ),
                           ),
                         ),
-                      ),
-                      const SizedBox(height: AppSpacing.stackSm),
+                        const SizedBox(height: AppSpacing.stackSm),
+                      ],
                       _AlertsCheckbox(
                         value: _stockAlerts,
                         onChanged: (value) =>
@@ -383,12 +460,30 @@ class _AddProductScreenState extends State<AddProductScreen> {
                           validator: _validateSku,
                         ),
                       ),
+                      if (_editing && widget.onDelete != null) ...[
+                        const SizedBox(height: 32),
+                        Center(
+                          child: TextButton.icon(
+                            onPressed: _delete,
+                            icon: const Icon(Icons.delete_outline),
+                            label: const Text('Delete Product'),
+                            style: TextButton.styleFrom(
+                              foregroundColor: AppColors.actionDestructive,
+                              textStyle: AppTypography.bodyLg,
+                              minimumSize: const Size(0, 48),
+                            ),
+                          ),
+                        ),
+                      ],
                     ],
                   ),
                 ),
               ),
             ),
-            _SaveBar(onPressed: _save),
+            _SaveBar(
+              label: _editing ? 'Save Changes' : 'Save Product',
+              onPressed: _save,
+            ),
           ],
         ),
       ),
@@ -405,6 +500,10 @@ int? parseCentavos(String text) {
   final cents = (match.group(2) ?? '').padRight(2, '0');
   return int.parse(match.group(1)!) * 100 + int.parse(cents);
 }
+
+/// Centavos as a price field shows them: `1850` → `18.50`, no separators.
+String centavosToInput(int centavos) =>
+    '${centavos ~/ 100}.${(centavos % 100).toString().padLeft(2, '0')}';
 
 const _inputStyle = TextStyle(
   fontSize: 16,
@@ -758,7 +857,9 @@ class _CustomCategoryDialogState extends State<_CustomCategoryDialog> {
 }
 
 class _SaveBar extends StatelessWidget {
-  const _SaveBar({required this.onPressed});
+  const _SaveBar({required this.label, required this.onPressed});
+
+  final String label;
 
   final VoidCallback onPressed;
 
@@ -779,7 +880,7 @@ class _SaveBar extends StatelessWidget {
           onPressed: onPressed,
           icon: const Icon(Icons.save_outlined),
           label: Text(
-            'Save Product',
+            label,
             style: AppTypography.headlineMd.copyWith(
               color: AppColors.onPrimary,
             ),
