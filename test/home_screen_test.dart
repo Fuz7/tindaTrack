@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:tinda_track/screens/analytics_screen.dart';
 import 'package:tinda_track/screens/dashboard_screen.dart';
 import 'package:tinda_track/screens/home_screen.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -615,13 +616,35 @@ void main() {
       expect(find.byTooltip('Inventory'), findsOneWidget);
     });
 
-    testWidgets('unbuilt tabs say so', (tester) async {
+    testWidgets('Analytics opens, and Restock Now shows what needs it', (
+      tester,
+    ) async {
       await tester.pumpWidget(shell());
 
       await tester.tap(find.byTooltip('Analytics'));
-      await tester.pump();
+      await tester.pumpAndSettle();
+      expect(find.text('Business Insights'), findsOneWidget);
+      // The list builds lazily; scroll the Analytics one to its bottom.
+      await tester.scrollUntilVisible(
+        find.text('RESTOCK NOW'),
+        300,
+        scrollable: find
+            .descendant(
+              of: find.byType(AnalyticsScreen),
+              matching: find.byType(Scrollable),
+            )
+            .first,
+      );
+      // Canton (3 left) is low and Kopiko (0) is out.
+      expect(find.text('Low Stock Alert (2 items)'), findsOneWidget);
 
-      expect(find.text('Analytics is not built yet.'), findsOneWidget);
+      await tester.ensureVisible(find.text('RESTOCK NOW'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('RESTOCK NOW'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Business Insights'), findsNothing);
+      expect(find.text('Needs attention'), findsOneWidget);
     });
 
     testWidgets('fits a small phone with a full entry and cart', (

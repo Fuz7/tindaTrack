@@ -30,7 +30,13 @@ class InventoryScreen extends StatefulWidget {
     required this.onUpdateProduct,
     required this.onDeleteProduct,
     required this.onAdjustStock,
+    this.needsAttentionRequest,
   });
+
+  /// Set to true from outside — Analytics' "Restock Now" — to show only the
+  /// products that need restocking. The screen clears its other filters,
+  /// applies that one, and sets it back to false.
+  final ValueNotifier<bool>? needsAttentionRequest;
 
   /// Streams rather than a store id so tests can drive the screen without
   /// Firebase; the dashboard passes [ProductRepository.watch] and
@@ -75,12 +81,27 @@ class _InventoryScreenState extends State<InventoryScreen> {
   void initState() {
     super.initState();
     _search.addListener(() => setState(() {}));
+    widget.needsAttentionRequest?.addListener(_showNeedsAttention);
+    // A request made before this tab was first built.
+    _showNeedsAttention();
   }
 
   @override
   void dispose() {
+    widget.needsAttentionRequest?.removeListener(_showNeedsAttention);
     _search.dispose();
     super.dispose();
+  }
+
+  void _showNeedsAttention() {
+    final request = widget.needsAttentionRequest;
+    if (request == null || !request.value) return;
+    request.value = false;
+    _search.clear();
+    setState(() {
+      _category = null;
+      _stock = _StockFilter.attention;
+    });
   }
 
   @override

@@ -9,6 +9,7 @@ import '../services/product_service.dart';
 import '../services/store_service.dart';
 import '../theme/app_theme.dart';
 import 'home_screen.dart';
+import 'analytics_screen.dart';
 import 'inventory_screen.dart';
 import 'settings_screen.dart';
 import 'transactions_screen.dart';
@@ -17,8 +18,8 @@ import 'transactions_screen.dart';
 /// bottom navigation below, and the selected tab in between — the frame of
 /// the Stitch "Home - Active Cart" design.
 ///
-/// Home, Inventory and Transactions exist so far. Analytics renders as the
-/// design shows it and says it is not built yet when tapped, rather than
+/// Every tab is built: Home, Inventory, Transactions and Analytics. A tab
+/// left out of `builtTabs` says it is not built yet when tapped, rather than
 /// silently doing nothing.
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({
@@ -52,6 +53,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   static const _home = 0;
   static const _inventory = 1;
   static const _transactions = 2;
+  static const _analytics = 3;
 
   int _tab = _home;
 
@@ -65,6 +67,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
   /// neither drops the cart nor re-subscribes.
   Widget? _inventoryTab;
   Widget? _transactionsTab;
+  Widget? _analyticsTab;
+
+  /// Analytics' "Restock Now" asks Inventory to show what needs restocking.
+  final _needsAttention = ValueNotifier(false);
 
   /// Built once so rebuilding the shell does not re-subscribe.
   late final Widget _homeTab = HomeScreen(
@@ -126,6 +132,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   void dispose() {
     _profileSub.cancel();
     _staffSub.cancel();
+    _needsAttention.dispose();
     _products.dispose();
     super.dispose();
   }
@@ -141,6 +148,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
           onUpdateProduct: _products.update,
           onDeleteProduct: _products.delete,
           onAdjustStock: _products.adjustStock,
+          needsAttentionRequest: _needsAttention,
         );
       }
       if (tab == _transactions) {
@@ -161,6 +169,17 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 customerName: customerName,
                 editor: _cashier,
               ),
+        );
+      }
+      if (tab == _analytics) {
+        _analyticsTab ??= AnalyticsScreen(
+          sales: _products.watchSales(),
+          products: _products.watch(),
+          lowStockThreshold: widget.watchLowStockThreshold(widget.storeId),
+          onRestock: () {
+            _needsAttention.value = true;
+            _select(_inventory);
+          },
         );
       }
     });
@@ -200,12 +219,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
           _homeTab,
           _inventoryTab ?? const SizedBox.shrink(),
           _transactionsTab ?? const SizedBox.shrink(),
+          _analyticsTab ?? const SizedBox.shrink(),
         ],
       ),
       bottomNavigationBar: _BottomNav(
         selected: _tab,
         onSelect: _select,
-        builtTabs: const {_home, _inventory, _transactions},
+        builtTabs: const {_home, _inventory, _transactions, _analytics},
       ),
     );
   }
