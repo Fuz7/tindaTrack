@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../services/product_repository.dart';
 import '../services/store_service.dart';
@@ -69,6 +70,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   final _formKey = GlobalKey<FormState>();
   final _name = TextEditingController();
   final _owner = TextEditingController();
+  final _threshold = TextEditingController();
   String _currency = 'PHP';
 
   /// What is saved; null until the first profile arrives.
@@ -79,6 +81,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
     name: _name.text.trim(),
     ownerName: _owner.text.trim(),
     currency: _currency,
+    // Unparseable reads as 0: it marks the form changed, and validation
+    // stops it being saved.
+    lowStockThreshold: int.tryParse(_threshold.text) ?? 0,
     ownerUid: _saved?.ownerUid,
   );
 
@@ -111,6 +116,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     super.initState();
     _name.addListener(_changed);
     _owner.addListener(_changed);
+    _threshold.addListener(_changed);
     _profileSub = widget.profile.listen((profile) {
       if (profile == null) return;
       // A change from another device replaces the fields only when there
@@ -126,6 +132,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     _profileSub.cancel();
     _name.dispose();
     _owner.dispose();
+    _threshold.dispose();
     super.dispose();
   }
 
@@ -135,6 +142,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final saved = _saved!;
     _name.text = saved.name;
     _owner.text = saved.ownerName;
+    _threshold.text = '${saved.lowStockThreshold}';
     setState(() => _currency = saved.currency);
   }
 
@@ -178,6 +186,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   static String? _required(String? value) =>
       (value ?? '').trim().isEmpty ? 'Required' : null;
+
+  /// Same bounds as the create flow.
+  static String? _validThreshold(String? value) {
+    final n = int.tryParse(value ?? '');
+    return n == null || n < 1 || n > 100 ? '1–100' : null;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -272,6 +286,66 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                         overflow: TextOverflow.ellipsis,
                                       ),
                                     ),
+                                ],
+                              ),
+                            ),
+                            _Field(
+                              label: 'LOW STOCK ALERT',
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Row(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      SizedBox(
+                                        width: 128,
+                                        child: TextFormField(
+                                          controller: _threshold,
+                                          enabled: isOwner,
+                                          keyboardType: TextInputType.number,
+                                          inputFormatters: [
+                                            FilteringTextInputFormatter
+                                                .digitsOnly,
+                                            LengthLimitingTextInputFormatter(3),
+                                          ],
+                                          validator: _validThreshold,
+                                          style: _inputStyle,
+                                          decoration: _fieldDecoration('5'),
+                                        ),
+                                      ),
+                                      const SizedBox(width: 12),
+                                      // Wraps rather than running off a narrow
+                                      // screen or under large text.
+                                      Flexible(
+                                        child: Padding(
+                                          // Level with the input's text.
+                                          padding: const EdgeInsets.only(
+                                            top: 14,
+                                          ),
+                                          child: Text(
+                                            'units or fewer',
+                                            style: AppTypography.bodyLg
+                                                .copyWith(
+                                                  fontWeight: FontWeight.w400,
+                                                  color: AppColors
+                                                      .onSurfaceVariant,
+                                                ),
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: AppSpacing.stackSm),
+                                  Text(
+                                    'Products at or below this count are '
+                                    'marked LOW STOCK and listed in '
+                                    'Inventory and Analytics alerts.',
+                                    style: AppTypography.bodySm.copyWith(
+                                      color: AppColors.onSurfaceVariant,
+                                      height: 1.375,
+                                    ),
+                                  ),
                                 ],
                               ),
                             ),

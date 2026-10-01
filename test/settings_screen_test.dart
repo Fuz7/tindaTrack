@@ -132,6 +132,60 @@ void main() {
     expect(_saveButton(tester).onPressed, isNull);
   });
 
+  group('low stock alert', () {
+    Finder field() => find.widgetWithText(TextFormField, '5');
+
+    testWidgets('shows the store threshold and saves a new one', (
+      tester,
+    ) async {
+      _smallPhone(tester);
+      final h = _Harness();
+      await tester.pumpWidget(h.build());
+      h.profile.add(_profile);
+      await tester.pump();
+
+      expect(find.text('LOW STOCK ALERT'), findsOneWidget);
+      expect(field(), findsOneWidget);
+
+      await tester.enterText(field(), '12');
+      await tester.pump();
+      await tester.tap(find.text('Save Changes'));
+      await tester.pump();
+
+      expect(h.saved.single.lowStockThreshold, 12);
+      expect(h.saved.single.name, "Aling Nena's");
+    });
+
+    testWidgets('only 1–100 can be saved', (tester) async {
+      _smallPhone(tester);
+      final h = _Harness();
+      await tester.pumpWidget(h.build());
+      h.profile.add(_profile);
+      await tester.pump();
+
+      for (final bad in ['0', '101', '']) {
+        await tester.enterText(find.byType(TextFormField).at(2), bad);
+        await tester.pump();
+        await tester.tap(find.text('Save Changes'));
+        await tester.pump();
+        expect(find.text('1–100'), findsOneWidget, reason: bad);
+      }
+      expect(h.saved, isEmpty);
+    });
+
+    testWidgets('only digits can be typed', (tester) async {
+      _smallPhone(tester);
+      final h = _Harness();
+      await tester.pumpWidget(h.build());
+      h.profile.add(_profile);
+      await tester.pump();
+
+      await tester.enterText(field(), '1a2.5');
+      await tester.pump();
+      expect(find.widgetWithText(TextFormField, '125'), findsOneWidget);
+    });
+  });
+
   testWidgets('refuses to save a blank store name', (tester) async {
     _smallPhone(tester);
     final h = _Harness();
@@ -157,7 +211,8 @@ void main() {
 
     expect(find.text('Requires Pro'), findsNWidgets(2));
     expect(find.text('Enter helper email address'), findsOneWidget);
-    expect(find.byType(TextField), findsNWidgets(2)); // name and owner only
+    // Name, owner and low-stock alert only: no helper email box.
+    expect(find.byType(TextField), findsNWidgets(3));
     expect(h.upgrades, 0);
   });
 
@@ -236,9 +291,12 @@ void main() {
       expect(find.text("Aling Nena's"), findsOneWidget);
       expect(find.text('Nena Cruz'), findsOneWidget);
       expect(find.text('₱ PHP (Philippine Peso)'), findsOneWidget);
-      for (final field in tester.widgetList<TextField>(
-        find.byType(TextField),
-      )) {
+      // The low-stock alert shows the store's value but is locked too.
+      expect(find.text('LOW STOCK ALERT'), findsOneWidget);
+      expect(find.widgetWithText(TextField, '5'), findsOneWidget);
+      final fields = tester.widgetList<TextField>(find.byType(TextField));
+      expect(fields, hasLength(3));
+      for (final field in fields) {
         expect(field.enabled, isFalse);
       }
       final currency = tester.widget<DropdownButton<String>>(

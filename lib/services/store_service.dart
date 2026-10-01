@@ -74,6 +74,7 @@ class StoreProfile {
     required this.name,
     required this.ownerName,
     required this.currency,
+    this.lowStockThreshold = StoreDraft.defaultLowStockThreshold,
     this.ownerUid,
   });
 
@@ -82,6 +83,10 @@ class StoreProfile {
 
   /// ISO 4217 code, e.g. `PHP`.
   final String currency;
+
+  /// Stock at or below this count is flagged as low — on Home, Inventory
+  /// and Analytics alike. 1–100, as in the create flow.
+  final int lowStockThreshold;
 
   /// Who created the store; anyone else signed in to it is a helper. Not
   /// editable, and null only on a store written without one.
@@ -92,10 +97,11 @@ class StoreProfile {
       other is StoreProfile &&
       other.name == name &&
       other.ownerName == ownerName &&
-      other.currency == currency;
+      other.currency == currency &&
+      other.lowStockThreshold == lowStockThreshold;
 
   @override
-  int get hashCode => Object.hash(name, ownerName, currency);
+  int get hashCode => Object.hash(name, ownerName, currency, lowStockThreshold);
 }
 
 /// A helper allowed to work a store's till — one `storeMembers` document.
@@ -247,6 +253,12 @@ class StoreService {
         name: text('name'),
         ownerName: text('ownerName'),
         currency: currency.isEmpty ? 'PHP' : currency,
+        // Read the same way as [lowStockThresholdOf], so Settings shows
+        // what the other tabs are using.
+        lowStockThreshold: switch (data['lowStockThreshold']) {
+          final num n => n.round(),
+          _ => StoreDraft.defaultLowStockThreshold,
+        },
         ownerUid: switch (data['ownerUid']) {
           final String uid when uid.isNotEmpty => uid,
           _ => null,
@@ -255,16 +267,19 @@ class StoreService {
     });
   }
 
-  /// Saves [profile] over the store's name, owner and currency.
+  /// Saves [profile] over the store's name, owner, currency and low-stock
+  /// threshold.
   ///
   /// Firestore applies the write to its local cache at once, so [profileOf]
-  /// shows it straight away; the returned future only completes when the
-  /// server acknowledges, which offline may be much later.
+  /// and [lowStockThresholdOf] show it straight away — every tab's stock
+  /// colors update without waiting; the returned future only completes when
+  /// the server acknowledges, which offline may be much later.
   static Future<void> updateProfile(String storeId, StoreProfile profile) {
     return _db.collection(storesCollection).doc(storeId).update({
       'name': profile.name,
       'ownerName': profile.ownerName,
       'currency': profile.currency,
+      'lowStockThreshold': profile.lowStockThreshold,
     });
   }
 
