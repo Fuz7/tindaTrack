@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import '../screens/create_store_profile_screen.dart';
 import '../screens/create_store_starter_screen.dart';
 import '../screens/dashboard_screen.dart';
+import '../screens/join_store_screen.dart';
 import '../screens/onboarding_choice_screen.dart';
 import '../services/auth_service.dart';
 import '../services/store_service.dart';
@@ -41,7 +42,7 @@ class StoreGate extends StatelessWidget {
         if (!membership.hasStore) {
           return OnboardingChoiceScreen(
             onCreate: () => _startCreateFlow(context),
-            onJoin: () => _notImplemented(context, 'Join a Tindahan'),
+            onJoin: () => _startJoinFlow(context),
           );
         }
 
@@ -78,12 +79,29 @@ class StoreGate extends StatelessWidget {
     );
   }
 
-  /// Stand-in until the Join screen is built. Kept here rather than in
-  /// [OnboardingChoiceScreen] so the screen stays free of placeholder logic.
-  void _notImplemented(BuildContext context, String label) {
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(SnackBar(content: Text('$label is not built yet.')));
+  /// Pushes "Join a Tindahan". As with creating, joining writes the user's
+  /// active store, which flips this gate; all that is left is the pop.
+  void _startJoinFlow(BuildContext context) {
+    final navigator = Navigator.of(context);
+    final email = user.email;
+
+    navigator.push(
+      MaterialPageRoute<void>(
+        builder: (_) => JoinStoreScreen(
+          // Invites are by email; an account without one has none.
+          loadInvites: () async =>
+              email == null ? const [] : StoreService.invitesFor(email),
+          onAccess: (invite) async {
+            await StoreService.joinStore(
+              uid: user.uid,
+              email: email!,
+              storeId: invite.storeId,
+            );
+            navigator.popUntil((route) => route.isFirst);
+          },
+        ),
+      ),
+    );
   }
 }
 

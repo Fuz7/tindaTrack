@@ -11,28 +11,57 @@ const _profile = StoreProfile(
   name: "Aling Nena's",
   ownerName: 'Nena Cruz',
   currency: 'PHP',
+  ownerUid: 'owner-uid',
 );
 
 class _Harness {
   final profile = StreamController<StoreProfile?>.broadcast();
   final saved = <StoreProfile>[];
   final staff = StreamController<StoreStaff>.broadcast();
-  final savedStaff = <List<StaffMember>>[];
-  var unlockTapped = false;
 
-  Widget build({SyncStatus sync = const SyncStatus(pending: 0)}) => MaterialApp(
+  /// The helpers as the fake server holds them, after each write.
+  var members = <StaffMember>[];
+  final savedStaff = <List<StaffMember>>[];
+  var upgrades = 0;
+
+  /// Like Firestore, echoes a local write straight back to the listeners.
+  Future<void> _write(List<StaffMember> next) async {
+    members = next;
+    savedStaff.add(next);
+    staff.add(StoreStaff(isPro: true, members: next));
+  }
+
+  Widget build({
+    SyncStatus sync = const SyncStatus(pending: 0),
+    String userId = 'owner-uid',
+  }) => MaterialApp(
     theme: AppTheme.light,
     home: SettingsScreen(
+      userId: userId,
       profile: profile.stream,
       onSave: (p) async => saved.add(p),
       syncStatus: Stream.value(sync),
       staff: staff.stream,
-      onSaveStaff: (members) async {
-        savedStaff.add(members);
-        // Firestore echoes a local write straight back to its listeners.
+      staffActions: StaffActions(
+        add: (member) => _write([
+          for (final m in members)
+            if (m.email != member.email) m,
+          member,
+        ]),
+        rename: (member, name) => _write([
+          for (final m in members)
+            m.email == member.email ? m.copyWith(name: name) : m,
+        ]),
+        remove: (member) => _write([
+          for (final m in members)
+            if (m.email != member.email) m,
+        ]),
+      ),
+      onUpgradePro: () async {
+        upgrades++;
+        // Like Firestore, the store reads as Pro straight away.
         staff.add(StoreStaff(isPro: true, members: members));
       },
-      onUnlockPro: () => unlockTapped = true,
     ),
   );
 }
@@ -46,6 +75,7 @@ Future<_Harness> _proStore(
   await tester.pumpWidget(h.build());
   h.profile.add(_profile);
   await tester.pump();
+  h.members = [...members];
   h.staff.add(StoreStaff(isPro: true, members: members));
   await tester.pump();
   return h;
@@ -126,10 +156,45 @@ void main() {
     await tester.pump();
 
     expect(find.text('Requires Pro'), findsNWidgets(2));
-    await tester.ensureVisible(find.text('Unlock Pro & Add Helpers'));
+    expect(find.text('Enter helper email address'), findsOneWidget);
+    expect(find.byType(TextField), findsNWidgets(2)); // name and owner only
+    expect(h.upgrades, 0);
+  });
+
+  testWidgets('upgrading asks first; Cancel changes nothing', (tester) async {
+    _smallPhone(tester);
+    final h = _Harness();
+    await tester.pumpWidget(h.build());
+    h.profile.add(_profile);
+    await tester.pump();
+
+    await _tapUnlock(tester);
+    expect(find.text('Upgrade to Pro?'), findsOneWidget);
+    expect(find.textContaining("Aling Nena's"), findsWidgets);
+
+    await tester.tap(find.text('Cancel'));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Unlock Pro & Add Helpers'));
-    expect(h.unlockTapped, isTrue);
+    expect(h.upgrades, 0);
+    expect(find.text('Unlock Pro & Add Helpers'), findsOneWidget);
+  });
+
+  testWidgets('confirming makes the store Pro and unlocks helpers', (
+    tester,
+  ) async {
+    _smallPhone(tester);
+    final h = _Harness();
+    await tester.pumpWidget(h.build());
+    h.profile.add(_profile);
+    await tester.pump();
+
+    await _tapUnlock(tester);
+    await tester.tap(find.text('Confirm'));
+    await tester.pumpAndSettle();
+
+    expect(h.upgrades, 1);
+    expect(find.text('Pro is on. You can now add helpers.'), findsOneWidget);
+    expect(find.text('Unlock Pro & Add Helpers'), findsNothing);
+    expect(find.widgetWithText(FilledButton, 'Add'), findsOneWidget);
   });
 
   testWidgets('reports changes waiting to sync', (tester) async {
@@ -144,6 +209,54 @@ void main() {
 
     expect(find.text('Status: 2 changes waiting'), findsOneWidget);
     expect(find.text('Last synced: just now'), findsOneWidget);
+  });
+
+  group('as a helper', () {
+    Future<_Harness> asHelper(WidgetTester tester) async {
+      _smallPhone(tester);
+      final h = _Harness();
+      await tester.pumpWidget(h.build(userId: 'helper-uid'));
+      h.profile.add(_profile);
+      await tester.pump();
+      // Even on a Pro store with helpers, the list stays hidden.
+      h.staff.add(
+        const StoreStaff(
+          isPro: true,
+          members: [StaffMember(email: 'maria@gmail.com', name: 'Maria')],
+        ),
+      );
+      await tester.pump();
+      return h;
+    }
+
+    testWidgets('store details show but cannot be changed', (tester) async {
+      await asHelper(tester);
+
+      expect(find.textContaining('signed in as a helper'), findsOneWidget);
+      expect(find.text("Aling Nena's"), findsOneWidget);
+      expect(find.text('Nena Cruz'), findsOneWidget);
+      expect(find.text('₱ PHP (Philippine Peso)'), findsOneWidget);
+      for (final field in tester.widgetList<TextField>(
+        find.byType(TextField),
+      )) {
+        expect(field.enabled, isFalse);
+      }
+      final currency = tester.widget<DropdownButton<String>>(
+        find.byType(DropdownButton<String>),
+      );
+      expect(currency.onChanged, isNull);
+      expect(find.text('Save Changes'), findsNothing);
+      expect(find.text('Discard Changes'), findsNothing);
+    });
+
+    testWidgets('the allowed emails section is hidden', (tester) async {
+      await asHelper(tester);
+
+      expect(find.text('ALLOWED EMAILS (STAFF ACCESS)'), findsNothing);
+      expect(find.text('maria@gmail.com'), findsNothing);
+      expect(find.text('Unlock Pro & Add Helpers'), findsNothing);
+      expect(find.text('SYNC STATUS'), findsOneWidget);
+    });
   });
 
   group('with Pro', () {
@@ -215,10 +328,13 @@ void main() {
       expect(find.text('Ate Maria'), findsOneWidget);
     });
 
-    testWidgets('removes a helper, with undo', (tester) async {
-      final h = await _proStore(tester, const [
-        StaffMember(email: 'maria@gmail.com', name: 'Maria'),
-      ]);
+    testWidgets('removes a helper; undo keeps them joined', (tester) async {
+      const maria = StaffMember(
+        email: 'maria@gmail.com',
+        name: 'Maria',
+        userId: 'maria-uid',
+      );
+      final h = await _proStore(tester, const [maria]);
 
       await tester.ensureVisible(find.byTooltip('Remove helper'));
       await tester.tap(find.byTooltip('Remove helper'));
@@ -228,9 +344,17 @@ void main() {
 
       await tester.tap(find.text('Undo'));
       await tester.pumpAndSettle();
-      expect(h.savedStaff.last, [
-        const StaffMember(email: 'maria@gmail.com', name: 'Maria'),
+      expect(h.savedStaff.last, [maria]);
+    });
+
+    testWidgets('shows who has joined', (tester) async {
+      await _proStore(tester, const [
+        StaffMember(email: 'jun@gmail.com', name: 'Jun', userId: 'jun-uid'),
+        StaffMember(email: 'maria@gmail.com', name: 'Maria'),
       ]);
+
+      expect(find.text('Joined'), findsOneWidget);
+      expect(find.text('Waiting to join'), findsOneWidget);
     });
   });
 }
@@ -241,4 +365,13 @@ Future<void> _tapAdd(WidgetTester tester) async {
   await tester.ensureVisible(add);
   await tester.pumpAndSettle();
   await tester.tap(add);
+}
+
+/// Taps "Unlock Pro & Add Helpers", below the fold on a small phone.
+Future<void> _tapUnlock(WidgetTester tester) async {
+  final unlock = find.text('Unlock Pro & Add Helpers');
+  await tester.ensureVisible(unlock);
+  await tester.pumpAndSettle();
+  await tester.tap(unlock);
+  await tester.pumpAndSettle();
 }

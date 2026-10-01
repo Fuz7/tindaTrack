@@ -30,7 +30,6 @@ class DashboardScreen extends StatefulWidget {
     this.watchStoreProfile = StoreService.profileOf,
     this.updateStoreProfile = StoreService.updateProfile,
     this.watchStoreStaff = StoreService.staffOf,
-    this.updateStoreStaff = StoreService.updateStaff,
   });
 
   final User user;
@@ -44,8 +43,6 @@ class DashboardScreen extends StatefulWidget {
   final Future<void> Function(String storeId, StoreProfile profile)
   updateStoreProfile;
   final Stream<StoreStaff> Function(String storeId) watchStoreStaff;
-  final Future<void> Function(String storeId, List<StaffMember> staff)
-  updateStoreStaff;
 
   @override
   State<DashboardScreen> createState() => _DashboardScreenState();
@@ -87,7 +84,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
   /// the owner, under the store's owner name — or, if that is blank, their
   /// Google name (falling back to the email's local part).
   Cashier get _cashier {
-    final helper = _staff?.memberFor(widget.user.email);
+    final helper = _staff?.memberFor(
+      uid: widget.user.uid,
+      email: widget.user.email,
+    );
     if (helper != null && helper.name.trim().isNotEmpty) {
       return Cashier(uid: widget.user.uid, name: helper.name.trim());
     }
@@ -167,7 +167,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   void _openSettings() {
-    final messenger = ScaffoldMessenger.of(context);
     Navigator.of(context).push(
       MaterialPageRoute<void>(
         builder: (_) => SettingsScreen(
@@ -176,13 +175,15 @@ class _DashboardScreenState extends State<DashboardScreen> {
               widget.updateStoreProfile(widget.storeId, profile),
           syncStatus: _products.watchSyncStatus(),
           staff: widget.watchStoreStaff(widget.storeId),
-          onSaveStaff: (staff) =>
-              widget.updateStoreStaff(widget.storeId, staff),
-          onUnlockPro: () => messenger
-            ..hideCurrentSnackBar()
-            ..showSnackBar(
-              const SnackBar(content: Text('Pro is not available yet.')),
-            ),
+          staffActions: StaffActions(
+            add: (member) => StoreService.addStaff(widget.storeId, member),
+            rename: (member, name) =>
+                StoreService.renameStaff(widget.storeId, member.email, name),
+            remove: (member) =>
+                StoreService.removeStaff(widget.storeId, member.email),
+          ),
+          onUpgradePro: () => StoreService.upgradeToPro(widget.storeId),
+          userId: widget.user.uid,
         ),
       ),
     );

@@ -65,12 +65,16 @@ class StoreDraft {
   };
 }
 
-/// The part of `stores/{id}` the Settings screen edits.
+/// The part of `stores/{id}` the Settings screen shows.
+///
+/// Equality compares only the editable fields — it is what tells the
+/// Settings form whether it has unsaved changes.
 class StoreProfile {
   const StoreProfile({
     required this.name,
     required this.ownerName,
     required this.currency,
+    this.ownerUid,
   });
 
   final String name;
@@ -78,6 +82,10 @@ class StoreProfile {
 
   /// ISO 4217 code, e.g. `PHP`.
   final String currency;
+
+  /// Who created the store; anyone else signed in to it is a helper. Not
+  /// editable, and null only on a store written without one.
+  final String? ownerUid;
 
   @override
   bool operator ==(Object other) =>
@@ -90,47 +98,73 @@ class StoreProfile {
   int get hashCode => Object.hash(name, ownerName, currency);
 }
 
-/// A helper allowed to work the store's till, and the name their sales are
-/// recorded under.
+/// A helper allowed to work a store's till — one `storeMembers` document.
+///
+/// The owner adds a helper by email, since a helper's user id doesn't exist
+/// to the owner until the helper signs in. [userId] is filled in when the
+/// helper accepts on the Join a Tindahan screen.
 class StaffMember {
-  const StaffMember({required this.email, required this.name});
+  const StaffMember({required this.email, required this.name, this.userId});
 
   /// Lowercased, so it matches a Google account's email however it was typed.
   final String email;
+
+  /// The name the helper's sales are recorded under.
   final String name;
 
-  StaffMember copyWith({String? name}) =>
-      StaffMember(email: email, name: name ?? this.name);
+  /// The helper's Firebase uid; null until they join.
+  final String? userId;
 
-  Map<String, dynamic> toMap() => {'email': email, 'name': name};
+  bool get hasJoined => userId != null;
+
+  StaffMember copyWith({String? name}) =>
+      StaffMember(email: email, name: name ?? this.name, userId: userId);
 
   @override
   bool operator ==(Object other) =>
-      other is StaffMember && other.email == email && other.name == name;
+      other is StaffMember &&
+      other.email == email &&
+      other.name == name &&
+      other.userId == userId;
 
   @override
-  int get hashCode => Object.hash(email, name);
+  int get hashCode => Object.hash(email, name, userId);
 }
 
-/// The store's plan and its allowed-emails list.
+/// Whether the store is on Pro, and its helpers.
 class StoreStaff {
   const StoreStaff({required this.isPro, required this.members});
 
-  /// Staff accounts are a Pro feature. There is no billing yet, so this is
-  /// `stores/{id}.plan == 'pro'`, set by hand in the Firestore console.
+  /// `stores/{id}.isPro`. Helpers are a Pro feature; there is no billing
+  /// yet, so this is set by hand in the Firestore console.
   final bool isPro;
   final List<StaffMember> members;
 
-  /// The helper signed in as [email], if they are one.
-  StaffMember? memberFor(String? email) {
-    if (email == null) return null;
-    final key = email.trim().toLowerCase();
-    return members.where((m) => m.email == key).firstOrNull;
+  /// The helper signed in as [uid] / [email], if they are one.
+  StaffMember? memberFor({required String uid, String? email}) {
+    final key = email?.trim().toLowerCase();
+    return members
+        .where((m) => m.userId == uid || (key != null && m.email == key))
+        .firstOrNull;
   }
 }
 
-/// Reads which tindahan a user belongs to, and creates one. Joining an
-/// existing store belongs to the Join flow, which does not exist yet.
+/// A store that has authorized the signed-in user's email, as the Join a
+/// Tindahan screen lists it.
+class StoreInvite {
+  const StoreInvite({
+    required this.storeId,
+    required this.storeName,
+    required this.ownerName,
+  });
+
+  final String storeId;
+  final String storeName;
+  final String ownerName;
+}
+
+/// Reads which tindahan a user belongs to, creates one, and joins one as a
+/// helper.
 ///
 /// The pointer lives on the user document rather than in `SharedPreferences`
 /// so the choice follows the owner across devices, which is the whole point of
@@ -141,6 +175,11 @@ class StoreService {
   static const usersCollection = 'users';
   static const storesCollection = 'stores';
   static const activeStoreField = 'activeStoreId';
+
+  /// Helpers, one document per store and email: `{storeId, email, name,
+  /// userId}`. Top-level rather than under the store so a helper can find
+  /// the stores that invited them with one query on their email.
+  static const membersCollection = 'storeMembers';
 
   static FirebaseFirestore get _db => FirebaseFirestore.instance;
 
@@ -208,6 +247,10 @@ class StoreService {
         name: text('name'),
         ownerName: text('ownerName'),
         currency: currency.isEmpty ? 'PHP' : currency,
+        ownerUid: switch (data['ownerUid']) {
+          final String uid when uid.isNotEmpty => uid,
+          _ => null,
+        },
       );
     });
   }
@@ -225,35 +268,157 @@ class StoreService {
     });
   }
 
-  /// Watches the store's plan and allowed-emails list (`staff`, an array of
-  /// `{email, name}` maps). Entries without an email are skipped.
+  /// Watches `stores/{id}.isPro` together with the store's `storeMembers`,
+  /// emitting once both have arrived and on every change to either.
   static Stream<StoreStaff> staffOf(String storeId) {
-    return _db.collection(storesCollection).doc(storeId).snapshots().map((
-      snapshot,
-    ) {
-      final data = snapshot.data() ?? const <String, dynamic>{};
-      final raw = data['staff'];
-      return StoreStaff(
-        isPro: data['plan'] == 'pro',
-        members: [
-          if (raw is List)
-            for (final entry in raw)
-              if (entry is Map && entry['email'] is String)
+    final pro = _db
+        .collection(storesCollection)
+        .doc(storeId)
+        .snapshots()
+        .map((snapshot) => snapshot.data()?['isPro'] == true);
+    final members = _db
+        .collection(membersCollection)
+        .where('storeId', isEqualTo: storeId)
+        .snapshots()
+        .map(
+          (query) => [
+            for (final doc in query.docs)
+              if (doc.data()['email'] case final String email)
                 StaffMember(
-                  email: (entry['email'] as String).trim().toLowerCase(),
-                  name: entry['name'] is String ? entry['name'] as String : '',
+                  email: email,
+                  name: switch (doc.data()['name']) {
+                    final String name => name,
+                    _ => '',
+                  },
+                  userId: switch (doc.data()['userId']) {
+                    final String uid when uid.isNotEmpty => uid,
+                    _ => null,
+                  },
                 ),
-        ],
-      );
+          ]..sort((a, b) => a.email.compareTo(b.email)),
+        );
+
+    return Stream.multi((listener) {
+      bool? isPro;
+      List<StaffMember>? list;
+      void emit() {
+        if (isPro != null && list != null) {
+          listener.add(StoreStaff(isPro: isPro!, members: list!));
+        }
+      }
+
+      final subs = [
+        pro.listen((value) {
+          isPro = value;
+          emit();
+        }, onError: listener.addError),
+        members.listen((value) {
+          list = value;
+          emit();
+        }, onError: listener.addError),
+      ];
+      listener.onCancel = () => Future.wait([for (final s in subs) s.cancel()]);
     });
   }
 
-  /// Replaces the store's allowed-emails list. Like [updateProfile], the
-  /// local cache has it at once; the future waits on the server.
-  static Future<void> updateStaff(String storeId, List<StaffMember> staff) {
+  /// Turns Pro on for the store. There is no billing yet: confirming the
+  /// upgrade is all it takes. Like [updateProfile], the local cache has it
+  /// at once; the future waits on the server.
+  static Future<void> upgradeToPro(String storeId) {
     return _db.collection(storesCollection).doc(storeId).update({
-      'staff': [for (final member in staff) member.toMap()],
+      'isPro': true,
+      'proSince': FieldValue.serverTimestamp(),
     });
+  }
+
+  /// One document per store and helper email, so adding the same email twice
+  /// overwrites rather than duplicates — and security rules can find a
+  /// helper's invite by id.
+  static String memberDocId(String storeId, String email) =>
+      '${storeId}_${email.trim().toLowerCase()}';
+
+  /// Authorizes [member]'s email on the store. Like [updateProfile], the
+  /// local cache has it at once; the future waits on the server.
+  static Future<void> addStaff(String storeId, StaffMember member) {
+    final email = member.email.trim().toLowerCase();
+    return _db
+        .collection(membersCollection)
+        .doc(memberDocId(storeId, email))
+        .set({
+          'storeId': storeId,
+          'email': email,
+          'name': member.name,
+          'userId': member.userId,
+          'addedAt': FieldValue.serverTimestamp(),
+        });
+  }
+
+  static Future<void> renameStaff(String storeId, String email, String name) {
+    return _db
+        .collection(membersCollection)
+        .doc(memberDocId(storeId, email))
+        .update({'name': name});
+  }
+
+  static Future<void> removeStaff(String storeId, String email) {
+    return _db
+        .collection(membersCollection)
+        .doc(memberDocId(storeId, email))
+        .delete();
+  }
+
+  /// The Pro stores that have authorized [email], with their names looked
+  /// up by store id. Reads the server: an invite list from a stale cache
+  /// would offer stores that no longer want this helper.
+  static Future<List<StoreInvite>> invitesFor(String email) async {
+    final invites = await _db
+        .collection(membersCollection)
+        .where('email', isEqualTo: email.trim().toLowerCase())
+        .get(const GetOptions(source: Source.server));
+
+    final stores = await Future.wait([
+      for (final invite in invites.docs)
+        if (invite.data()['storeId'] case final String storeId)
+          _db
+              .collection(storesCollection)
+              .doc(storeId)
+              .get(const GetOptions(source: Source.server)),
+    ]);
+
+    return [
+      for (final store in stores)
+        if (store.data() case final data? when data['isPro'] == true)
+          StoreInvite(
+            storeId: store.id,
+            storeName: switch (data['name']) {
+              final String name => name,
+              _ => 'Tindahan',
+            },
+            ownerName: switch (data['ownerName']) {
+              final String name => name,
+              _ => '',
+            },
+          ),
+    ]..sort((a, b) => a.storeName.compareTo(b.storeName));
+  }
+
+  /// Joins [storeId] as a helper: writes the user's id onto their invite,
+  /// and points `users/{uid}` at the store so [membershipOf] swaps to its
+  /// dashboard. One batch, so neither half lands without the other.
+  static Future<void> joinStore({
+    required String uid,
+    required String email,
+    required String storeId,
+  }) async {
+    final batch = _db.batch()
+      ..update(
+        _db.collection(membersCollection).doc(memberDocId(storeId, email)),
+        {'userId': uid, 'joinedAt': FieldValue.serverTimestamp()},
+      )
+      ..set(_db.collection(usersCollection).doc(uid), {
+        activeStoreField: storeId,
+      }, SetOptions(merge: true));
+    await batch.commit();
   }
 
   /// Creates `stores/{id}` from [draft] and points `users/{uid}` at it, as one
@@ -277,6 +442,7 @@ class StoreService {
         'address': draft.address,
         'lowStockThreshold': draft.lowStockThreshold,
         'ownerUid': uid,
+        'isPro': false,
         'createdAt': FieldValue.serverTimestamp(),
       })
       // Merge so any other fields on the user document survive.

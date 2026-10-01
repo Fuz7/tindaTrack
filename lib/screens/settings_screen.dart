@@ -19,9 +19,14 @@ class SettingsScreen extends StatefulWidget {
     required this.onSave,
     required this.syncStatus,
     required this.staff,
-    required this.onSaveStaff,
-    required this.onUnlockPro,
+    required this.staffActions,
+    required this.onUpgradePro,
+    required this.userId,
   });
+
+  /// The signed-in user. Unless it is the store's owner, the screen is read
+  /// only and the helpers list is hidden.
+  final String userId;
 
   /// The store's saved profile; null while it loads.
   final Stream<StoreProfile?> profile;
@@ -35,12 +40,29 @@ class SettingsScreen extends StatefulWidget {
   /// The store's plan and helpers.
   final Stream<StoreStaff> staff;
 
-  /// Saves the whole helpers list; like [onSave], not waited on.
-  final Future<void> Function(List<StaffMember> staff) onSaveStaff;
-  final VoidCallback onUnlockPro;
+  final StaffActions staffActions;
+
+  /// Turns Pro on, once the owner confirms. Like [onSave], it completes on
+  /// the server's acknowledgement and is not waited on; [staff] reports the
+  /// change.
+  final Future<void> Function() onUpgradePro;
 
   @override
   State<SettingsScreen> createState() => _SettingsScreenState();
+}
+
+/// The writes behind the helpers list. Like [SettingsScreen.onSave], each
+/// completes on the server's acknowledgement and is not waited on.
+class StaffActions {
+  const StaffActions({
+    required this.add,
+    required this.rename,
+    required this.remove,
+  });
+
+  final Future<void> Function(StaffMember member) add;
+  final Future<void> Function(StaffMember member, String name) rename;
+  final Future<void> Function(StaffMember member) remove;
 }
 
 class _SettingsScreenState extends State<SettingsScreen> {
@@ -57,9 +79,32 @@ class _SettingsScreenState extends State<SettingsScreen> {
     name: _name.text.trim(),
     ownerName: _owner.text.trim(),
     currency: _currency,
+    ownerUid: _saved?.ownerUid,
   );
 
   bool get _dirty => _saved != null && _edited != _saved;
+
+  /// Helpers see the store's details but can't change them, and don't see
+  /// the helpers list at all. A store without an owner on record is treated
+  /// as the viewer's own; Firestore rules still guard the writes.
+  bool get _isOwner {
+    final ownerUid = _saved?.ownerUid;
+    return ownerUid == null || ownerUid == widget.userId;
+  }
+
+  /// Read-only fields for helpers: greyed, with a lock.
+  InputDecoration _fieldDecoration(String? hint) {
+    final decoration = _decoration(hint);
+    if (_isOwner) return decoration;
+    return decoration.copyWith(
+      fillColor: AppColors.surfaceContainerHigh,
+      suffixIcon: const Icon(
+        Icons.lock_outline,
+        size: 18,
+        color: AppColors.outline,
+      ),
+    );
+  }
 
   @override
   void initState() {
@@ -111,12 +156,33 @@ class _SettingsScreenState extends State<SettingsScreen> {
       ..showSnackBar(const SnackBar(content: Text('Settings saved.')));
   }
 
+  Future<void> _confirmUpgrade() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => _UpgradeDialog(storeName: _saved?.name ?? ''),
+    );
+    if (confirmed != true || !mounted) return;
+
+    final messenger = ScaffoldMessenger.of(context);
+    widget.onUpgradePro().catchError(
+      (Object error) => messenger.showSnackBar(
+        SnackBar(content: Text('Could not upgrade to Pro: $error')),
+      ),
+    );
+    messenger
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        const SnackBar(content: Text('Pro is on. You can now add helpers.')),
+      );
+  }
+
   static String? _required(String? value) =>
       (value ?? '').trim().isEmpty ? 'Required' : null;
 
   @override
   Widget build(BuildContext context) {
     final loaded = _saved != null;
+    final isOwner = _isOwner;
 
     return Scaffold(
       backgroundColor: AppColors.surfaceContainerLowest,
@@ -134,15 +200,17 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.stretch,
                           children: [
+                            if (!isOwner) const _HelperNote(),
                             _Field(
                               label: 'STORE NAME',
                               child: TextFormField(
                                 controller: _name,
+                                enabled: isOwner,
                                 textCapitalization: TextCapitalization.words,
                                 textInputAction: TextInputAction.next,
                                 validator: _required,
                                 style: _inputStyle,
-                                decoration: _decoration(
+                                decoration: _fieldDecoration(
                                   "e.g., Aling Nena's Sari-Sari Store",
                                 ),
                               ),
@@ -151,10 +219,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
                               label: 'STORE OWNER NAME',
                               child: TextFormField(
                                 controller: _owner,
+                                enabled: isOwner,
                                 textCapitalization: TextCapitalization.words,
                                 validator: _required,
                                 style: _inputStyle,
-                                decoration: _decoration('Juan Dela Cruz'),
+                                decoration: _fieldDecoration('Juan Dela Cruz'),
                               ),
                             ),
                             _Field(
@@ -165,14 +234,27 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                 // move the selection too.
                                 key: ValueKey(_currency),
                                 isExpanded: true,
-                                onChanged: (value) =>
-                                    setState(() => _currency = value!),
-                                icon: const Icon(
-                                  Icons.expand_more,
-                                  color: AppColors.onSurfaceVariant,
+                                // Null disables the dropdown for helpers.
+                                onChanged: isOwner
+                                    ? (value) =>
+                                          setState(() => _currency = value!)
+                                    : null,
+                                disabledHint: Text(
+                                  StoreDraft.currencies[_currency] ?? _currency,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: _inputStyle,
+                                ),
+                                icon: Icon(
+                                  isOwner
+                                      ? Icons.expand_more
+                                      : Icons.lock_outline,
+                                  size: isOwner ? null : 18,
+                                  color: isOwner
+                                      ? AppColors.onSurfaceVariant
+                                      : AppColors.outline,
                                 ),
                                 style: _inputStyle,
-                                decoration: _decoration(null),
+                                decoration: _fieldDecoration(null),
                                 items: [
                                   for (final entry in {
                                     ...StoreDraft.currencies,
@@ -193,13 +275,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                 ],
                               ),
                             ),
-                            const SizedBox(height: AppSpacing.stackSm),
-                            _AllowedEmails(
-                              staff: widget.staff,
-                              onSaveStaff: widget.onSaveStaff,
-                              onUnlockPro: widget.onUnlockPro,
-                            ),
-                            const SizedBox(height: 24),
+                            if (isOwner) ...[
+                              const SizedBox(height: AppSpacing.stackSm),
+                              _AllowedEmails(
+                                staff: widget.staff,
+                                actions: widget.staffActions,
+                                onUnlockPro: _confirmUpgrade,
+                              ),
+                              const SizedBox(height: 24),
+                            ],
                             _Field(
                               label: 'SYNC STATUS',
                               child: _SyncStatusCard(status: widget.syncStatus),
@@ -209,7 +293,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       ),
                     ),
             ),
-            if (loaded)
+            if (loaded && isOwner)
               _Footer(
                 onSave: _dirty ? _save : null,
                 onDiscard: _dirty ? _reset : null,
@@ -242,6 +326,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       fillColor: AppColors.surfaceBright,
       border: border(AppColors.outlineVariant),
       enabledBorder: border(AppColors.outlineVariant),
+      disabledBorder: border(AppColors.outlineVariant),
       focusedBorder: border(AppColors.primary, 2),
       errorBorder: border(AppColors.error),
       focusedErrorBorder: border(AppColors.error, 2),
@@ -327,12 +412,12 @@ const _amber900 = Color(0xFF78350F);
 class _AllowedEmails extends StatelessWidget {
   const _AllowedEmails({
     required this.staff,
-    required this.onSaveStaff,
+    required this.actions,
     required this.onUnlockPro,
   });
 
   final Stream<StoreStaff> staff;
-  final Future<void> Function(List<StaffMember> staff) onSaveStaff;
+  final StaffActions actions;
   final VoidCallback onUnlockPro;
 
   @override
@@ -371,7 +456,7 @@ class _AllowedEmails extends StatelessWidget {
             ),
             const SizedBox(height: 12),
             if (isPro)
-              _StaffEditor(members: staff!.members, onSave: onSaveStaff)
+              _StaffEditor(members: staff!.members, actions: actions)
             else
               _LockedStaff(onUnlockPro: onUnlockPro),
           ],
@@ -384,10 +469,10 @@ class _AllowedEmails extends StatelessWidget {
 /// With Pro: an email field to add a helper, and a row per helper with
 /// rename and remove.
 class _StaffEditor extends StatefulWidget {
-  const _StaffEditor({required this.members, required this.onSave});
+  const _StaffEditor({required this.members, required this.actions});
 
   final List<StaffMember> members;
-  final Future<void> Function(List<StaffMember> staff) onSave;
+  final StaffActions actions;
 
   @override
   State<_StaffEditor> createState() => _StaffEditorState();
@@ -405,15 +490,15 @@ class _StaffEditorState extends State<_StaffEditor> {
     super.dispose();
   }
 
-  void _save(List<StaffMember> staff) {
+  /// Runs a staff write without waiting on the server — Firestore's cache
+  /// shows it at once — and reports only a failure.
+  void _run(Future<void> write) {
     final messenger = ScaffoldMessenger.of(context);
-    widget
-        .onSave(staff)
-        .catchError(
-          (Object error) => messenger.showSnackBar(
-            SnackBar(content: Text('Could not save staff: $error')),
-          ),
-        );
+    write.catchError(
+      (Object error) => messenger.showSnackBar(
+        SnackBar(content: Text('Could not save staff: $error')),
+      ),
+    );
   }
 
   Future<void> _add() async {
@@ -429,30 +514,28 @@ class _StaffEditorState extends State<_StaffEditor> {
     final name = await _askName(email: email, initial: email.split('@').first);
     if (name == null || !mounted) return;
     _email.clear();
-    _save([...widget.members, StaffMember(email: email, name: name)]);
+    _run(widget.actions.add(StaffMember(email: email, name: name)));
   }
 
   Future<void> _rename(StaffMember member) async {
     final name = await _askName(email: member.email, initial: member.name);
     if (name == null || name == member.name || !mounted) return;
-    _save([
-      for (final m in widget.members)
-        m.email == member.email ? m.copyWith(name: name) : m,
-    ]);
+    _run(widget.actions.rename(member, name));
   }
 
   void _remove(StaffMember member) {
-    final before = widget.members;
-    _save([
-      for (final m in before)
-        if (m.email != member.email) m,
-    ]);
+    _run(widget.actions.remove(member));
     ScaffoldMessenger.of(context)
       ..hideCurrentSnackBar()
       ..showSnackBar(
         SnackBar(
           content: Text('Removed ${member.email}.'),
-          action: SnackBarAction(label: 'Undo', onPressed: () => _save(before)),
+          // Re-adding keeps their user id, so a helper who had joined stays
+          // joined.
+          action: SnackBarAction(
+            label: 'Undo',
+            onPressed: () => _run(widget.actions.add(member)),
+          ),
         ),
       );
   }
@@ -577,6 +660,17 @@ class _StaffRow extends StatelessWidget {
                   overflow: TextOverflow.ellipsis,
                   style: AppTypography.bodySm.copyWith(
                     color: AppColors.onSurfaceVariant,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  member.hasJoined ? 'Joined' : 'Waiting to join',
+                  style: AppTypography.bodySm.copyWith(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: member.hasJoined
+                        ? AppColors.primary
+                        : AppColors.outline,
                   ),
                 ),
               ],
@@ -856,6 +950,85 @@ class _LockedStaff extends StatelessWidget {
               ),
             ),
           ),
+        ),
+      ],
+    );
+  }
+}
+
+/// Tells a helper why the store's details are locked.
+class _HelperNote extends StatelessWidget {
+  const _HelperNote();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 24),
+      padding: const EdgeInsets.all(AppSpacing.gutter),
+      decoration: BoxDecoration(
+        color: AppColors.surfaceContainerLow,
+        borderRadius: BorderRadius.circular(AppRadius.base),
+        border: Border.all(color: AppColors.outlineVariant),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Icon(Icons.info_outline, color: AppColors.primary),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              "You're signed in as a helper. Only the store owner can change "
+              'these details.',
+              style: AppTypography.bodySm.copyWith(
+                color: AppColors.onSurfaceVariant,
+                height: 1.375,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Asks before turning Pro on. Returns true on Confirm.
+class _UpgradeDialog extends StatelessWidget {
+  const _UpgradeDialog({required this.storeName});
+
+  final String storeName;
+
+  @override
+  Widget build(BuildContext context) {
+    final store = storeName.trim().isEmpty ? 'this tindahan' : storeName;
+
+    return AlertDialog(
+      icon: const Icon(
+        Icons.workspace_premium_outlined,
+        size: 32,
+        color: _amber700,
+      ),
+      title: const Text('Upgrade to Pro?'),
+      content: Text(
+        'Turn on Multi-Device Staff Sync for $store. You can then add '
+        'helpers who log in and ring up sales on their own phones.',
+        style: AppTypography.bodySm.copyWith(
+          color: AppColors.onSurfaceVariant,
+          height: 1.375,
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(false),
+          child: const Text('Cancel'),
+        ),
+        FilledButton(
+          onPressed: () => Navigator.of(context).pop(true),
+          style: FilledButton.styleFrom(
+            backgroundColor: AppColors.primary,
+            foregroundColor: AppColors.onPrimary,
+            minimumSize: const Size(64, AppSpacing.touchTarget),
+          ),
+          child: const Text('Confirm'),
         ),
       ],
     );
