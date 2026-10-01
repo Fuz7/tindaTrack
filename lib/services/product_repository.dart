@@ -5,6 +5,20 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'product_service.dart';
 
+/// How far this device's changes have got to the server.
+class SyncStatus {
+  const SyncStatus({required this.pending, this.lastSyncedAt});
+
+  /// Changes made here that the server doesn't have yet.
+  final int pending;
+
+  /// When the server last confirmed it had everything from this device;
+  /// null if it never has (fresh install, or offline since).
+  final DateTime? lastSyncedAt;
+
+  bool get isSynced => pending == 0 && lastSyncedAt != null;
+}
+
 /// A store's product catalog, kept on the device.
 ///
 /// The app reads products from here, never live from Firestore: search and
@@ -54,9 +68,29 @@ class ProductRepository {
   /// Set while [_flush] is sending, so two callers don't send an op twice.
   bool _flushing = false;
 
+  final _syncChanges = StreamController<SyncStatus>.broadcast();
+
+  /// When the server last confirmed it had everything from this device.
+  DateTime? _lastSyncedAt;
+
   String get _key => 'products.v1.$storeId';
 
   List<ProductOp> get pendingOps => List.unmodifiable(_ops);
+
+  SyncStatus get syncStatus =>
+      SyncStatus(pending: _ops.length, lastSyncedAt: _lastSyncedAt);
+
+  /// [syncStatus] straight away, then every change.
+  Stream<SyncStatus> watchSyncStatus() {
+    return Stream.multi((listener) {
+      listener.add(syncStatus);
+      final sub = _syncChanges.stream.listen(
+        listener.add,
+        onError: listener.addError,
+      );
+      listener.onCancel = sub.cancel;
+    });
+  }
 
   /// Products with a change the server doesn't have yet.
   Set<String> get pendingIds => {
@@ -121,6 +155,8 @@ class ProductRepository {
         for (final sale in (json['sales'] as List<dynamic>? ?? const [])) {
           sales.add(Sale.fromJson(Map<String, dynamic>.from(sale as Map)));
         }
+        final synced = json['lastSyncedAt'];
+        if (synced is String) _lastSyncedAt = DateTime.tryParse(synced);
       } on Object {
         // A corrupt copy is rebuilt from the server rather than crashing the
         // till; anything still queued in it is lost with it.
@@ -131,6 +167,7 @@ class ProductRepository {
     }
     _publish(products);
     _publishSales(sales);
+    _publishSync();
 
     unawaited(_refreshFromServer());
   }
@@ -292,11 +329,13 @@ class ProductRepository {
   Future<void> dispose() async {
     await _changes.close();
     await _salesChanges.close();
+    await _syncChanges.close();
   }
 
   Future<void> _apply(ProductOp op) async {
     _ops.add(op);
     _publish(op.applyTo(_products ?? const []));
+    _publishSync();
     await _persist();
     unawaited(_flush());
   }
@@ -318,6 +357,8 @@ class ProductRepository {
           return; // Offline or refused; try again next load.
         }
         _ops.remove(op);
+        if (_ops.isEmpty) _lastSyncedAt = DateTime.now();
+        _publishSync();
         await _persist();
       }
     } finally {
@@ -371,6 +412,8 @@ class ProductRepository {
     }
     _publish(products);
     if (serverSales != null) _mergeSales(salesOnServer);
+    if (_ops.isEmpty) _lastSyncedAt = DateTime.now();
+    _publishSync();
     await _persist();
     unawaited(_flush());
   }
@@ -408,6 +451,10 @@ class ProductRepository {
     if (!_salesChanges.isClosed) _salesChanges.add(_sales!);
   }
 
+  void _publishSync() {
+    if (!_syncChanges.isClosed) _syncChanges.add(syncStatus);
+  }
+
   Future<void> _persist() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(
@@ -419,6 +466,7 @@ class ProductRepository {
         ],
         'ops': [for (final op in _ops) op.toJson()],
         'sales': [for (final s in _sales ?? const <Sale>[]) s.toJson()],
+        'lastSyncedAt': _lastSyncedAt?.toIso8601String(),
       }),
     );
   }

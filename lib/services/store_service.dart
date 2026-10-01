@@ -57,6 +57,76 @@ class StoreDraft {
 
   /// Stock at or below this count is flagged as low.
   final int lowStockThreshold;
+
+  /// The currencies a store can pick, ISO code to display label.
+  static const currencies = {
+    'PHP': '₱ PHP (Philippine Peso)',
+    'USD': r'$ USD (US Dollar)',
+  };
+}
+
+/// The part of `stores/{id}` the Settings screen edits.
+class StoreProfile {
+  const StoreProfile({
+    required this.name,
+    required this.ownerName,
+    required this.currency,
+  });
+
+  final String name;
+  final String ownerName;
+
+  /// ISO 4217 code, e.g. `PHP`.
+  final String currency;
+
+  @override
+  bool operator ==(Object other) =>
+      other is StoreProfile &&
+      other.name == name &&
+      other.ownerName == ownerName &&
+      other.currency == currency;
+
+  @override
+  int get hashCode => Object.hash(name, ownerName, currency);
+}
+
+/// A helper allowed to work the store's till, and the name their sales are
+/// recorded under.
+class StaffMember {
+  const StaffMember({required this.email, required this.name});
+
+  /// Lowercased, so it matches a Google account's email however it was typed.
+  final String email;
+  final String name;
+
+  StaffMember copyWith({String? name}) =>
+      StaffMember(email: email, name: name ?? this.name);
+
+  Map<String, dynamic> toMap() => {'email': email, 'name': name};
+
+  @override
+  bool operator ==(Object other) =>
+      other is StaffMember && other.email == email && other.name == name;
+
+  @override
+  int get hashCode => Object.hash(email, name);
+}
+
+/// The store's plan and its allowed-emails list.
+class StoreStaff {
+  const StoreStaff({required this.isPro, required this.members});
+
+  /// Staff accounts are a Pro feature. There is no billing yet, so this is
+  /// `stores/{id}.plan == 'pro'`, set by hand in the Firestore console.
+  final bool isPro;
+  final List<StaffMember> members;
+
+  /// The helper signed in as [email], if they are one.
+  StaffMember? memberFor(String? email) {
+    if (email == null) return null;
+    final key = email.trim().toLowerCase();
+    return members.where((m) => m.email == key).firstOrNull;
+  }
 }
 
 /// Reads which tindahan a user belongs to, and creates one. Joining an
@@ -117,6 +187,72 @@ class StoreService {
     ) {
       final raw = snapshot.data()?['lowStockThreshold'];
       return raw is num ? raw.round() : StoreDraft.defaultLowStockThreshold;
+    });
+  }
+
+  /// Watches the store's editable profile. Emits null while the document
+  /// hasn't arrived; missing fields read as blank, and currency as `PHP`.
+  static Stream<StoreProfile?> profileOf(String storeId) {
+    return _db.collection(storesCollection).doc(storeId).snapshots().map((
+      snapshot,
+    ) {
+      final data = snapshot.data();
+      if (data == null) return null;
+      String text(String key) {
+        final raw = data[key];
+        return raw is String ? raw : '';
+      }
+
+      final currency = text('currency');
+      return StoreProfile(
+        name: text('name'),
+        ownerName: text('ownerName'),
+        currency: currency.isEmpty ? 'PHP' : currency,
+      );
+    });
+  }
+
+  /// Saves [profile] over the store's name, owner and currency.
+  ///
+  /// Firestore applies the write to its local cache at once, so [profileOf]
+  /// shows it straight away; the returned future only completes when the
+  /// server acknowledges, which offline may be much later.
+  static Future<void> updateProfile(String storeId, StoreProfile profile) {
+    return _db.collection(storesCollection).doc(storeId).update({
+      'name': profile.name,
+      'ownerName': profile.ownerName,
+      'currency': profile.currency,
+    });
+  }
+
+  /// Watches the store's plan and allowed-emails list (`staff`, an array of
+  /// `{email, name}` maps). Entries without an email are skipped.
+  static Stream<StoreStaff> staffOf(String storeId) {
+    return _db.collection(storesCollection).doc(storeId).snapshots().map((
+      snapshot,
+    ) {
+      final data = snapshot.data() ?? const <String, dynamic>{};
+      final raw = data['staff'];
+      return StoreStaff(
+        isPro: data['plan'] == 'pro',
+        members: [
+          if (raw is List)
+            for (final entry in raw)
+              if (entry is Map && entry['email'] is String)
+                StaffMember(
+                  email: (entry['email'] as String).trim().toLowerCase(),
+                  name: entry['name'] is String ? entry['name'] as String : '',
+                ),
+        ],
+      );
+    });
+  }
+
+  /// Replaces the store's allowed-emails list. Like [updateProfile], the
+  /// local cache has it at once; the future waits on the server.
+  static Future<void> updateStaff(String storeId, List<StaffMember> staff) {
+    return _db.collection(storesCollection).doc(storeId).update({
+      'staff': [for (final member in staff) member.toMap()],
     });
   }
 

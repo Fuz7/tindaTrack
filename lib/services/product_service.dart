@@ -271,11 +271,13 @@ class SaleItem {
 /// Who rang up, or last edited, a sale.
 ///
 /// Staff accounts are a Pro feature that isn't built yet, so for now
-/// everyone signed in to a store is its owner, named "Owner".
+/// everyone signed in to a store is its owner, named after their Google
+/// account — or "Owner" when the account carries no name.
 class Cashier {
   const Cashier({required this.uid, required this.name});
 
-  const Cashier.owner(String uid) : this(uid: uid, name: 'Owner');
+  const Cashier.owner(String uid, {String? name})
+    : this(uid: uid, name: name ?? 'Owner');
 
   final String uid;
   final String name;

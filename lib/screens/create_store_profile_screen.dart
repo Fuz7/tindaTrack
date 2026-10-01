@@ -29,11 +29,6 @@ class CreateStoreProfileScreen extends StatefulWidget {
 }
 
 class _CreateStoreProfileScreenState extends State<CreateStoreProfileScreen> {
-  static const _currencies = {
-    'PHP': '₱ PHP (Philippine Peso)',
-    'USD': r'$ USD (US Dollar)',
-  };
-
   final _formKey = GlobalKey<FormState>();
   final _name = TextEditingController();
   late final _owner = TextEditingController(text: widget.initialOwnerName);
@@ -146,7 +141,7 @@ class _CreateStoreProfileScreenState extends State<CreateStoreProfileScreen> {
                 style: _inputStyle,
                 decoration: _decoration(Icons.payments_outlined, null),
                 items: [
-                  for (final entry in _currencies.entries)
+                  for (final entry in StoreDraft.currencies.entries)
                     DropdownMenuItem(
                       value: entry.key,
                       child: Text(entry.value, overflow: TextOverflow.ellipsis),

@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
@@ -8,6 +10,7 @@ import '../services/store_service.dart';
 import '../theme/app_theme.dart';
 import 'home_screen.dart';
 import 'inventory_screen.dart';
+import 'settings_screen.dart';
 import 'transactions_screen.dart';
 
 /// The signed-in, store-ready shell: TindaTrack app bar on top, the four-tab
@@ -24,6 +27,10 @@ class DashboardScreen extends StatefulWidget {
     required this.storeId,
     this.createProductRepository = ProductRepository.forStore,
     this.watchLowStockThreshold = StoreService.lowStockThresholdOf,
+    this.watchStoreProfile = StoreService.profileOf,
+    this.updateStoreProfile = StoreService.updateProfile,
+    this.watchStoreStaff = StoreService.staffOf,
+    this.updateStoreStaff = StoreService.updateStaff,
   });
 
   final User user;
@@ -33,6 +40,12 @@ class DashboardScreen extends StatefulWidget {
   /// fake server.
   final ProductRepository Function(String storeId) createProductRepository;
   final Stream<int> Function(String storeId) watchLowStockThreshold;
+  final Stream<StoreProfile?> Function(String storeId) watchStoreProfile;
+  final Future<void> Function(String storeId, StoreProfile profile)
+  updateStoreProfile;
+  final Stream<StoreStaff> Function(String storeId) watchStoreStaff;
+  final Future<void> Function(String storeId, List<StaffMember> staff)
+  updateStoreStaff;
 
   @override
   State<DashboardScreen> createState() => _DashboardScreenState();
@@ -68,12 +81,51 @@ class _DashboardScreenState extends State<DashboardScreen> {
         ),
   );
 
-  /// Who is ringing up sales on this device. Staff accounts (a Pro feature)
-  /// aren't built, so whoever is signed in is the store's owner.
-  late final _cashier = Cashier.owner(widget.user.uid);
+  /// Who is ringing up sales on this device, read at the moment of each sale
+  /// so a rename in Settings applies to the next one. A helper on the store's
+  /// allowed-emails list goes by the name the owner gave them; anyone else is
+  /// the owner, under the store's owner name — or, if that is blank, their
+  /// Google name (falling back to the email's local part).
+  Cashier get _cashier {
+    final helper = _staff?.memberFor(widget.user.email);
+    if (helper != null && helper.name.trim().isNotEmpty) {
+      return Cashier(uid: widget.user.uid, name: helper.name.trim());
+    }
+    final ownerName = _profile?.ownerName.trim() ?? '';
+    return Cashier.owner(
+      widget.user.uid,
+      name: ownerName.isNotEmpty ? ownerName : _googleName(widget.user),
+    );
+  }
+
+  StoreProfile? _profile;
+  StoreStaff? _staff;
+  late final StreamSubscription<StoreProfile?> _profileSub;
+  late final StreamSubscription<StoreStaff> _staffSub;
+
+  @override
+  void initState() {
+    super.initState();
+    _profileSub = widget
+        .watchStoreProfile(widget.storeId)
+        .listen((profile) => _profile = profile, onError: (_) {});
+    _staffSub = widget
+        .watchStoreStaff(widget.storeId)
+        .listen((staff) => _staff = staff, onError: (_) {});
+  }
+
+  static String? _googleName(User user) {
+    final displayName = user.displayName?.trim();
+    if (displayName != null && displayName.isNotEmpty) return displayName;
+    final email = user.email?.trim();
+    if (email != null && email.contains('@')) return email.split('@').first;
+    return null;
+  }
 
   @override
   void dispose() {
+    _profileSub.cancel();
+    _staffSub.cancel();
     _products.dispose();
     super.dispose();
   }
@@ -114,11 +166,33 @@ class _DashboardScreenState extends State<DashboardScreen> {
     });
   }
 
+  void _openSettings() {
+    final messenger = ScaffoldMessenger.of(context);
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => SettingsScreen(
+          profile: widget.watchStoreProfile(widget.storeId),
+          onSave: (profile) =>
+              widget.updateStoreProfile(widget.storeId, profile),
+          syncStatus: _products.watchSyncStatus(),
+          staff: widget.watchStoreStaff(widget.storeId),
+          onSaveStaff: (staff) =>
+              widget.updateStoreStaff(widget.storeId, staff),
+          onUnlockPro: () => messenger
+            ..hideCurrentSnackBar()
+            ..showSnackBar(
+              const SnackBar(content: Text('Pro is not available yet.')),
+            ),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.background,
-      appBar: _TopBar(user: widget.user),
+      appBar: _TopBar(user: widget.user, onOpenSettings: _openSettings),
       body: IndexedStack(
         index: _tab,
         children: [
@@ -137,9 +211,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
 }
 
 class _TopBar extends StatelessWidget implements PreferredSizeWidget {
-  const _TopBar({required this.user});
+  const _TopBar({required this.user, required this.onOpenSettings});
 
   final User user;
+  final VoidCallback onOpenSettings;
 
   @override
   Size get preferredSize => const Size.fromHeight(AppSpacing.touchTarget + 1);
@@ -169,7 +244,7 @@ class _TopBar extends StatelessWidget implements PreferredSizeWidget {
                   ),
                 ),
               ),
-              _SettingsMenu(user: user),
+              _SettingsMenu(user: user, onOpenSettings: onOpenSettings),
             ],
           ),
         ),
@@ -219,12 +294,13 @@ class _Avatar extends StatelessWidget {
   }
 }
 
-/// The design's settings gear. Settings is not built yet, so for now it holds
-/// the one account action the app has: signing out.
+/// The design's settings gear: the signed-in account, the store's Settings,
+/// and signing out.
 class _SettingsMenu extends StatelessWidget {
-  const _SettingsMenu({required this.user});
+  const _SettingsMenu({required this.user, required this.onOpenSettings});
 
   final User user;
+  final VoidCallback onOpenSettings;
 
   @override
   Widget build(BuildContext context) {
@@ -246,6 +322,20 @@ class _SettingsMenu extends StatelessWidget {
           ),
         ),
         const PopupMenuDivider(),
+        PopupMenuItem(
+          value: onOpenSettings,
+          child: const Row(
+            children: [
+              Icon(
+                Icons.storefront_outlined,
+                size: 20,
+                color: AppColors.onSurfaceVariant,
+              ),
+              SizedBox(width: 12),
+              Text('Settings'),
+            ],
+          ),
+        ),
         const PopupMenuItem(
           value: AuthService.signOut,
           child: Row(

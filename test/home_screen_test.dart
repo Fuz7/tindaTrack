@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -6,6 +8,7 @@ import 'package:tinda_track/screens/home_screen.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:tinda_track/services/product_repository.dart';
 import 'package:tinda_track/services/product_service.dart';
+import 'package:tinda_track/services/store_service.dart';
 import 'package:tinda_track/theme/app_theme.dart';
 
 import 'support/fake_product_remote.dart';
@@ -13,6 +16,8 @@ import 'support/fake_product_remote.dart';
 /// Just enough of a Firebase [User] for the shell to render: no photo, so no
 /// network image is attempted.
 class _FakeUser implements User {
+  @override
+  String get uid => 'owner-uid';
   @override
   String? get displayName => 'Juan Dela Cruz';
   @override
@@ -596,6 +601,8 @@ void main() {
         createProductRepository: (id) =>
             ProductRepository(storeId: id, remote: FakeProductRemote(_catalog)),
         watchLowStockThreshold: (_) => Stream.value(5),
+        watchStoreProfile: (_) => const Stream.empty(),
+        watchStoreStaff: (_) => const Stream.empty(),
       ),
     );
 
@@ -640,6 +647,85 @@ void main() {
         matching: find.byType(InkWell),
       );
       expect(tester.getSize(key).height, greaterThanOrEqualTo(44));
+    });
+
+    group('cashier name', () {
+      late FakeProductRemote remote;
+      late StreamController<StoreProfile?> profile;
+      late StreamController<StoreStaff> staff;
+
+      setUp(() {
+        remote = FakeProductRemote(_catalog);
+        profile = StreamController<StoreProfile?>.broadcast();
+        staff = StreamController<StoreStaff>.broadcast();
+      });
+
+      Widget shell() => MaterialApp(
+        theme: AppTheme.light,
+        home: DashboardScreen(
+          user: _FakeUser(),
+          storeId: 'store-1',
+          createProductRepository: (id) =>
+              ProductRepository(storeId: id, remote: remote),
+          watchLowStockThreshold: (_) => Stream.value(5),
+          watchStoreProfile: (_) => profile.stream,
+          watchStoreStaff: (_) => staff.stream,
+        ),
+      );
+
+      StoreProfile owner(String name) =>
+          StoreProfile(name: 'Tindahan', ownerName: name, currency: 'PHP');
+
+      /// Rings up ₱15, pays with ₱100, and returns the name the sale was
+      /// recorded under.
+      Future<String?> sell(WidgetTester tester) async {
+        await _type(tester, '15');
+        await _addToCart(tester);
+        await tester.tap(find.text('COMPLETE SALE'));
+        await tester.pumpAndSettle();
+        await tester.ensureVisible(find.text('₱100'));
+        await tester.tap(find.text('₱100'));
+        await tester.pump();
+        await tester.tap(find.text('COMPLETE SALE'));
+        await tester.pumpAndSettle();
+        // Let the "Sale completed" snackbar go, so it covers nothing next.
+        await tester.pump(const Duration(seconds: 10));
+        await tester.pumpAndSettle();
+        return remote.sent.last.sale!.cashierName;
+      }
+
+      testWidgets('is the store owner name, and follows a rename', (
+        tester,
+      ) async {
+        await tester.pumpWidget(shell());
+        profile.add(owner('Aling Nena'));
+        await tester.pump();
+        expect(await sell(tester), 'Aling Nena');
+
+        profile.add(owner('Nena Cruz'));
+        await tester.pump();
+        expect(await sell(tester), 'Nena Cruz');
+      });
+
+      testWidgets('falls back to the Google name', (tester) async {
+        await tester.pumpWidget(shell());
+        profile.add(owner('  '));
+        await tester.pump();
+        expect(await sell(tester), 'Juan Dela Cruz');
+      });
+
+      testWidgets('is a helper\'s given name', (tester) async {
+        await tester.pumpWidget(shell());
+        profile.add(owner('Aling Nena'));
+        staff.add(
+          const StoreStaff(
+            isPro: true,
+            members: [StaffMember(email: 'juan@example.com', name: 'Kuya Jun')],
+          ),
+        );
+        await tester.pump();
+        expect(await sell(tester), 'Kuya Jun');
+      });
     });
   });
 }
