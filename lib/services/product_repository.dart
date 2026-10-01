@@ -5,37 +5,40 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'product_service.dart';
 
-/// How far this device's changes have got to the server.
+/// How this device's changes stand with the server, as Firestore reports it.
 class SyncStatus {
-  const SyncStatus({required this.pending, this.lastSyncedAt});
+  const SyncStatus({
+    required this.pending,
+    required this.online,
+    this.lastSyncedAt,
+  });
 
-  /// Changes made here that the server doesn't have yet.
+  /// Products and sales carrying a change from this device that the server
+  /// hasn't confirmed yet. Firestore holds them on the phone, through
+  /// restarts, and sends them when it can.
   final int pending;
 
-  /// When the server last confirmed it had everything from this device;
-  /// null if it never has (fresh install, or offline since).
+  /// Whether the latest data came from the server rather than the phone's
+  /// cache — in practice, whether the device is online.
+  final bool online;
+
+  /// When everything was last confirmed by the server, this session; null
+  /// until then.
   final DateTime? lastSyncedAt;
 
-  bool get isSynced => pending == 0 && lastSyncedAt != null;
+  bool get isSynced => online && pending == 0;
 }
 
-/// A store's product catalog, kept on the device.
+/// A store's products and sales, live from Firestore.
 ///
-/// The app reads products from here, never live from Firestore: search and
-/// the Inventory tab work the same with or without a connection. The copy is
-/// saved to `SharedPreferences` as one JSON document per store, next to a
-/// queue of [ProductOp]s — every add, edit and delete made on this device
-/// that the server doesn't have yet.
+/// There is no copy of its own: Firestore keeps its own cache and write
+/// queue on the phone, so the lists show offline (from that cache), changes
+/// made offline show at once and reach the server when the connection is
+/// back, and changes from other phones arrive by themselves while online.
 ///
-/// Talking to the server is kept deliberately thin until the real offline
-/// sync is built:
-/// - Every change is applied to the device copy at once, queued, and the
-///   queue is sent in order, stopping at the first failure. What is left is
-///   retried on the next [load]. [pendingOps] is what a sync layer would pick
-///   up from.
-/// - [load] also refreshes the copy from the server once, in the background,
-///   so changes from other devices appear; queued ops are replayed on top so
-///   nothing made here is lost to that refresh.
+/// What this adds on top is the store's rules for a change — only changed
+/// fields sent, stock as a difference, a reason for a decrease, a sale's
+/// edit as a restock — and one listener per list, shared by every tab.
 class ProductRepository {
   ProductRepository({required this.storeId, required this.remote});
 
@@ -48,135 +51,72 @@ class ProductRepository {
   /// The server side; Firestore in the app, a fake in tests.
   final ProductRemote remote;
 
-  final _changes = StreamController<List<Product>>.broadcast();
-
-  /// Null until [load] has read the device copy.
-  List<Product>? _products;
-
-  final _salesChanges = StreamController<List<Sale>>.broadcast();
-
-  /// Sales history, newest first; null until [load]. Kept for
-  /// [salesHistory], from this device and (after a refresh) every other.
-  List<Sale>? _sales;
-
-  /// How far back the device keeps, and fetches, sales.
+  /// How far back sales are listened to — what Transactions and Analytics
+  /// can show.
   static const salesHistory = Duration(days: 60);
 
-  /// Changes not yet handed to the server, oldest first.
-  final _ops = <ProductOp>[];
-
-  /// Set while [_flush] is sending, so two callers don't send an op twice.
-  bool _flushing = false;
-
+  final _changes = StreamController<List<Product>>.broadcast();
+  final _salesChanges = StreamController<List<Sale>>.broadcast();
   final _syncChanges = StreamController<SyncStatus>.broadcast();
 
-  /// When the server last confirmed it had everything from this device.
+  /// The latest from each listener; null until it first answers.
+  RemoteSnapshot<List<Product>>? _productSnapshot;
+  RemoteSnapshot<List<Sale>>? _saleSnapshot;
+
+  /// Sorted copies of the above, as [watch] and [watchSales] hand them out.
+  List<Product>? _products;
+  List<Sale>? _sales;
+
   DateTime? _lastSyncedAt;
 
-  String get _key => 'products.v1.$storeId';
+  StreamSubscription<RemoteSnapshot<List<Product>>>? _productsSub;
+  StreamSubscription<RemoteSnapshot<List<Sale>>>? _salesSub;
 
-  List<ProductOp> get pendingOps => List.unmodifiable(_ops);
+  /// Completes with the first sales answer; the leftover ops of the old
+  /// on-device copy are checked against it.
+  final _firstSales = Completer<void>();
 
-  SyncStatus get syncStatus =>
-      SyncStatus(pending: _ops.length, lastSyncedAt: _lastSyncedAt);
-
-  /// [syncStatus] straight away, then every change.
-  Stream<SyncStatus> watchSyncStatus() {
-    return Stream.multi((listener) {
-      listener.add(syncStatus);
-      final sub = _syncChanges.stream.listen(
-        listener.add,
-        onError: listener.addError,
-      );
-      listener.onCancel = sub.cancel;
-    });
+  /// Null until both listeners have answered.
+  SyncStatus? get syncStatus {
+    final products = _productSnapshot;
+    final sales = _saleSnapshot;
+    if (products == null || sales == null) return null;
+    return SyncStatus(
+      pending: products.pendingIds.length + sales.pendingIds.length,
+      online: !products.fromCache && !sales.fromCache,
+      lastSyncedAt: _lastSyncedAt,
+    );
   }
 
-  /// Products with a change the server doesn't have yet.
-  Set<String> get pendingIds => {
-    for (final op in _ops)
-      if (op.sale == null) op.productId,
-  };
+  /// [syncStatus] once known, then every change.
+  Stream<SyncStatus> watchSyncStatus() => _replay(_syncChanges, syncStatus);
 
-  /// The catalog sorted by name: the current copy straight away (once
-  /// loaded), then every change.
-  Stream<List<Product>> watch() {
-    return Stream.multi((listener) {
-      // Subscribing and replaying synchronously leaves no gap for a change
-      // to slip between the two.
-      final products = _products;
-      if (products != null) listener.add(products);
-      final sub = _changes.stream.listen(
-        listener.add,
-        onError: listener.addError,
-      );
-      listener.onCancel = sub.cancel;
-    });
-  }
+  /// The catalog sorted by name: the latest straight away (once loaded),
+  /// then every change, from this device or another.
+  Stream<List<Product>> watch() => _replay(_changes, _products);
 
-  /// Sales history, newest first: the current copy straight away (once
-  /// loaded), then every change.
-  Stream<List<Sale>> watchSales() {
-    return Stream.multi((listener) {
-      final sales = _sales;
-      if (sales != null) listener.add(sales);
-      final sub = _salesChanges.stream.listen(
-        listener.add,
-        onError: listener.addError,
-      );
-      listener.onCancel = sub.cancel;
-    });
-  }
+  /// Sales of the last [salesHistory], newest first: the latest straight
+  /// away (once loaded), then every change.
+  Stream<List<Sale>> watchSales() => _replay(_salesChanges, _sales);
 
-  /// Reads the device copy, then — without holding anything up — refreshes
-  /// it from the server and sends queued changes. Offline, the second half
-  /// fails quietly and the device copy stands.
+  /// Starts listening to Firestore. Offline, the first answers come from
+  /// the phone's cache.
   Future<void> load() async {
-    final prefs = await SharedPreferences.getInstance();
-    final raw = prefs.getString(_key);
-    final products = <Product>[];
-    final sales = <Sale>[];
-    if (raw != null) {
-      try {
-        final json = jsonDecode(raw) as Map<String, dynamic>;
-        for (final item in json['products'] as List<dynamic>) {
-          final map = Map<String, dynamic>.from(item as Map);
-          products.add(Product.fromMap(map['id'] as String, map));
-        }
-        for (final op in (json['ops'] as List<dynamic>? ?? const [])) {
-          _ops.add(ProductOp.fromJson(Map<String, dynamic>.from(op as Map)));
-        }
-        // Copies saved before the op queue kept only the ids of unsent new
-        // products.
-        for (final id in (json['pending'] as List<dynamic>? ?? const [])) {
-          final product = products.where((p) => p.id == id).firstOrNull;
-          if (product != null) _ops.add(ProductOp.create(product));
-        }
-        for (final sale in (json['sales'] as List<dynamic>? ?? const [])) {
-          sales.add(Sale.fromJson(Map<String, dynamic>.from(sale as Map)));
-        }
-        final synced = json['lastSyncedAt'];
-        if (synced is String) _lastSyncedAt = DateTime.tryParse(synced);
-      } on Object {
-        // A corrupt copy is rebuilt from the server rather than crashing the
-        // till; anything still queued in it is lost with it.
-        products.clear();
-        sales.clear();
-        _ops.clear();
-      }
-    }
-    _publish(products);
-    _publishSales(sales);
-    _publishSync();
-
-    unawaited(_refreshFromServer());
+    _productsSub = remote.watchProducts().listen(
+      _onProducts,
+      onError: _changes.addError,
+    );
+    _salesSub = remote
+        .watchSales(since: DateTime.now().subtract(salesHistory))
+        .listen(_onSales, onError: _onSalesError);
+    await _sendLeftoverOps();
   }
 
-  /// Saves a new product. The returned future completes once the device copy
-  /// is written — it does not wait for, or fail with, the server.
+  /// Saves a new product. Completes once Firestore has it queued — at once,
+  /// online or not.
   Future<Product> add(ProductDraft draft) async {
     final product = draft.toProduct(remote.newId());
-    await _apply(ProductOp.create(product));
+    await remote.send(ProductOp.create(product));
     return product;
   }
 
@@ -196,7 +136,7 @@ class ProductRepository {
     };
     final delta = draft.stock - original.stock;
     if (fields.isEmpty && delta == 0) return;
-    await _apply(
+    await remote.send(
       ProductOp.update(original.id, fields: fields, stockDelta: delta),
     );
   }
@@ -223,7 +163,7 @@ class ProductRepository {
     if (reason == StockReason.other && (trimmed == null || trimmed.isEmpty)) {
       throw ArgumentError('A note is required when the reason is "Other".');
     }
-    await _apply(
+    await remote.send(
       ProductOp.update(
         original.id,
         stockDelta: delta,
@@ -240,8 +180,7 @@ class ProductRepository {
   }
 
   /// Records a completed sale and takes each sold product's stock down by
-  /// its quantity, on the device at once and on the server when it can.
-  /// Returns the sale as recorded.
+  /// its quantity. Returns the sale as recorded.
   Future<Sale> recordSale({
     required List<SaleItem> items,
     required int receivedCentavos,
@@ -259,8 +198,7 @@ class ProductRepository {
     if (sale.changeCentavos < 0) {
       throw ArgumentError('Received less than the total.');
     }
-    _publishSales([sale, ...?_sales]);
-    await _apply(ProductOp.sale(sale));
+    await remote.send(ProductOp.sale(sale));
     return sale;
   }
 
@@ -278,8 +216,7 @@ class ProductRepository {
     required String? customerName,
     required Cashier editor,
   }) async {
-    final current =
-        _sales?.where((s) => s.id == original.id).firstOrNull ?? original;
+    final current = _latest(original);
     if (current.voided) throw StateError('A refunded sale can\'t be edited.');
     if (items.isEmpty) {
       throw ArgumentError('A sale needs items; refund it instead.');
@@ -304,171 +241,125 @@ class ProductRepository {
         if ((before[id] ?? 0) != (after[id] ?? 0))
           id: (before[id] ?? 0) - (after[id] ?? 0),
     };
-    _publishSales([
-      for (final s in _sales ?? const <Sale>[]) s.id == edited.id ? edited : s,
-    ]);
-    await _apply(ProductOp.editSale(edited, restock));
+    await remote.send(ProductOp.editSale(edited, restock));
     return edited;
   }
 
   /// Refunds [sale]: marks it void and returns its items to stock. A sale
-  /// already voided is left as it is. Returns the voided sale.
+  /// already voided — here or on another phone — is left as it is. Returns
+  /// the voided sale.
   Future<Sale> voidSale(Sale sale) async {
-    final current = _sales?.where((s) => s.id == sale.id).firstOrNull ?? sale;
+    final current = _latest(sale);
     if (current.voided) return current;
     final voided = current.voidedOn(DateTime.now());
-    _publishSales([
-      for (final s in _sales ?? const <Sale>[]) s.id == voided.id ? voided : s,
-    ]);
-    await _apply(ProductOp.voidSale(voided));
+    await remote.send(ProductOp.voidSale(voided));
     return voided;
   }
 
-  Future<void> delete(String productId) => _apply(ProductOp.delete(productId));
+  Future<void> delete(String productId) =>
+      remote.send(ProductOp.delete(productId));
 
   Future<void> dispose() async {
+    await _productsSub?.cancel();
+    await _salesSub?.cancel();
     await _changes.close();
     await _salesChanges.close();
     await _syncChanges.close();
   }
 
-  Future<void> _apply(ProductOp op) async {
-    _ops.add(op);
-    _publish(op.applyTo(_products ?? const []));
-    _publishSync();
-    await _persist();
-    unawaited(_flush());
-  }
+  /// [sale] as the live list has it now — another phone may have refunded
+  /// or edited it since the screen showed it.
+  Sale _latest(Sale sale) =>
+      _sales?.where((s) => s.id == sale.id).firstOrNull ?? sale;
 
-  /// Sends queued ops in order. Order matters — an edit can't reach the
-  /// server before the product it edits — so the first failure stops the
-  /// run, and the rest wait for the next [load].
-  Future<void> _flush() async {
-    if (_flushing) return;
-    _flushing = true;
-    try {
-      while (_ops.isNotEmpty && !_changes.isClosed) {
-        final op = _ops.first;
-        try {
-          await remote.send(op);
-        } on ProductMissing {
-          // Deleted elsewhere: this op can never land.
-        } on Object {
-          return; // Offline or refused; try again next load.
-        }
-        _ops.remove(op);
-        if (_ops.isEmpty) _lastSyncedAt = DateTime.now();
-        _publishSync();
-        await _persist();
-      }
-    } finally {
-      _flushing = false;
-    }
-  }
-
-  Future<void> _refreshFromServer() async {
-    final List<Product> server;
-    try {
-      server = await remote.fetchAll();
-    } on Object {
-      return; // Offline, or refused: keep the device copy.
-    }
-    List<Sale>? serverSales;
-    try {
-      serverSales = await remote.fetchSales(
-        since: DateTime.now().subtract(salesHistory),
-      );
-    } on Object {
-      // Keep the device's sales history; products still refresh.
-    }
-    if (_changes.isClosed) return;
-
-    // Ops the server already has landed on an earlier run. They go before
-    // the replay below, or their stock change would be counted twice.
-    final serverIds = {for (final p in server) p.id};
-    final salesOnServer = {
-      for (final s in serverSales ?? const <Sale>[]) s.id: s,
-    };
-    _ops.removeWhere((op) {
-      switch (op.kind) {
-        case ProductOpKind.create:
-          return serverIds.contains(op.productId);
-        case ProductOpKind.sale:
-          return salesOnServer.containsKey(op.productId);
-        case ProductOpKind.voidSale:
-          return salesOnServer[op.productId]?.voided ?? false;
-        case ProductOpKind.editSale:
-          final landed = salesOnServer[op.productId]?.editedAt;
-          return landed != null && !landed.isBefore(op.sale!.editedAt!);
-        case ProductOpKind.update:
-        case ProductOpKind.delete:
-          return false;
-      }
-    });
-
-    var products = server;
-    for (final op in _ops) {
-      products = op.applyTo(products);
-    }
-    _publish(products);
-    if (serverSales != null) _mergeSales(salesOnServer);
-    if (_ops.isEmpty) _lastSyncedAt = DateTime.now();
-    _publishSync();
-    await _persist();
-    unawaited(_flush());
-  }
-
-  /// Merges the server's recent sales into the history. A sale or refund
-  /// still queued here keeps this device's version.
-  void _mergeSales(Map<String, Sale> onServer) {
-    final queued = {
-      for (final op in _ops)
-        if (op.sale != null) op.productId,
-    };
-    final merged = {...onServer};
-    for (final local in _sales ?? const <Sale>[]) {
-      if (queued.contains(local.id) || !merged.containsKey(local.id)) {
-        merged[local.id] = local;
-      }
-    }
-    _publishSales(merged.values.toList());
-  }
-
-  void _publish(List<Product> products) {
-    final sorted = [...products]
-      ..sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
-    _products = List.unmodifiable(sorted);
+  void _onProducts(RemoteSnapshot<List<Product>> snapshot) {
+    _productSnapshot = snapshot;
+    _products = List.unmodifiable(
+      [...snapshot.data]
+        ..sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase())),
+    );
     if (!_changes.isClosed) _changes.add(_products!);
+    _publishSync();
   }
 
-  /// Newest first, and only [salesHistory] back: older sales live on the
-  /// server, and keeping them here would grow the device copy without end.
-  void _publishSales(List<Sale> sales) {
-    final cutoff = DateTime.now().subtract(salesHistory);
-    final kept = sales.where((s) => s.completedAt.isAfter(cutoff)).toList()
-      ..sort((a, b) => b.completedAt.compareTo(a.completedAt));
-    _sales = List.unmodifiable(kept);
+  void _onSales(RemoteSnapshot<List<Sale>> snapshot) {
+    _saleSnapshot = snapshot;
+    _sales = List.unmodifiable(
+      [...snapshot.data]
+        ..sort((a, b) => b.completedAt.compareTo(a.completedAt)),
+    );
     if (!_salesChanges.isClosed) _salesChanges.add(_sales!);
+    _publishSync();
+    if (!_firstSales.isCompleted) _firstSales.complete();
+  }
+
+  void _onSalesError(Object error, StackTrace stack) {
+    if (!_salesChanges.isClosed) _salesChanges.addError(error, stack);
+    if (!_firstSales.isCompleted) _firstSales.complete();
   }
 
   void _publishSync() {
-    if (!_syncChanges.isClosed) _syncChanges.add(syncStatus);
+    final status = syncStatus;
+    if (status == null) return;
+    if (status.isSynced) _lastSyncedAt = DateTime.now();
+    if (!_syncChanges.isClosed) _syncChanges.add(syncStatus!);
   }
 
-  Future<void> _persist() async {
+  /// The latest [value] straight away, if there is one, then every change.
+  static Stream<T> _replay<T>(StreamController<T> changes, T? value) {
+    return Stream.multi((listener) {
+      // Subscribing and replaying synchronously leaves no gap for a change
+      // to slip between the two.
+      if (value != null) listener.add(value);
+      final sub = changes.stream.listen(
+        listener.add,
+        onError: listener.addError,
+      );
+      listener.onCancel = sub.cancel;
+    });
+  }
+
+  /// The key older versions of the app kept their own copy of the store
+  /// under, with a queue of changes not yet handed to Firestore.
+  String get _legacyKey => 'products.v1.$storeId';
+
+  /// Hands any changes the old on-device copy never got to send over to
+  /// Firestore, once, then deletes that copy.
+  ///
+  /// A sale, refund or edit Firestore already shows is skipped: resending
+  /// it would move stock twice.
+  Future<void> _sendLeftoverOps() async {
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(
-      _key,
-      jsonEncode({
-        'products': [
-          for (final p in _products ?? const <Product>[])
-            {'id': p.id, ...p.toMap()},
-        ],
-        'ops': [for (final op in _ops) op.toJson()],
-        'sales': [for (final s in _sales ?? const <Sale>[]) s.toJson()],
-        'lastSyncedAt': _lastSyncedAt?.toIso8601String(),
-      }),
-    );
+    final raw = prefs.getString(_legacyKey);
+    if (raw == null) return;
+
+    final ops = <ProductOp>[];
+    try {
+      final json = jsonDecode(raw) as Map<String, dynamic>;
+      for (final op in (json['ops'] as List<dynamic>? ?? const [])) {
+        ops.add(ProductOp.fromJson(Map<String, dynamic>.from(op as Map)));
+      }
+    } on Object {
+      // Unreadable: nothing can be recovered from it.
+    }
+
+    if (ops.isNotEmpty) {
+      await _firstSales.future;
+      final known = {for (final s in _sales ?? const <Sale>[]) s.id: s};
+      for (final op in ops) {
+        final landed = known[op.productId];
+        final skip = switch (op.kind) {
+          ProductOpKind.sale => landed != null,
+          ProductOpKind.voidSale => landed?.voided ?? false,
+          ProductOpKind.editSale =>
+            landed?.editedAt != null &&
+                !landed!.editedAt!.isBefore(op.sale!.editedAt!),
+          _ => false,
+        };
+        if (!skip) await remote.send(op);
+      }
+    }
+    await prefs.remove(_legacyKey);
   }
 }
 

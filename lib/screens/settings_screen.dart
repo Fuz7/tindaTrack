@@ -1238,18 +1238,38 @@ class _SyncStatusCardState extends State<_SyncStatusCard> {
       builder: (context, snapshot) {
         final status = snapshot.data;
         final lastSynced = status?.lastSyncedAt;
+        String changes(int n) => '$n change${n == 1 ? '' : 's'}';
 
-        final (Color dot, String title) = switch (status) {
-          null => (AppColors.outline, 'Status: Checking…'),
+        // Straight from Firestore: which documents still carry an unsent
+        // change, and whether the data came from the server or the cache.
+        final (Color dot, String title, List<String> detail) = switch (status) {
+          null => (AppColors.outline, 'Status: Checking…', const []),
+          SyncStatus(:final pending, online: false) when pending > 0 => (
+            AppColors.statusLowStock,
+            'Status: Offline · ${changes(pending)} waiting',
+            [
+              'Saved on this phone. Sends when online.',
+              if (lastSynced != null) 'Last synced: ${_ago(lastSynced)}',
+            ],
+          ),
           SyncStatus(:final pending) when pending > 0 => (
             AppColors.statusLowStock,
-            'Status: $pending change${pending == 1 ? '' : 's'} waiting',
+            'Status: Sending ${changes(pending)}…',
+            const ['Waiting for the server to confirm.'],
           ),
-          SyncStatus(lastSyncedAt: null) => (
+          SyncStatus(online: false) => (
             AppColors.outline,
-            'Status: Not synced yet',
+            'Status: Offline',
+            [
+              'Showing what is saved on this phone.',
+              if (lastSynced != null) 'Last synced: ${_ago(lastSynced)}',
+            ],
           ),
-          _ => (AppColors.statusInStock, 'Status: Synced'),
+          _ => (
+            AppColors.statusInStock,
+            'Status: Synced',
+            const ['Up to date. Changes from other phones show live.'],
+          ),
         };
 
         return Container(
@@ -1273,14 +1293,13 @@ class _SyncStatusCardState extends State<_SyncStatusCard> {
                         color: AppColors.onSurface,
                       ),
                     ),
-                    Text(
-                      lastSynced == null
-                          ? 'Changes are kept on this phone until online.'
-                          : 'Last synced: ${_ago(lastSynced)}',
-                      style: AppTypography.bodySm.copyWith(
-                        color: AppColors.onSurfaceVariant,
+                    for (final line in detail)
+                      Text(
+                        line,
+                        style: AppTypography.bodySm.copyWith(
+                          color: AppColors.onSurfaceVariant,
+                        ),
                       ),
-                    ),
                   ],
                 ),
               ),

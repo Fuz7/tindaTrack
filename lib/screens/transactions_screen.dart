@@ -12,7 +12,8 @@ import 'home_screen.dart' show formatPeso;
 /// sales at a time, with search, the day's total and order count, and a card
 /// per sale that opens to its lines and a Refund.
 ///
-/// Sales come from the on-device history, so the tab works offline. The
+/// Sales come live from Firestore, which serves them from its on-phone cache
+/// when offline. The
 /// design's Receipt button is left out: there is no printer support. Cards
 /// show the customer ("Walk-in Customer" until an edit names one) and the
 /// cashier who rang the sale up.

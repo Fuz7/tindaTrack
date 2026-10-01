@@ -36,8 +36,8 @@ class DashboardScreen extends StatefulWidget {
   final User user;
   final String storeId;
 
-  /// The on-device catalog, Firestore-backed by default; tests swap in a
-  /// fake server.
+  /// The store.s products and sales, live from Firestore by default; tests
+  /// swap in a fake server.
   final ProductRepository Function(String storeId) createProductRepository;
   final Stream<int> Function(String storeId) watchLowStockThreshold;
   final Stream<StoreProfile?> Function(String storeId) watchStoreProfile;
@@ -57,8 +57,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   int _tab = _home;
 
-  /// One catalog for both tabs, so a product added in Inventory is
-  /// searchable on Home at once.
+  /// One listener per list, shared by every tab, so a product added in
+  /// Inventory is searchable on Home at once.
   late final ProductRepository _products = widget.createProductRepository(
     widget.storeId,
   )..load();
@@ -186,22 +186,21 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   void _openSettings() {
+    final id = widget.storeId;
     Navigator.of(context).push(
       MaterialPageRoute<void>(
         builder: (_) => SettingsScreen(
-          profile: widget.watchStoreProfile(widget.storeId),
-          onSave: (profile) =>
-              widget.updateStoreProfile(widget.storeId, profile),
+          profile: widget.watchStoreProfile(id),
+          onSave: (profile) => widget.updateStoreProfile(id, profile),
           syncStatus: _products.watchSyncStatus(),
-          staff: widget.watchStoreStaff(widget.storeId),
+          staff: widget.watchStoreStaff(id),
           staffActions: StaffActions(
-            add: (member) => StoreService.addStaff(widget.storeId, member),
+            add: (member) => StoreService.addStaff(id, member),
             rename: (member, name) =>
-                StoreService.renameStaff(widget.storeId, member.email, name),
-            remove: (member) =>
-                StoreService.removeStaff(widget.storeId, member.email),
+                StoreService.renameStaff(id, member.email, name),
+            remove: (member) => StoreService.removeStaff(id, member.email),
           ),
-          onUpgradePro: () => StoreService.upgradeToPro(widget.storeId),
+          onUpgradePro: () => StoreService.upgradeToPro(id),
           userId: widget.user.uid,
         ),
       ),

@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:tinda_track/services/product_repository.dart';
@@ -18,8 +20,16 @@ const _owner = Cashier.owner('owner-uid');
 ProductRepository _repo(ProductRemote remote) =>
     ProductRepository(storeId: 'store-1', remote: remote);
 
-/// Lets the background refresh and pushes run.
+/// Lets listeners deliver.
 Future<void> _settle() => Future<void>.delayed(Duration.zero);
+
+/// A repository listening to [remote], with its first answers in.
+Future<ProductRepository> _loaded(FakeProductRemote remote) async {
+  final repo = _repo(remote);
+  await repo.load();
+  await _settle();
+  return repo;
+}
 
 List<String> _names(List<Product> products) => [
   for (final p in products) p.name,
@@ -28,86 +38,170 @@ List<String> _names(List<Product> products) => [
 void main() {
   setUp(() => SharedPreferences.setMockInitialValues({}));
 
-  test('pulls the catalog once and keeps it on the device', () async {
-    final first = _repo(FakeProductRemote([_coke]));
-    await first.load();
-    await _settle();
-    expect(_names(await first.watch().first), ['Coke Mismo']);
+  group('live from Firestore', () {
+    test('shows the catalog, sorted by name', () async {
+      final repo = await _loaded(
+        FakeProductRemote([
+          _coke,
+          const Product(id: 'a', name: 'Alaska', stock: 1, sellCentavos: 1),
+        ]),
+      );
+      expect(_names(await repo.watch().first), ['Alaska', 'Coke Mismo']);
+    });
 
-    // Next launch, offline: the device copy still has it.
-    final offline = FakeProductRemote()..offline = true;
-    final second = _repo(offline);
-    await second.load();
-    await _settle();
-    expect(_names(await second.watch().first), ['Coke Mismo']);
+    test("another phone's change shows by itself", () async {
+      final remote = FakeProductRemote([_coke]);
+      final repo = await _loaded(remote);
+      final seen = <List<String>>[];
+      final sub = repo.watch().listen((p) => seen.add(_names(p)));
+
+      remote.server['tide'] = const Product(
+        id: 'tide',
+        name: 'Tide Bar',
+        stock: 9,
+        sellCentavos: 1500,
+      );
+      remote.push();
+      await _settle();
+      await sub.cancel();
+
+      expect(seen.last, ['Coke Mismo', 'Tide Bar']);
+    });
+
+    test("another phone's sale shows in the history", () async {
+      final remote = FakeProductRemote([_coke]);
+      final repo = await _loaded(remote);
+
+      remote.sales['other'] = Sale(
+        id: 'other',
+        items: const [
+          SaleItem(
+            productId: 'coke',
+            name: 'Coke',
+            unitCentavos: 2000,
+            quantity: 1,
+          ),
+        ],
+        receivedCentavos: 2000,
+        completedAt: DateTime.now().subtract(const Duration(hours: 1)),
+      );
+      remote.push();
+      await _settle();
+
+      expect([for (final s in await repo.watchSales().first) s.id], ['other']);
+    });
+
+    test('a new product reaches the server and shows at once', () async {
+      final remote = FakeProductRemote([_coke]);
+      final repo = await _loaded(remote);
+
+      final product = await repo.add(_draft);
+      await _settle();
+
+      expect(remote.server[product.id]!.name, 'San Miguel');
+      expect(_names(await repo.watch().first), ['Coke Mismo', 'San Miguel']);
+    });
   });
 
-  test('a new product is stored locally even with no connection', () async {
-    final remote = FakeProductRemote([_coke]);
-    final repo = _repo(remote);
-    await repo.load();
-    await _settle();
-    remote.offline = true;
+  group('offline', () {
+    test('a change shows at once, waits, and sends when back', () async {
+      final remote = FakeProductRemote([_coke]);
+      final repo = await _loaded(remote);
+      remote.offline = true;
+      await _settle();
 
-    final product = await repo.add(_draft);
-    await _settle();
+      final product = await repo.add(_draft);
+      await _settle();
 
-    expect(_names(await repo.watch().first), ['Coke Mismo', 'San Miguel']);
-    expect(repo.pendingIds, {product.id});
-    expect(remote.sent, isEmpty);
+      expect(_names(await repo.watch().first), ['Coke Mismo', 'San Miguel']);
+      expect(remote.server.containsKey(product.id), isFalse);
+      expect(remote.queued, hasLength(1));
 
-    // It survives a restart, still marked pending.
-    final restarted = _repo(remote);
-    await restarted.load();
-    await _settle();
-    expect(_names(await restarted.watch().first), ['Coke Mismo', 'San Miguel']);
-    expect(restarted.pendingIds, {product.id});
+      remote.offline = false;
+      await _settle();
+      expect(remote.server[product.id]!.name, 'San Miguel');
+      expect(remote.queued, isEmpty);
+    });
+
+    test('queued changes go in the order they were made', () async {
+      final remote = FakeProductRemote([_coke]);
+      final repo = await _loaded(remote);
+      remote.offline = true;
+
+      final added = await repo.add(_draft);
+      await repo.delete('coke');
+      await _settle();
+      expect(_names(await repo.watch().first), ['San Miguel']);
+
+      remote.offline = false;
+      await _settle();
+      expect(
+        [for (final op in remote.sent) op.kind],
+        [ProductOpKind.create, ProductOpKind.delete],
+      );
+      expect(remote.server.keys, [added.id]);
+    });
   });
 
-  test('a pending product is pushed once the server is back', () async {
-    final remote = FakeProductRemote()..offline = true;
-    final repo = _repo(remote);
-    await repo.load();
-    final product = await repo.add(_draft);
-    await _settle();
+  group('sync status', () {
+    Future<SyncStatus> statusOf(ProductRepository repo) async {
+      await _settle();
+      return repo.syncStatus!;
+    }
 
-    remote.offline = false;
-    final next = _repo(remote);
-    await next.load();
-    await _settle();
-    await _settle();
+    test('online with nothing waiting is synced', () async {
+      final repo = await _loaded(FakeProductRemote([_coke]));
+      final status = await statusOf(repo);
+      expect(status.online, isTrue);
+      expect(status.pending, 0);
+      expect(status.isSynced, isTrue);
+      expect(status.lastSyncedAt, isNotNull);
+    });
 
-    expect(remote.server.keys, contains(product.id));
-    expect(next.pendingIds, isEmpty);
-  });
+    test('offline, counts what is waiting; synced again once sent', () async {
+      final remote = FakeProductRemote([_coke]);
+      final repo = await _loaded(remote);
+      remote.offline = true;
 
-  test('online, a new product reaches the server and is confirmed', () async {
-    final remote = FakeProductRemote();
-    final repo = _repo(remote);
-    await repo.load();
+      await repo.recordSale(
+        items: const [
+          SaleItem(
+            productId: 'coke',
+            name: 'Coke',
+            unitCentavos: 2000,
+            quantity: 2,
+          ),
+        ],
+        receivedCentavos: 4000,
+        cashier: _owner,
+      );
+      var status = await statusOf(repo);
+      expect(status.online, isFalse);
+      // The receipt, and Coke's stock.
+      expect(status.pending, 2);
+      expect(status.isSynced, isFalse);
 
-    final product = await repo.add(_draft);
-    await _settle();
+      remote.offline = false;
+      status = await statusOf(repo);
+      expect(status.pending, 0);
+      expect(status.isSynced, isTrue);
+    });
 
-    expect([for (final op in remote.sent) op.productId], [product.id]);
-    expect(repo.pendingIds, isEmpty);
-  });
+    test('offline with nothing waiting says offline, not synced', () async {
+      final remote = FakeProductRemote([_coke]);
+      final repo = await _loaded(remote);
+      remote.offline = true;
 
-  test('watchers see new products as they are added', () async {
-    final repo = _repo(FakeProductRemote()..offline = true);
-    await repo.load();
-    final seen = <List<String>>[];
-    final sub = repo.watch().listen((p) => seen.add(_names(p)));
-    await _settle();
+      final status = await statusOf(repo);
+      expect(status.online, isFalse);
+      expect(status.pending, 0);
+      expect(status.isSynced, isFalse);
+    });
 
-    await repo.add(_draft);
-    await _settle();
-    await sub.cancel();
-
-    expect(seen, [
-      <String>[],
-      ['San Miguel'],
-    ]);
+    test('is unknown until both lists have answered', () {
+      final repo = _repo(FakeProductRemote([_coke]));
+      expect(repo.syncStatus, isNull);
+    });
   });
 
   group('edits', () {
@@ -134,9 +228,7 @@ void main() {
 
     test('only changed fields are sent, stock as a difference', () async {
       final remote = FakeProductRemote([coke]);
-      final repo = _repo(remote);
-      await repo.load();
-      await _settle();
+      final repo = await _loaded(remote);
 
       await repo.update(coke, edited(sell: 2500, stock: 7, alerts: false));
       await _settle();
@@ -146,14 +238,11 @@ void main() {
       expect(op.fields, {'sellCentavos': 2500, 'stockAlerts': false});
       expect(op.stockDelta, -3);
       expect(remote.server['coke']!.stock, 7);
-      expect(repo.pendingOps, isEmpty);
     });
 
     test('a stock edit combines with a sale made elsewhere', () async {
       final remote = FakeProductRemote([coke]);
-      final repo = _repo(remote);
-      await repo.load();
-      await _settle();
+      final repo = await _loaded(remote);
 
       // Another device sells 2 while this one's form is open at 10…
       remote.server['coke'] = Product.fromMap('coke', {
@@ -169,73 +258,16 @@ void main() {
 
     test('an unchanged save sends nothing', () async {
       final remote = FakeProductRemote([coke]);
-      final repo = _repo(remote);
-      await repo.load();
-      await _settle();
+      final repo = await _loaded(remote);
 
       await repo.update(coke, edited());
       await _settle();
       expect(remote.sent, isEmpty);
     });
 
-    test('offline edits apply locally, queue, and send in order', () async {
-      final remote = FakeProductRemote([coke]);
-      final repo = _repo(remote);
-      await repo.load();
-      await _settle();
-      remote.offline = true;
-
-      await repo.update(coke, edited(name: 'Coke Zero', stock: 12));
-      final added = await repo.add(_draft);
-      await repo.delete('coke');
-      await _settle();
-
-      expect(_names(await repo.watch().first), ['San Miguel']);
-      expect(repo.pendingOps.map((op) => op.kind), [
-        ProductOpKind.update,
-        ProductOpKind.create,
-        ProductOpKind.delete,
-      ]);
-
-      // After a restart, online again: the queue drains in order.
-      remote.offline = false;
-      final next = _repo(remote);
-      await next.load();
-      await _settle();
-      await _settle();
-      expect(next.pendingOps, isEmpty);
-      expect(remote.server.keys, [added.id]);
-      expect(_names(await next.watch().first), ['San Miguel']);
-    });
-
-    test('a refresh from the server keeps queued edits on top', () async {
-      final remote = FakeProductRemote([coke]);
-      final seeded = _repo(remote);
-      await seeded.load();
-      await _settle();
-      remote.offline = true;
-      await seeded.update(coke, edited(stock: 4));
-      await _settle();
-
-      // The server changes meanwhile; the device can fetch but not send.
-      remote.server['coke'] = Product.fromMap('coke', {
-        ...coke.toMap(),
-        'stock': 9,
-      });
-      expect(seeded.pendingOps, hasLength(1));
-      final reloaded = _repo(_FetchOnly(remote));
-      await reloaded.load();
-      await _settle();
-
-      // 9 on the server, −6 queued here.
-      expect((await reloaded.watch().first).single.stock, 3);
-    });
-
     test('a stock update sends only the difference', () async {
       final remote = FakeProductRemote([coke]);
-      final repo = _repo(remote);
-      await repo.load();
-      await _settle();
+      final repo = await _loaded(remote);
 
       // Sold 3 elsewhere (10 → 7) while the owner here counted 12.
       remote.server['coke'] = Product.fromMap('coke', {
@@ -248,15 +280,14 @@ void main() {
       final op = remote.sent.single;
       expect(op.fields, isEmpty);
       expect(op.stockDelta, 2);
+      // Both changes count, here as on the server.
       expect(remote.server['coke']!.stock, 9);
-      expect((await repo.watch().first).single.stock, 12);
+      expect((await repo.watch().first).single.stock, 9);
     });
 
     test('a stock update leaves a log entry with its reason', () async {
       final remote = FakeProductRemote([coke]);
-      final repo = _repo(remote);
-      await repo.load();
-      await _settle();
+      final repo = await _loaded(remote);
 
       await repo.adjustStock(
         coke,
@@ -274,9 +305,8 @@ void main() {
     });
 
     test('a decrease without a reason is refused', () async {
-      final repo = _repo(FakeProductRemote([coke]));
-      await repo.load();
-      await _settle();
+      final remote = FakeProductRemote([coke]);
+      final repo = await _loaded(remote);
 
       expect(() => repo.adjustStock(coke, 7), throwsArgumentError);
       expect(
@@ -285,35 +315,18 @@ void main() {
       );
       // An increase logs no reason even if one is passed.
       await repo.adjustStock(coke, 12, reason: StockReason.lost);
-      expect(repo.pendingOps.single.adjustment!.reason, isNull);
+      expect(remote.sent.single.adjustment!.reason, isNull);
     });
 
-    test('a queued adjustment survives a restart', () async {
+    test('an edit to a product deleted elsewhere does nothing', () async {
       final remote = FakeProductRemote([coke]);
-      final repo = _repo(remote);
-      await repo.load();
-      await _settle();
-      remote.offline = true;
-      await repo.adjustStock(coke, 8, reason: StockReason.defective);
-      await _settle();
-
-      final restarted = _repo(remote);
-      await restarted.load();
-      final entry = restarted.pendingOps.single.adjustment!;
-      expect(entry.reason, StockReason.defective);
-      expect(entry.delta, -2);
-    });
-
-    test('an edit to a product deleted elsewhere is dropped', () async {
-      final remote = FakeProductRemote([coke]);
-      final repo = _repo(remote);
-      await repo.load();
-      await _settle();
+      final repo = await _loaded(remote);
       remote.server.clear();
 
       await repo.update(coke, edited(stock: 5));
       await _settle();
-      expect(repo.pendingOps, isEmpty);
+      expect(remote.server, isEmpty);
+      expect(await repo.watch().first, isEmpty);
     });
   });
 
@@ -348,9 +361,7 @@ void main() {
 
     test('a sale takes stock down and is sent', () async {
       final remote = FakeProductRemote([coke, bread]);
-      final repo = _repo(remote);
-      await repo.load();
-      await _settle();
+      final repo = await _loaded(remote);
 
       final sale = await repo.recordSale(
         items: items,
@@ -365,38 +376,63 @@ void main() {
       expect(stock, {'coke': 7, 'bread': 4});
       expect(remote.sent.single.kind, ProductOpKind.sale);
       expect(remote.server['coke']!.stock, 7);
-      expect(repo.pendingIds, isEmpty);
     });
 
-    test('an offline sale is kept and sent after a restart', () async {
+    test('an offline sale shows at once and is sent when back', () async {
       final remote = FakeProductRemote([coke, bread]);
-      final repo = _repo(remote);
-      await repo.load();
-      await _settle();
+      final repo = await _loaded(remote);
       remote.offline = true;
 
-      await repo.recordSale(
+      final sale = await repo.recordSale(
         items: items,
         receivedCentavos: 14000,
         cashier: _owner,
       );
       await _settle();
-      expect(repo.pendingOps.single.sale!.items, hasLength(3));
-      // A sale is not a pending product edit.
-      expect(repo.pendingIds, isEmpty);
+      expect((await repo.watchSales().first).single.id, sale.id);
+      expect(
+        (await repo.watch().first).firstWhere((p) => p.id == 'bread').stock,
+        4,
+      );
+      expect(remote.server['bread']!.stock, 5);
 
       remote.offline = false;
-      final next = _repo(remote);
-      await next.load();
       await _settle();
-      await _settle();
-      expect(next.pendingOps, isEmpty);
       expect(remote.server['bread']!.stock, 4);
+      expect(remote.sales.containsKey(sale.id), isTrue);
+    });
+
+    test('two phones selling the same product both count', () async {
+      final remote = FakeProductRemote([coke]);
+      final repo = await _loaded(remote);
+      remote.offline = true;
+
+      await repo.recordSale(
+        items: const [
+          SaleItem(
+            productId: 'coke',
+            name: 'Coke',
+            unitCentavos: 2000,
+            quantity: 2,
+          ),
+        ],
+        receivedCentavos: 4000,
+        cashier: _owner,
+      );
+      // Meanwhile, online, another phone sells 3.
+      remote.server['coke'] = Product.fromMap('coke', {
+        ...coke.toMap(),
+        'stock': 7,
+      });
+
+      remote.offline = false;
+      await _settle();
+      expect(remote.server['coke']!.stock, 5);
+      expect((await repo.watch().first).single.stock, 5);
     });
 
     test('too little cash or no items is refused', () async {
-      final repo = _repo(FakeProductRemote([coke]));
-      await repo.load();
+      final repo = await _loaded(FakeProductRemote([coke]));
       expect(
         () => repo.recordSale(
           items: items,
@@ -432,51 +468,46 @@ void main() {
       ),
     ];
 
-    test('a completed sale is kept, newest first, across restarts', () async {
-      final remote = FakeProductRemote([coke])..offline = true;
-      final repo = _repo(remote);
-      await repo.load();
+    test('newest first', () async {
+      final remote = FakeProductRemote([coke]);
+      final repo = await _loaded(remote);
       final first = await repo.recordSale(
         items: items,
         receivedCentavos: 6000,
         cashier: _owner,
       );
+      await Future<void>.delayed(const Duration(milliseconds: 2));
       final second = await repo.recordSale(
         items: items,
         receivedCentavos: 6000,
         cashier: _owner,
       );
+      await _settle();
 
       expect(
         [for (final s in await repo.watchSales().first) s.id],
         [second.id, first.id],
       );
-
-      final restarted = _repo(remote);
-      await restarted.load();
-      expect(await restarted.watchSales().first, hasLength(2));
     });
 
-    test('sales from other devices are pulled in', () async {
+    test('only the last 60 days are listened to', () async {
       final remote = FakeProductRemote([coke]);
-      remote.sales['other'] = Sale(
-        id: 'other',
+      Sale at(String id, Duration ago) => Sale(
+        id: id,
         items: items,
         receivedCentavos: 6000,
-        completedAt: DateTime.now().subtract(const Duration(hours: 1)),
+        completedAt: DateTime.now().subtract(ago),
       );
-      final repo = _repo(remote);
-      await repo.load();
-      await _settle();
+      remote.sales['recent'] = at('recent', const Duration(days: 59));
+      remote.sales['old'] = at('old', const Duration(days: 61));
+      final repo = await _loaded(remote);
 
-      expect([for (final s in await repo.watchSales().first) s.id], ['other']);
+      expect([for (final s in await repo.watchSales().first) s.id], ['recent']);
     });
 
     test('a refund voids the sale and restocks, once', () async {
       final remote = FakeProductRemote([coke]);
-      final repo = _repo(remote);
-      await repo.load();
-      await _settle();
+      final repo = await _loaded(remote);
       final sale = await repo.recordSale(
         items: items,
         receivedCentavos: 6000,
@@ -486,6 +517,7 @@ void main() {
       expect(remote.server['coke']!.stock, 7);
 
       final voided = await repo.voidSale(sale);
+      await _settle();
       await repo.voidSale(sale); // again: no second restock
       await _settle();
 
@@ -496,33 +528,25 @@ void main() {
       expect(remote.sales[sale.id]!.voided, isTrue);
     });
 
-    test('a sale that already landed is not replayed on refresh', () async {
+    test('a sale refunded on another phone is not refunded again', () async {
       final remote = FakeProductRemote([coke]);
-      final repo = _repo(remote);
-      await repo.load();
-      await _settle();
-      remote.offline = true;
-      await repo.recordSale(
+      final repo = await _loaded(remote);
+      final sale = await repo.recordSale(
         items: items,
         receivedCentavos: 6000,
         cashier: _owner,
       );
       await _settle();
 
-      // The sale reached the server (say, Firestore delivered it) but this
-      // device never heard back, so it is still queued here.
-      final queued = repo.pendingOps.single;
-      remote.offline = false;
-      await remote.send(queued);
-
-      final next = _repo(remote);
-      await next.load();
+      // Another phone refunds it; this screen still shows it standing.
+      await remote.send(ProductOp.voidSale(sale.voidedOn(DateTime.now())));
       await _settle();
-      await _settle();
+      final before = remote.sent.length;
 
-      expect(next.pendingOps, isEmpty);
-      expect((await next.watch().first).single.stock, 7); // not 4
-      expect(remote.server['coke']!.stock, 7);
+      await repo.voidSale(sale);
+      await _settle();
+      expect(remote.sent.length, before);
+      expect(remote.server['coke']!.stock, 10);
     });
   });
 
@@ -544,9 +568,7 @@ void main() {
 
     Future<(FakeProductRemote, ProductRepository, Sale)> setUpSale() async {
       final remote = FakeProductRemote([coke, bread]);
-      final repo = _repo(remote);
-      await repo.load();
-      await _settle();
+      final repo = await _loaded(remote);
       final sale = await repo.recordSale(
         items: [line('coke', 'Coke', 2000, 3), line('bread', 'Bread', 6500, 1)],
         receivedCentavos: 20000,
@@ -569,8 +591,7 @@ void main() {
 
       final edited = await repo.editSale(
         sale,
-        // Coke 3 → 1 (two back), bread removed (one back)… and a manual
-        // entry kept out of stock entirely.
+        // Coke 3 → 1 (two back), bread removed (one back).
         items: [line('coke', 'Coke', 2000, 1)],
         receivedCentavos: 5000,
         customerName: '  Aling Nena ',
@@ -631,6 +652,7 @@ void main() {
         throwsArgumentError,
       );
       await repo.voidSale(sale);
+      await _settle();
       expect(
         () => repo.editSale(
           sale,
@@ -645,9 +667,7 @@ void main() {
 
     test('linking a manual entry to a product takes its stock', () async {
       final remote = FakeProductRemote([coke, bread]);
-      final repo = _repo(remote);
-      await repo.load();
-      await _settle();
+      final repo = await _loaded(remote);
       const manual = SaleItem(
         name: 'Manual Entry',
         unitCentavos: 6500,
@@ -676,50 +696,64 @@ void main() {
       );
       expect(remote.server['bread']!.stock, 4);
     });
+  });
 
-    test('an edit that already landed is not replayed', () async {
-      final (remote, repo, sale) = await setUpSale();
-      remote.offline = true;
-      await repo.editSale(
-        sale,
-        items: [line('coke', 'Coke', 2000, 1), line('bread', 'Bread', 6500, 1)],
-        receivedCentavos: 20000,
-        customerName: null,
-        editor: _owner,
-      );
-      await _settle();
-      final queued = repo.pendingOps.single;
-      remote.offline = false;
-      await remote.send(queued); // delivered, but never confirmed here
+  group('the old on-device copy', () {
+    const coke = Product(
+      id: 'coke',
+      name: 'Coke',
+      stock: 10,
+      sellCentavos: 2000,
+    );
+    Sale sale(String id) => Sale(
+      id: id,
+      items: const [
+        SaleItem(
+          productId: 'coke',
+          name: 'Coke',
+          unitCentavos: 2000,
+          quantity: 2,
+        ),
+      ],
+      receivedCentavos: 4000,
+      completedAt: DateTime.now(),
+    );
 
-      final next = _repo(remote);
-      await next.load();
+    void leaveOldCopy(List<ProductOp> ops) {
+      SharedPreferences.setMockInitialValues({
+        'products.v1.store-1': jsonEncode({
+          'products': const [],
+          'ops': [for (final op in ops) op.toJson()],
+        }),
+      });
+    }
+
+    test('its unsent changes are sent once, then it is deleted', () async {
+      final unsent = sale('never-sent');
+      leaveOldCopy([ProductOp.sale(unsent)]);
+      final remote = FakeProductRemote([coke]);
+
+      await _loaded(remote);
       await _settle();
+
+      expect(remote.sales.containsKey('never-sent'), isTrue);
+      expect(remote.server['coke']!.stock, 8);
+      final prefs = await SharedPreferences.getInstance();
+      expect(prefs.getString('products.v1.store-1'), isNull);
+    });
+
+    test('a sale Firestore already has is not sent twice', () async {
+      final landed = sale('landed');
+      leaveOldCopy([ProductOp.sale(landed)]);
+      final remote = FakeProductRemote([coke]);
+      await remote.send(ProductOp.sale(landed)); // stock 10 → 8
+      final before = remote.sent.length;
+
+      await _loaded(remote);
       await _settle();
-      expect(next.pendingOps, isEmpty);
-      expect(
-        (await next.watch().first).firstWhere((p) => p.id == 'coke').stock,
-        9,
-      );
+
+      expect(remote.sent.length, before);
+      expect(remote.server['coke']!.stock, 8); // not 6
     });
   });
-}
-
-/// Reads [inner]'s catalog but can't send — online for fetches only.
-class _FetchOnly implements ProductRemote {
-  _FetchOnly(this.inner);
-  final FakeProductRemote inner;
-
-  @override
-  String newId() => inner.newId();
-
-  @override
-  Future<List<Product>> fetchAll() async => inner.server.values.toList();
-
-  @override
-  Future<List<Sale>> fetchSales({required DateTime since}) async =>
-      inner.sales.values.toList();
-
-  @override
-  Future<void> send(ProductOp op) async => throw StateError('offline');
 }

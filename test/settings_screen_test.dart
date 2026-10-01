@@ -32,7 +32,7 @@ class _Harness {
   }
 
   Widget build({
-    SyncStatus sync = const SyncStatus(pending: 0),
+    SyncStatus sync = const SyncStatus(pending: 0, online: true),
     String userId = 'owner-uid',
   }) => MaterialApp(
     theme: AppTheme.light,
@@ -133,7 +133,8 @@ void main() {
   });
 
   group('low stock alert', () {
-    Finder field() => find.widgetWithText(TextFormField, '5');
+    // Store name, owner, then the threshold.
+    Finder field() => find.byType(TextFormField).at(2);
 
     testWidgets('shows the store threshold and saves a new one', (
       tester,
@@ -145,7 +146,7 @@ void main() {
       await tester.pump();
 
       expect(find.text('LOW STOCK ALERT'), findsOneWidget);
-      expect(field(), findsOneWidget);
+      expect(tester.widget<TextFormField>(field()).controller!.text, '5');
 
       await tester.enterText(field(), '12');
       await tester.pump();
@@ -182,7 +183,7 @@ void main() {
 
       await tester.enterText(field(), '1a2.5');
       await tester.pump();
-      expect(find.widgetWithText(TextFormField, '125'), findsOneWidget);
+      expect(tester.widget<TextFormField>(field()).controller!.text, '125');
     });
   });
 
@@ -252,18 +253,44 @@ void main() {
     expect(find.widgetWithText(FilledButton, 'Add'), findsOneWidget);
   });
 
-  testWidgets('reports changes waiting to sync', (tester) async {
-    _smallPhone(tester);
-    final h = _Harness();
-    await tester.pumpWidget(
-      h.build(sync: SyncStatus(pending: 2, lastSyncedAt: DateTime.now())),
-    );
-    h.profile.add(_profile);
-    await tester.pump();
-    await tester.pump(); // The sync status stream delivers a frame later.
+  group('sync status', () {
+    Future<void> showStatus(WidgetTester tester, SyncStatus status) async {
+      _smallPhone(tester);
+      final h = _Harness();
+      await tester.pumpWidget(h.build(sync: status));
+      h.profile.add(_profile);
+      await tester.pump();
+      await tester.pump(); // The sync status stream delivers a frame later.
+    }
 
-    expect(find.text('Status: 2 changes waiting'), findsOneWidget);
-    expect(find.text('Last synced: just now'), findsOneWidget);
+    testWidgets('offline with changes waiting', (tester) async {
+      await showStatus(
+        tester,
+        SyncStatus(pending: 2, online: false, lastSyncedAt: DateTime.now()),
+      );
+      expect(find.text('Status: Offline · 2 changes waiting'), findsOneWidget);
+      expect(
+        find.text('Saved on this phone. Sends when online.'),
+        findsOneWidget,
+      );
+      expect(find.text('Last synced: just now'), findsOneWidget);
+    });
+
+    testWidgets('online, still sending', (tester) async {
+      await showStatus(tester, const SyncStatus(pending: 1, online: true));
+      expect(find.text('Status: Sending 1 change…'), findsOneWidget);
+    });
+
+    testWidgets('offline with nothing waiting', (tester) async {
+      await showStatus(tester, const SyncStatus(pending: 0, online: false));
+      expect(find.text('Status: Offline'), findsOneWidget);
+      expect(find.text('Showing what is saved on this phone.'), findsOneWidget);
+    });
+
+    testWidgets('synced', (tester) async {
+      await showStatus(tester, const SyncStatus(pending: 0, online: true));
+      expect(find.text('Status: Synced'), findsOneWidget);
+    });
   });
 
   group('as a helper', () {
@@ -293,7 +320,10 @@ void main() {
       expect(find.text('₱ PHP (Philippine Peso)'), findsOneWidget);
       // The low-stock alert shows the store's value but is locked too.
       expect(find.text('LOW STOCK ALERT'), findsOneWidget);
-      expect(find.widgetWithText(TextField, '5'), findsOneWidget);
+      expect(
+        tester.widget<TextField>(find.byType(TextField).at(2)).controller!.text,
+        '5',
+      );
       final fields = tester.widgetList<TextField>(find.byType(TextField));
       expect(fields, hasLength(3));
       for (final field in fields) {

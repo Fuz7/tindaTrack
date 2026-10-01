@@ -16,7 +16,7 @@ import 'product_form_screen.dart';
 /// chips, SKU and alert counts, the product list, and a bottom drawer with a
 /// product's stock and pricing.
 ///
-/// The catalog comes from the on-device [ProductRepository]. "Add New" and
+/// The catalog comes live from Firestore, through [ProductRepository]. "Add New" and
 /// the drawer's "Edit Product" open [ProductFormScreen]; "Update Stock"
 /// swaps the drawer's buttons for a stock stepper. The design's barcode
 /// scan button

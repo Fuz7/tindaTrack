@@ -26,8 +26,8 @@ class ProductFormScreen extends StatefulWidget {
     this.existingSkus = const {},
   });
 
-  /// Saves the product to the on-device catalog, which reaches the server on
-  /// its own time. The screen closes as soon as this is called rather than
+  /// Saves the product. Firestore shows it at once and gets it to the server
+  /// on its own time, offline too. The screen closes as soon as this is called rather than
   /// when it completes, so the cashier never waits on storage; a failure is
   /// shown as a snackbar on the screen underneath.
   final Future<void> Function(ProductDraft draft) onSave;

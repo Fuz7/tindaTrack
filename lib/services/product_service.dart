@@ -7,8 +7,7 @@ import 'package:flutter/foundation.dart';
 /// design's traffic-light status.
 enum StockStatus { inStock, lowStock, outOfStock }
 
-/// One product in a tindahan's catalog, from `stores/{storeId}/products/{id}`
-/// or the on-device copy in [ProductRepository].
+/// One product in a tindahan's catalog, from `stores/{storeId}/products/{id}`.
 ///
 /// Money is whole centavos, as in the cart: doubles drift. Optional fields are
 /// null rather than empty so the UI can show "—" without second-guessing.
@@ -503,7 +502,9 @@ class ProductOp {
     if (sale != null) 'sale': sale!.toJson(),
   };
 
-  /// [products] with this change applied, as the device sees it.
+  /// [products] with this change applied — what [ProductService.send]'s
+  /// writes do to the catalog. Tests' stand-in server uses it to act like
+  /// Firestore.
   List<Product> applyTo(List<Product> products) {
     switch (kind) {
       case ProductOpKind.create:
@@ -568,34 +569,43 @@ class ProductOp {
   }
 }
 
-/// The server no longer has a product an op refers to — deleted from
-/// another device, say. The op can't ever land and should be dropped.
-class ProductMissing implements Exception {
-  const ProductMissing(this.productId);
-  final String productId;
+/// One answer from a live listener: the data, plus how it relates to the
+/// server.
+class RemoteSnapshot<T> {
+  const RemoteSnapshot(
+    this.data, {
+    this.pendingIds = const {},
+    this.fromCache = false,
+  });
 
-  @override
-  String toString() => 'ProductMissing($productId)';
+  final T data;
+
+  /// Documents in [data] carrying a change from this device that the server
+  /// hasn't confirmed yet.
+  final Set<String> pendingIds;
+
+  /// Whether this came from the phone's cache rather than the server — in
+  /// practice, whether the device is offline.
+  final bool fromCache;
 }
 
 /// The server side of a store's catalog, as [ProductRepository] sees it.
-/// An interface so tests, and the offline sync to come, can stand in for
-/// Firestore.
+/// An interface so tests can stand in for Firestore.
 abstract interface class ProductRemote {
-  /// A fresh id for a product that may not reach the server for a while.
+  /// A fresh id, made on the device so it works offline.
   String newId();
 
-  /// The whole catalog, once. Throws if the server can't be reached.
-  Future<List<Product>> fetchAll();
+  /// Every product, live: what the phone has cached at once (offline too),
+  /// then every change from this device or another.
+  Stream<RemoteSnapshot<List<Product>>> watchProducts();
 
-  /// Sales completed on or after [since], from every device. Throws if the
-  /// server can't be reached.
-  Future<List<Sale>> fetchSales({required DateTime since});
+  /// Sales completed on or after [since], live, as [watchProducts].
+  Stream<RemoteSnapshot<List<Sale>>> watchSales({required DateTime since});
 
-  /// Hands [op] over for delivery. Completing means the op is safely on its
-  /// way — it must not be sent again, or a stock delta would count twice.
-  /// Throws if it could not be handed over (try again later), or
-  /// [ProductMissing] if it never can be.
+  /// Writes [op]. It shows in [watchProducts] / [watchSales] at once, and
+  /// reaches the server when it can — offline, once the connection is back.
+  /// Completing means it's queued; it must not be sent again, or a stock
+  /// change would count twice.
   Future<void> send(ProductOp op);
 }
 
@@ -695,50 +705,66 @@ class ProductService implements ProductRemote {
     ]);
   }
 
-  /// Like [fetchAll], a cache-only answer counts as offline.
+  /// Firestore answers from its on-phone cache first — offline, that is the
+  /// whole answer — then keeps the list live. Its local writes show at once,
+  /// before the server confirms them. `includeMetadataChanges` makes it
+  /// report when a write is confirmed or the connection drops or returns,
+  /// even when no data changed; that is what Sync Status reads.
   @override
-  Future<List<Sale>> fetchSales({required DateTime since}) async {
-    final snapshot = await _sales
-        .where(
-          'completedAt',
-          isGreaterThanOrEqualTo: since.millisecondsSinceEpoch,
-        )
-        .get();
-    if (snapshot.metadata.isFromCache) {
-      throw StateError('Offline: only cached sales were available.');
+  Stream<RemoteSnapshot<List<Product>>> watchProducts() => _products
+      .snapshots(includeMetadataChanges: true)
+      .map(
+        (snapshot) => RemoteSnapshot(
+          [for (final doc in snapshot.docs) Product.fromDoc(doc)],
+          pendingIds: _pending(snapshot),
+          fromCache: snapshot.metadata.isFromCache,
+        ),
+      );
+
+  /// As [watchProducts], for the sales since [since]. A malformed sale is
+  /// skipped rather than taking the whole history down.
+  @override
+  Stream<RemoteSnapshot<List<Sale>>> watchSales({required DateTime since}) =>
+      _sales
+          .where(
+            'completedAt',
+            isGreaterThanOrEqualTo: since.millisecondsSinceEpoch,
+          )
+          .snapshots(includeMetadataChanges: true)
+          .map(
+            (snapshot) => RemoteSnapshot(
+              [for (final doc in snapshot.docs) ?_saleOf(doc)],
+              pendingIds: _pending(snapshot),
+              fromCache: snapshot.metadata.isFromCache,
+            ),
+          );
+
+  static Set<String> _pending(QuerySnapshot<Map<String, dynamic>> snapshot) => {
+    for (final doc in snapshot.docs)
+      if (doc.metadata.hasPendingWrites) doc.id,
+  };
+
+  static Sale? _saleOf(QueryDocumentSnapshot<Map<String, dynamic>> doc) {
+    try {
+      return Sale.fromJson({...doc.data(), 'id': doc.id});
+    } on Object catch (error) {
+      debugPrint('Skipping malformed sale ${doc.id}: $error');
+      return null;
     }
-    return [
-      for (final doc in snapshot.docs)
-        Sale.fromJson({...doc.data(), 'id': doc.id}),
-    ];
   }
 
   /// Generated on the device, so it works with no connection.
   @override
   String newId() => _products.doc().id;
 
-  /// The server's catalog, with any of this device's writes still in
-  /// Firestore's queue already applied — so a fresh edit isn't briefly
-  /// undone by a fetch that beats it to the server.
+  /// Firestore keeps its own durable queue of writes — on the phone, through
+  /// restarts — and delivers them when it can, so an op is "sent" once it's
+  /// queued there. Waiting for the server as well would stall every save
+  /// while offline.
   ///
-  /// An answer from Firestore's cache alone counts as offline: on a fresh
-  /// install that cache is empty, and would wipe the device copy.
-  @override
-  Future<List<Product>> fetchAll() async {
-    final snapshot = await _products.get();
-    if (snapshot.metadata.isFromCache) {
-      throw StateError('Offline: only a cached catalog was available.');
-    }
-    return snapshot.docs.map(Product.fromDoc).toList();
-  }
-
-  /// Firestore keeps its own durable queue of writes and delivers them when
-  /// it can, so an op is "sent" once it's queued there — waiting for the
-  /// server as well would mean an op queued just before the app closed gets
-  /// queued again on the next launch, and its stock delta applied twice.
-  ///
-  /// A refusal (security rules) arrives later and is only logged; the next
-  /// catalog refresh then shows the server's version.
+  /// A refusal (security rules) arrives later and is only logged; Firestore
+  /// itself rolls the change back, and the live lists show the server's
+  /// version again.
   @override
   Future<void> send(ProductOp op) async {
     final doc = _products.doc(op.productId);
