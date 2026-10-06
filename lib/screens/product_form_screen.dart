@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:image_picker/image_picker.dart';
 
 import '../services/product_service.dart';
 import '../services/sku.dart';
@@ -14,8 +15,16 @@ import '../theme/app_theme.dart';
 /// Categories are multi-select; the first one picked is the product's main
 /// category, marked MAIN, and is what the SKU is built from. The SKU fills
 /// itself in from the name, size and main category until the owner types
-/// their own; an existing product's SKU is kept as it is. Photo upload and
-/// the stock tally calculator are not built yet.
+/// their own; an existing product's SKU is kept as it is. The stock tally
+/// calculator is not built yet.
+///
+/// The photo is taken or picked, shrunk by the picker, and stored in the
+/// store's own Firestore data, so it syncs to the other phones the way
+/// everything else does — offline included.
+
+/// What the photo slot's sheet offers.
+enum _PhotoChoice { camera, gallery, remove }
+
 class ProductFormScreen extends StatefulWidget {
   const ProductFormScreen({
     super.key,
@@ -73,6 +82,15 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
 
   bool get _editing => widget.initial != null;
 
+  /// The photo as the form has it: what [widget.initial] opened with until
+  /// the owner picks or removes one.
+  Uint8List? _photo;
+
+  /// Whether the owner touched the photo at all. A save only carries an
+  /// [ImageChange] when they did, so editing a price leaves the photo
+  /// document — and the other phones' copies of it — untouched.
+  bool _photoEdited = false;
+
   /// Picked categories in the order picked; the first is the main one.
   final _selected = <String>[];
 
@@ -103,6 +121,7 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
       _sku.text = initial.sku ?? '';
       _selected.addAll(initial.categories);
       _stockAlerts = initial.stockAlerts;
+      _photo = initial.imageBytes;
     }
     _name.addListener(_refreshSku);
     _size.addListener(_refreshSku);
@@ -185,6 +204,100 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
     _refreshSku();
   }
 
+  /// Offers camera, gallery, and — once there is a photo — removing it.
+  Future<void> _choosePhoto() async {
+    final choice = await showModalBottomSheet<_PhotoChoice>(
+      context: context,
+      backgroundColor: AppColors.surfaceContainerLowest,
+      builder: (context) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.photo_camera_outlined),
+              title: const Text('Take a photo'),
+              onTap: () => Navigator.pop(context, _PhotoChoice.camera),
+            ),
+            ListTile(
+              leading: const Icon(Icons.photo_library_outlined),
+              title: const Text('Choose from gallery'),
+              onTap: () => Navigator.pop(context, _PhotoChoice.gallery),
+            ),
+            if (_photo != null)
+              ListTile(
+                leading: const Icon(
+                  Icons.delete_outline,
+                  color: AppColors.actionDestructive,
+                ),
+                title: const Text(
+                  'Remove photo',
+                  style: TextStyle(color: AppColors.actionDestructive),
+                ),
+                onTap: () => Navigator.pop(context, _PhotoChoice.remove),
+              ),
+          ],
+        ),
+      ),
+    );
+    if (choice == null || !mounted) return;
+
+    if (choice == _PhotoChoice.remove) {
+      setState(() {
+        _photo = null;
+        _photoEdited = true;
+      });
+      return;
+    }
+    await _pickPhoto(
+      choice == _PhotoChoice.camera ? ImageSource.camera : ImageSource.gallery,
+    );
+  }
+
+  /// The picker resizes and re-encodes natively, before the bytes reach
+  /// Dart, so a 4 MB camera shot arrives as a thumbnail of a few dozen KB.
+  /// Without these limits the original would be far past what a Firestore
+  /// document can hold.
+  Future<void> _pickPhoto(ImageSource source) async {
+    final messenger = ScaffoldMessenger.of(context);
+    final Uint8List bytes;
+    try {
+      final file = await ImagePicker().pickImage(
+        source: source,
+        maxWidth: 512,
+        maxHeight: 512,
+        imageQuality: 70,
+      );
+      if (file == null) return;
+      bytes = await file.readAsBytes();
+    } on Object {
+      messenger
+        ..hideCurrentSnackBar()
+        ..showSnackBar(
+          const SnackBar(content: Text('Could not open that photo.')),
+        );
+      return;
+    }
+
+    if (bytes.lengthInBytes > maxProductImageBytes) {
+      messenger
+        ..hideCurrentSnackBar()
+        ..showSnackBar(
+          SnackBar(
+            content: Text(
+              'That photo is ${(bytes.lengthInBytes / 1024).round()} KB. '
+              'Try a simpler shot.',
+            ),
+          ),
+        );
+      return;
+    }
+    if (!mounted) return;
+    setState(() {
+      _photo = bytes;
+      _photoEdited = true;
+    });
+  }
+
   void _save() {
     if (!_formKey.currentState!.validate()) return;
 
@@ -199,6 +312,11 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
       sku: normalizeSku(_sku.text).isEmpty ? null : normalizeSku(_sku.text),
       categories: List.of(_selected),
       stockAlerts: _stockAlerts,
+      image: switch ((_photoEdited, _photo)) {
+        (false, _) => null, // untouched: the save carries no photo change
+        (true, final Uint8List bytes) => ImageChange(bytes),
+        (true, _) => const ImageChange.remove(),
+      },
     );
 
     _run(
@@ -295,7 +413,7 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
                         ),
                       ),
                       const SizedBox(height: 24),
-                      _ImageSlot(onTap: () => _notBuilt('Photo upload')),
+                      _ImageSlot(photo: _photo, onTap: _choosePhoto),
                       const SizedBox(height: 32),
                       _Field(
                         label: 'PRODUCT NAME',
@@ -564,12 +682,16 @@ class _Header extends StatelessWidget {
 }
 
 class _ImageSlot extends StatelessWidget {
-  const _ImageSlot({required this.onTap});
+  const _ImageSlot({required this.photo, required this.onTap});
 
+  /// The chosen photo, or null for the empty dashed slot.
+  final Uint8List? photo;
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
+    final bytes = photo;
+
     // The design's slot is square; capped so the form stays in reach on a
     // tall phone instead of opening on a screenful of dashed border.
     return Center(
@@ -582,37 +704,81 @@ class _ImageSlot extends StatelessWidget {
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(AppRadius.md),
             ),
+            clipBehavior: Clip.antiAlias,
             child: InkWell(
               borderRadius: BorderRadius.circular(AppRadius.md),
               onTap: onTap,
-              child: CustomPaint(
-                painter: const _DashedBorder(
-                  color: AppColors.outlineVariant,
-                  radius: AppRadius.md,
-                ),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    const Icon(
-                      Icons.add_a_photo_outlined,
-                      size: 36,
-                      color: AppColors.onSurfaceVariant,
-                    ),
-                    const SizedBox(height: AppSpacing.stackSm),
-                    Text(
-                      'UPLOAD PRODUCT IMAGE',
-                      textAlign: TextAlign.center,
-                      style: AppTypography.labelCaps.copyWith(
-                        color: AppColors.onSurfaceVariant,
+              child: bytes == null
+                  ? CustomPaint(
+                      painter: const _DashedBorder(
+                        color: AppColors.outlineVariant,
+                        radius: AppRadius.md,
                       ),
-                    ),
-                  ],
-                ),
-              ),
+                      child: const _SlotPrompt(),
+                    )
+                  : _SlotPhoto(bytes: bytes),
             ),
           ),
         ),
       ),
+    );
+  }
+}
+
+class _SlotPrompt extends StatelessWidget {
+  const _SlotPrompt();
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        const Icon(
+          Icons.add_a_photo_outlined,
+          size: 36,
+          color: AppColors.onSurfaceVariant,
+        ),
+        const SizedBox(height: AppSpacing.stackSm),
+        Text(
+          'UPLOAD PRODUCT IMAGE',
+          textAlign: TextAlign.center,
+          style: AppTypography.labelCaps.copyWith(
+            color: AppColors.onSurfaceVariant,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+/// The chosen photo filling the slot, under a hint that tapping changes it.
+class _SlotPhoto extends StatelessWidget {
+  const _SlotPhoto({required this.bytes});
+
+  final Uint8List bytes;
+
+  @override
+  Widget build(BuildContext context) {
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        Image.memory(bytes, fit: BoxFit.cover, gaplessPlayback: true),
+        Align(
+          alignment: Alignment.bottomCenter,
+          child: Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(vertical: AppSpacing.stackSm),
+            color: AppColors.inverseSurface.withValues(alpha: 0.72),
+            child: Text(
+              'TAP TO CHANGE',
+              textAlign: TextAlign.center,
+              style: AppTypography.labelCaps.copyWith(
+                color: AppColors.inverseOnSurface,
+              ),
+            ),
+          ),
+        ),
+      ],
     );
   }
 }

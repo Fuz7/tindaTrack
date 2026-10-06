@@ -3,6 +3,15 @@ import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
 
+/// The most a product photo may weigh.
+///
+/// A Firestore document stops at 1 MiB, and a photo gets a document to
+/// itself, so this is a guard against a pathological image rather than a
+/// normal limit: the picker is asked for 512px at quality 70, which lands
+/// around 40 KB. Keeping photos small also keeps a whole catalog inside the
+/// 40 MB Firestore keeps cached on each phone.
+const maxProductImageBytes = 200 * 1024;
+
 /// Where a product's count sits against the store's low-stock threshold — the
 /// design's traffic-light status.
 enum StockStatus { inStock, lowStock, outOfStock }
@@ -22,6 +31,7 @@ class Product {
     this.sku,
     this.categories = const [],
     this.imageUrl,
+    this.imageBytes,
     this.stockAlerts = true,
   });
 
@@ -90,6 +100,13 @@ class Product {
   final List<String> categories;
   final String? imageUrl;
 
+  /// The product photo, joined in by [ProductRepository] from the store's
+  /// `productImages` collection.
+  ///
+  /// Not a field of the product document — [toMap] leaves it out — so a
+  /// price or stock change never re-sends the photo to every other phone.
+  final Uint8List? imageBytes;
+
   /// Whether the product can be flagged LOW STOCK and counted in the
   /// Inventory alerts. Off for items the store keeps but rarely sells, so
   /// they don't bury the ones that matter.
@@ -102,7 +119,24 @@ class Product {
   /// tell sizes apart: `Piattos Cheese · 40g`.
   String get displayName => size == null ? name : '$name · $size';
 
-  /// Every field but [id], which is the document or storage key.
+  /// This product with [bytes] as its photo; used by [ProductRepository] to
+  /// join the `productImages` listener onto the catalog.
+  Product withImage(Uint8List? bytes) => Product(
+    id: id,
+    name: name,
+    stock: stock,
+    sellCentavos: sellCentavos,
+    buyCentavos: buyCentavos,
+    size: size,
+    sku: sku,
+    categories: categories,
+    imageUrl: imageUrl,
+    imageBytes: bytes,
+    stockAlerts: stockAlerts,
+  );
+
+  /// Every stored field but [id], which is the document key. [imageBytes] is
+  /// deliberately absent: the photo lives in its own document.
   Map<String, dynamic> toMap() => {
     'name': name,
     'stock': stock,
@@ -132,6 +166,23 @@ class Product {
       stockAlerts && statusFor(lowStockThreshold) != StockStatus.inStock;
 }
 
+/// What a save does to a product's photo.
+///
+/// A null [ProductDraft.image] means the form left the photo alone, which is
+/// not the same as [ImageChange.remove] — the first writes nothing, the
+/// second deletes the photo document.
+class ImageChange {
+  /// Replaces the photo with [bytes].
+  const ImageChange(Uint8List this.bytes);
+
+  /// Deletes the photo.
+  const ImageChange.remove() : bytes = null;
+
+  final Uint8List? bytes;
+
+  bool get removes => bytes == null;
+}
+
 /// What the "Add New Product" form collects before anything is written.
 /// Optional fields are null or empty, as on [Product].
 class ProductDraft {
@@ -144,6 +195,7 @@ class ProductDraft {
     this.sku,
     this.categories = const [],
     this.stockAlerts = true,
+    this.image,
   });
 
   final String name;
@@ -156,6 +208,9 @@ class ProductDraft {
   /// Main category first.
   final List<String> categories;
   final bool stockAlerts;
+
+  /// What to do with the photo, or null to leave it as it is.
+  final ImageChange? image;
 
   Product toProduct(String id) => Product(
     id: id,
@@ -429,19 +484,37 @@ class ProductOp {
     this.stockDelta, [
     this.adjustment,
     this.sale,
+    this.image,
   ]);
 
   /// [product] as a whole, opening stock included: the document is new, so
   /// there is no concurrent count to lose.
-  ProductOp.create(Product product)
-    : this._(ProductOpKind.create, product.id, product.toMap(), 0);
+  ProductOp.create(Product product, {ImageChange? image})
+    : this._(
+        ProductOpKind.create,
+        product.id,
+        product.toMap(),
+        0,
+        null,
+        null,
+        image,
+      );
 
   const ProductOp.update(
     String productId, {
     Map<String, dynamic> fields = const {},
     int stockDelta = 0,
     StockAdjustment? adjustment,
-  }) : this._(ProductOpKind.update, productId, fields, stockDelta, adjustment);
+    ImageChange? image,
+  }) : this._(
+         ProductOpKind.update,
+         productId,
+         fields,
+         stockDelta,
+         adjustment,
+         null,
+         image,
+       );
 
   const ProductOp.delete(String productId)
     : this._(ProductOpKind.delete, productId, const {}, 0);
@@ -493,6 +566,11 @@ class ProductOp {
   /// Set on a sale op.
   final Sale? sale;
 
+  /// Set on a create or update that changes the product's photo.
+  final ImageChange? image;
+
+  /// [image] is left out: this JSON exists only for the ops left behind by
+  /// the app's old on-device queue, which predate photos entirely.
   Map<String, dynamic> toJson() => {
     'kind': kind.name,
     'productId': productId,
@@ -602,6 +680,11 @@ abstract interface class ProductRemote {
   /// Sales completed on or after [since], live, as [watchProducts].
   Stream<RemoteSnapshot<List<Sale>>> watchSales({required DateTime since});
 
+  /// Every product photo in the store by product id, live, as
+  /// [watchProducts] — same cache, same queue. Kept apart from the products
+  /// so a stock change doesn't re-send the photos with it.
+  Stream<RemoteSnapshot<Map<String, Uint8List>>> watchImages();
+
   /// Writes [op]. It shows in [watchProducts] / [watchSales] at once, and
   /// reaches the server when it can — offline, once the connection is back.
   /// Completing means it's queued; it must not be sent again, or a stock
@@ -614,6 +697,7 @@ class ProductService implements ProductRemote {
   ProductService(this.storeId);
 
   static const productsCollection = 'products';
+  static const imagesCollection = 'productImages';
 
   final String storeId;
 
@@ -636,6 +720,30 @@ class ProductService implements ProductRemote {
       .collection('stores')
       .doc(storeId)
       .collection('sales');
+
+  /// Product photos, one document per product, keyed by the product's id.
+  ///
+  /// Apart from the product so the catalog listener — which fires on every
+  /// sale — carries counts and prices only. Photos change almost never, so
+  /// each phone fetches one once and then reads it from the Firestore cache.
+  CollectionReference<Map<String, dynamic>> get _images => FirebaseFirestore
+      .instance
+      .collection('stores')
+      .doc(storeId)
+      .collection(imagesCollection);
+
+  /// Writes a photo change: bytes replace the document, a removal deletes
+  /// it. Separate from the product's own write, so a photo that fails
+  /// doesn't take the product's details down with it.
+  Future<void> _sendImage(String productId, ImageChange change) {
+    final doc = _images.doc(productId);
+    final bytes = change.bytes;
+    if (bytes == null) return doc.delete();
+    return doc.set({
+      'bytes': Blob(bytes),
+      'updatedAt': FieldValue.serverTimestamp(),
+    });
+  }
 
   /// The sale record, then each sold product's stock taken down by an
   /// increment. Separate writes rather than one batch on purpose: a product
@@ -739,6 +847,22 @@ class ProductService implements ProductRemote {
             ),
           );
 
+  /// As [watchProducts], for the store's photos. A document whose `bytes`
+  /// is missing or malformed is skipped, leaving that product's placeholder.
+  @override
+  Stream<RemoteSnapshot<Map<String, Uint8List>>> watchImages() => _images
+      .snapshots(includeMetadataChanges: true)
+      .map(
+        (snapshot) => RemoteSnapshot(
+          {
+            for (final doc in snapshot.docs)
+              if (doc.data()['bytes'] case final Blob blob) doc.id: blob.bytes,
+          },
+          pendingIds: _pending(snapshot),
+          fromCache: snapshot.metadata.isFromCache,
+        ),
+      );
+
   static Set<String> _pending(QuerySnapshot<Map<String, dynamic>> snapshot) => {
     for (final doc in snapshot.docs)
       if (doc.metadata.hasPendingWrites) doc.id,
@@ -771,24 +895,30 @@ class ProductService implements ProductRemote {
     final Future<void> write;
     switch (op.kind) {
       case ProductOpKind.create:
-        write = doc.set({
-          ...op.fields,
-          'createdAt': FieldValue.serverTimestamp(),
-        });
+        write = Future.wait([
+          doc.set({...op.fields, 'createdAt': FieldValue.serverTimestamp()}),
+          if (op.image case final change?) _sendImage(op.productId, change),
+        ]);
       case ProductOpKind.update:
         final update = {
           ...op.fields,
           if (op.stockDelta != 0) 'stock': FieldValue.increment(op.stockDelta),
           'updatedAt': FieldValue.serverTimestamp(),
         };
+        final photo = op.image == null
+            ? null
+            : _sendImage(op.productId, op.image!);
         final adjustment = op.adjustment;
         if (adjustment == null) {
-          write = doc.update(update);
+          // Nothing but a photo change leaves the product document alone.
+          write = op.fields.isEmpty && op.stockDelta == 0 && photo != null
+              ? photo
+              : Future.wait([doc.update(update), ?photo]);
         } else {
           // One batch: the count and its log entry land together or not at
           // all. The entry's id is fixed on the device, so a resend
           // overwrites it rather than logging the change twice.
-          write =
+          final logged =
               (FirebaseFirestore.instance.batch()
                     ..update(doc, update)
                     ..set(_adjustments.doc(adjustment.id), {
@@ -802,9 +932,12 @@ class ProductService implements ProductRemote {
                       'createdAt': FieldValue.serverTimestamp(),
                     }))
                   .commit();
+          write = photo == null ? logged : Future.wait([logged, photo]);
         }
       case ProductOpKind.delete:
-        write = doc.delete();
+        // The photo goes with the product, so deleting one can't leave the
+        // other stranded in the store's data.
+        write = Future.wait([doc.delete(), _images.doc(op.productId).delete()]);
       case ProductOpKind.sale:
         write = _sendSale(op.sale!);
       case ProductOpKind.voidSale:

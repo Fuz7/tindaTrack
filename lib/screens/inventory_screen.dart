@@ -1009,6 +1009,7 @@ class _ProductCard extends StatelessWidget {
               children: [
                 ProductImage(
                   url: product.imageUrl,
+                  bytes: product.imageBytes,
                   size: 64,
                   radius: 6,
                   grayscale: out,
@@ -1193,6 +1194,7 @@ class _ProductDrawerState extends State<_ProductDrawer> {
                       children: [
                         ProductImage(
                           url: product.imageUrl,
+                          bytes: product.imageBytes,
                           size: 80,
                           radius: AppRadius.base,
                         ),

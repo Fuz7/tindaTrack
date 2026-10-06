@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+
 import 'package:flutter/material.dart';
 
 import '../services/product_service.dart';
@@ -22,16 +24,22 @@ extension StockStatusStyle on StockStatus {
 
 /// A product photo in a bordered, rounded frame, or a placeholder icon when
 /// there is none or it fails to load.
+///
+/// [bytes] is the stored photo, which the store keeps in Firestore and so
+/// has on the phone already — it wins over [url], a leftover from when
+/// photos were hosted elsewhere.
 class ProductImage extends StatelessWidget {
   const ProductImage({
     super.key,
-    required this.url,
+    this.url,
+    this.bytes,
     required this.size,
     required this.radius,
     this.grayscale = false,
   });
 
   final String? url;
+  final Uint8List? bytes;
   final double size;
   final double radius;
   final bool grayscale;
@@ -50,15 +58,26 @@ class ProductImage extends StatelessWidget {
       size: size * 0.45,
       color: AppColors.outline,
     );
-    Widget image = url == null
-        ? placeholder
-        : Image.network(
-            url!,
-            width: size,
-            height: size,
-            fit: BoxFit.cover,
-            errorBuilder: (_, _, _) => placeholder,
-          );
+    Widget image = switch ((bytes, url)) {
+      (final Uint8List data, _) => Image.memory(
+        data,
+        width: size,
+        height: size,
+        fit: BoxFit.cover,
+        // The frame keeps the old photo until the new one is decoded,
+        // instead of blinking to the placeholder on every change.
+        gaplessPlayback: true,
+        errorBuilder: (_, _, _) => placeholder,
+      ),
+      (_, final String link) => Image.network(
+        link,
+        width: size,
+        height: size,
+        fit: BoxFit.cover,
+        errorBuilder: (_, _, _) => placeholder,
+      ),
+      _ => placeholder,
+    };
     if (grayscale) image = ColorFiltered(colorFilter: _grayscale, child: image);
 
     return Container(

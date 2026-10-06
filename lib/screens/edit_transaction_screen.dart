@@ -868,6 +868,7 @@ class _PickerTile extends StatelessWidget {
       contentPadding: const EdgeInsets.symmetric(horizontal: 4),
       leading: ProductImage(
         url: product.imageUrl,
+        bytes: product.imageBytes,
         size: 40,
         radius: AppRadius.base,
         grayscale: !enabled,

@@ -715,6 +715,7 @@ class _SearchResultCard extends StatelessWidget {
           children: [
             ProductImage(
               url: product.imageUrl,
+              bytes: product.imageBytes,
               size: 48,
               radius: AppRadius.base,
               grayscale: status == StockStatus.outOfStock,
@@ -948,6 +949,7 @@ class _ProductDetailsSheetState extends State<_ProductDetailsSheet> {
                             ),
                             child: ProductImage(
                               url: product.imageUrl,
+                              bytes: product.imageBytes,
                               // w-48, shrunk on a short screen so the stepper
                               // and button stay in view.
                               size: math.min(

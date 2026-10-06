@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+
 import 'product_repository.dart';
 import 'product_service.dart';
 
@@ -94,6 +96,7 @@ class ProductSales {
     required this.units,
     required this.revenueCentavos,
     this.imageUrl,
+    this.imageBytes,
   });
 
   final String productId;
@@ -101,6 +104,9 @@ class ProductSales {
   final int units;
   final int revenueCentavos;
   final String? imageUrl;
+
+  /// The product photo, when the product still exists.
+  final Uint8List? imageBytes;
 }
 
 /// How the Sales Trends chart splits a range into bars.
@@ -250,6 +256,7 @@ class SalesInsights {
               units: units[id]!,
               revenueCentavos: revenue[id]!,
               imageUrl: byId[id]?.imageUrl,
+              imageBytes: byId[id]?.imageBytes,
             ),
         ]..sort((a, b) {
           final byRevenue = b.revenueCentavos.compareTo(a.revenueCentavos);

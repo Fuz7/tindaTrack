@@ -59,6 +59,10 @@
 		<string>UIInterfaceOrientationLandscapeLeft</string>
 		<string>UIInterfaceOrientationLandscapeRight</string>
 	</array>
+	<key>NSCameraUsageDescription</key>
+	<string>TindaTrack uses the camera to take photos of your products.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>TindaTrack needs your photos so you can pick a product image.</string>
 	<key>UISupportedInterfaceOrientations~ipad</key>
 	<array>
 		<string>UIInterfaceOrientationPortrait</string>

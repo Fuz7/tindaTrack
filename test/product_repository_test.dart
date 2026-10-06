@@ -1,3 +1,4 @@
+import 'dart:typed_data';
 import 'dart:convert';
 
 import 'package:flutter_test/flutter_test.dart';
@@ -754,6 +755,157 @@ void main() {
 
       expect(remote.sent.length, before);
       expect(remote.server['coke']!.stock, 8); // not 6
+    });
+  });
+
+  group('photos', () {
+    final photo = Uint8List.fromList(List.filled(32, 7));
+    final replacement = Uint8List.fromList(List.filled(32, 9));
+
+    test('a new product carries its photo, joined onto the catalog', () async {
+      final remote = FakeProductRemote();
+      final repo = await _loaded(remote);
+
+      await repo.add(
+        ProductDraft(
+          name: 'San Miguel',
+          sellCentavos: 6000,
+          image: ImageChange(photo),
+        ),
+      );
+      await _settle();
+
+      expect(remote.images.values.single, photo);
+      final saved = (await repo.watch().first).single;
+      expect(saved.imageBytes, photo);
+    });
+
+    test(
+      'a photo from another phone joins the product it belongs to',
+      () async {
+        final remote = FakeProductRemote([_coke]);
+        final repo = await _loaded(remote);
+        expect((await repo.watch().first).single.imageBytes, isNull);
+
+        remote.images['coke'] = photo;
+        remote.push();
+        await _settle();
+
+        expect((await repo.watch().first).single.imageBytes, photo);
+      },
+    );
+
+    test('an edit that only changes the photo sends no fields', () async {
+      final remote = FakeProductRemote([_coke]);
+      final repo = await _loaded(remote);
+
+      await repo.update(
+        _coke,
+        ProductDraft(
+          name: _coke.name,
+          sellCentavos: _coke.sellCentavos,
+          stock: _coke.stock,
+          image: ImageChange(replacement),
+        ),
+      );
+      await _settle();
+
+      final op = remote.sent.single;
+      expect(op.fields, isEmpty);
+      expect(op.stockDelta, 0);
+      expect(op.image!.bytes, replacement);
+      expect(remote.images['coke'], replacement);
+    });
+
+    test('an edit leaving the photo alone sends no photo change', () async {
+      final remote = FakeProductRemote([_coke])..images['coke'] = photo;
+      final repo = await _loaded(remote);
+
+      await repo.update(
+        _coke,
+        const ProductDraft(name: 'Coke Sakto', sellCentavos: 2000, stock: 5),
+      );
+      await _settle();
+
+      expect(remote.sent.single.image, isNull);
+      expect(remote.images['coke'], photo);
+    });
+
+    test('removing the photo deletes it', () async {
+      final remote = FakeProductRemote([_coke])..images['coke'] = photo;
+      final repo = await _loaded(remote);
+
+      await repo.update(
+        _coke,
+        const ProductDraft(
+          name: 'Coke Mismo',
+          sellCentavos: 2000,
+          stock: 5,
+          image: ImageChange.remove(),
+        ),
+      );
+      await _settle();
+
+      expect(remote.images, isEmpty);
+      expect((await repo.watch().first).single.imageBytes, isNull);
+    });
+
+    test('deleting a product takes its photo with it', () async {
+      final remote = FakeProductRemote([_coke])..images['coke'] = photo;
+      final repo = await _loaded(remote);
+
+      await repo.delete('coke');
+      await _settle();
+
+      expect(remote.images, isEmpty);
+    });
+
+    test(
+      'a photo waits offline, then is sent, and counts as pending',
+      () async {
+        final remote = FakeProductRemote([_coke])..offline = true;
+        final repo = await _loaded(remote);
+
+        await repo.update(
+          _coke,
+          ProductDraft(
+            name: _coke.name,
+            sellCentavos: _coke.sellCentavos,
+            stock: _coke.stock,
+            image: ImageChange(photo),
+          ),
+        );
+        await _settle();
+
+        // Shows on this phone at once, and Sync Status counts it as waiting.
+        expect((await repo.watch().first).single.imageBytes, photo);
+        expect(remote.images, isEmpty);
+        expect(repo.syncStatus!.pending, 1);
+
+        remote.offline = false;
+        await _settle();
+
+        expect(remote.images['coke'], photo);
+        expect(repo.syncStatus!.isSynced, isTrue);
+      },
+    );
+
+    test('a photo past the size limit is refused', () async {
+      final remote = FakeProductRemote([_coke]);
+      final repo = await _loaded(remote);
+      final huge = Uint8List(maxProductImageBytes + 1);
+
+      await expectLater(
+        repo.add(
+          ProductDraft(
+            name: 'Big',
+            sellCentavos: 100,
+            image: ImageChange(huge),
+          ),
+        ),
+        throwsArgumentError,
+      );
+      expect(remote.sent, isEmpty);
     });
   });
 }

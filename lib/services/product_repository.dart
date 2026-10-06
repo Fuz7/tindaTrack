@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:typed_data';
 
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -62,6 +63,13 @@ class ProductRepository {
   /// The latest from each listener; null until it first answers.
   RemoteSnapshot<List<Product>>? _productSnapshot;
   RemoteSnapshot<List<Sale>>? _saleSnapshot;
+  RemoteSnapshot<Map<String, Uint8List>>? _imageSnapshot;
+
+  /// The catalog sorted, before photos are joined on.
+  List<Product>? _rawProducts;
+
+  /// Photos by product id, from the [ProductRemote.watchImages] listener.
+  Map<String, Uint8List> _images = const {};
 
   /// Sorted copies of the above, as [watch] and [watchSales] hand them out.
   List<Product>? _products;
@@ -71,19 +79,24 @@ class ProductRepository {
 
   StreamSubscription<RemoteSnapshot<List<Product>>>? _productsSub;
   StreamSubscription<RemoteSnapshot<List<Sale>>>? _salesSub;
+  StreamSubscription<RemoteSnapshot<Map<String, Uint8List>>>? _imagesSub;
 
   /// Completes with the first sales answer; the leftover ops of the old
   /// on-device copy are checked against it.
   final _firstSales = Completer<void>();
 
-  /// Null until both listeners have answered.
+  /// Null until every listener has answered.
   SyncStatus? get syncStatus {
     final products = _productSnapshot;
     final sales = _saleSnapshot;
-    if (products == null || sales == null) return null;
+    final images = _imageSnapshot;
+    if (products == null || sales == null || images == null) return null;
     return SyncStatus(
-      pending: products.pendingIds.length + sales.pendingIds.length,
-      online: !products.fromCache && !sales.fromCache,
+      pending:
+          products.pendingIds.length +
+          sales.pendingIds.length +
+          images.pendingIds.length,
+      online: !products.fromCache && !sales.fromCache && !images.fromCache,
       lastSyncedAt: _lastSyncedAt,
     );
   }
@@ -109,14 +122,19 @@ class ProductRepository {
     _salesSub = remote
         .watchSales(since: DateTime.now().subtract(salesHistory))
         .listen(_onSales, onError: _onSalesError);
+    _imagesSub = remote.watchImages().listen(
+      _onImages,
+      onError: _onImagesError,
+    );
     await _sendLeftoverOps();
   }
 
-  /// Saves a new product. Completes once Firestore has it queued — at once,
-  /// online or not.
+  /// Saves a new product, with its photo if the form picked one. Completes
+  /// once Firestore has it queued — at once, online or not.
   Future<Product> add(ProductDraft draft) async {
     final product = draft.toProduct(remote.newId());
-    await remote.send(ProductOp.create(product));
+    final image = _checkedImage(draft.image);
+    await remote.send(ProductOp.create(product, image: image));
     return product;
   }
 
@@ -129,15 +147,23 @@ class ProductRepository {
   Future<void> update(Product original, ProductDraft draft) async {
     final before = original.toMap();
     final after = draft.toProduct(original.id).toMap()
-      ..['imageUrl'] = original.imageUrl; // not editable yet
+      // The photo is its own document, not a field of the product, so an
+      // edit never touches this leftover URL from the old scheme.
+      ..['imageUrl'] = original.imageUrl;
     final fields = <String, dynamic>{
       for (final key in after.keys)
         if (key != 'stock' && !_same(before[key], after[key])) key: after[key],
     };
     final delta = draft.stock - original.stock;
-    if (fields.isEmpty && delta == 0) return;
+    final image = _checkedImage(draft.image);
+    if (fields.isEmpty && delta == 0 && image == null) return;
     await remote.send(
-      ProductOp.update(original.id, fields: fields, stockDelta: delta),
+      ProductOp.update(
+        original.id,
+        fields: fields,
+        stockDelta: delta,
+        image: image,
+      ),
     );
   }
 
@@ -262,9 +288,26 @@ class ProductRepository {
   Future<void> dispose() async {
     await _productsSub?.cancel();
     await _salesSub?.cancel();
+    await _imagesSub?.cancel();
     await _changes.close();
     await _salesChanges.close();
     await _syncChanges.close();
+  }
+
+  /// [change], once it is small enough to store.
+  ///
+  /// The picker already shrinks what it hands back, so this only catches an
+  /// image that compressed badly — better a clear refusal here than a write
+  /// Firestore rejects later, silently, once the device is back online.
+  static ImageChange? _checkedImage(ImageChange? change) {
+    final bytes = change?.bytes;
+    if (bytes != null && bytes.lengthInBytes > maxProductImageBytes) {
+      throw ArgumentError(
+        'That photo is ${(bytes.lengthInBytes / 1024).round()} KB; the limit '
+        'is ${maxProductImageBytes ~/ 1024} KB.',
+      );
+    }
+    return change;
   }
 
   /// [sale] as the live list has it now — another phone may have refunded
@@ -274,12 +317,36 @@ class ProductRepository {
 
   void _onProducts(RemoteSnapshot<List<Product>> snapshot) {
     _productSnapshot = snapshot;
-    _products = List.unmodifiable(
-      [...snapshot.data]
-        ..sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase())),
-    );
-    if (!_changes.isClosed) _changes.add(_products!);
+    _rawProducts = [...snapshot.data]
+      ..sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
+    _emitProducts();
     _publishSync();
+  }
+
+  void _onImages(RemoteSnapshot<Map<String, Uint8List>> snapshot) {
+    _imageSnapshot = snapshot;
+    _images = snapshot.data;
+    _emitProducts();
+    _publishSync();
+  }
+
+  /// A failing photo listener must not hold up Sync Status or the catalog:
+  /// the store simply shows placeholders.
+  void _onImagesError(Object error, StackTrace stack) {
+    _imageSnapshot ??= const RemoteSnapshot({});
+    _publishSync();
+  }
+
+  /// The catalog with each product's photo joined on, to every listener.
+  /// Called whenever either side changes, so a photo arriving after the
+  /// products it belongs to still reaches the screens.
+  void _emitProducts() {
+    final raw = _rawProducts;
+    if (raw == null) return;
+    _products = List.unmodifiable([
+      for (final product in raw) product.withImage(_images[product.id]),
+    ]);
+    if (!_changes.isClosed) _changes.add(_products!);
   }
 
   void _onSales(RemoteSnapshot<List<Sale>> snapshot) {

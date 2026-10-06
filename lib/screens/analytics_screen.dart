@@ -942,7 +942,12 @@ class _BestSellers extends StatelessWidget {
               padding: const EdgeInsets.all(AppSpacing.gutter),
               child: Row(
                 children: [
-                  ProductImage(url: seller.imageUrl, size: 48, radius: 8),
+                  ProductImage(
+                    url: seller.imageUrl,
+                    bytes: seller.imageBytes,
+                    size: 48,
+                    radius: 8,
+                  ),
                   const SizedBox(width: 16),
                   Expanded(
                     child: Column(
