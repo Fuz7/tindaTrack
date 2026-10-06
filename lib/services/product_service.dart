@@ -196,6 +196,7 @@ class ProductDraft {
     this.categories = const [],
     this.stockAlerts = true,
     this.image,
+    this.imageUrl,
   });
 
   final String name;
@@ -209,8 +210,13 @@ class ProductDraft {
   final List<String> categories;
   final bool stockAlerts;
 
-  /// What to do with the photo, or null to leave it as it is.
+  /// What to do with the stored photo, or null to leave it as it is.
   final ImageChange? image;
+
+  /// A photo that isn't stored bytes — an `asset:` reference to artwork
+  /// bundled with the app, as the starter pack uses. The form never sets
+  /// this; it takes photos, which go through [image].
+  final String? imageUrl;
 
   Product toProduct(String id) => Product(
     id: id,
@@ -221,7 +227,23 @@ class ProductDraft {
     size: size,
     sku: sku,
     categories: List.unmodifiable(categories),
+    imageUrl: imageUrl,
     stockAlerts: stockAlerts,
+  );
+
+  /// This draft with [sku], which the catalog fills in at save time so the
+  /// code avoids the ones already in use.
+  ProductDraft withSku(String? sku) => ProductDraft(
+    name: name,
+    sellCentavos: sellCentavos,
+    buyCentavos: buyCentavos,
+    stock: stock,
+    size: size,
+    sku: sku,
+    categories: categories,
+    stockAlerts: stockAlerts,
+    image: image,
+    imageUrl: imageUrl,
   );
 }
 

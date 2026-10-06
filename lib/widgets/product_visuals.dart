@@ -7,6 +7,10 @@ import '../theme/app_theme.dart';
 
 /// Product pieces shared by the Home search results and the Inventory tab.
 
+/// Marks a [Product.imageUrl] that names a bundled asset rather than a
+/// network address.
+const assetScheme = 'asset:';
+
 /// The design's traffic-light colors and labels for a [StockStatus].
 extension StockStatusStyle on StockStatus {
   Color get color => switch (this) {
@@ -67,6 +71,18 @@ class ProductImage extends StatelessWidget {
         // The frame keeps the old photo until the new one is decoded,
         // instead of blinking to the placeholder on every change.
         gaplessPlayback: true,
+        errorBuilder: (_, _, _) => placeholder,
+      ),
+      // The starter pack's category artwork, bundled with the app: every
+      // phone already has it, so nothing is stored or synced for it.
+      (_, final String link) when link.startsWith(assetScheme) => Image.asset(
+        link.substring(assetScheme.length),
+        width: size,
+        height: size,
+        fit: BoxFit.cover,
+        // Decode at the size actually drawn, not the 800px source: a list
+        // of these would otherwise hold megabytes of bitmap each.
+        cacheWidth: (size * MediaQuery.devicePixelRatioOf(context)).round(),
         errorBuilder: (_, _, _) => placeholder,
       ),
       (_, final String link) => Image.network(

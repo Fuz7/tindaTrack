@@ -5,6 +5,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:tinda_track/services/product_repository.dart';
 import 'package:tinda_track/services/product_service.dart';
+import 'package:tinda_track/services/starter_pack.dart';
 
 import 'support/fake_product_remote.dart';
 
@@ -755,6 +756,96 @@ void main() {
 
       expect(remote.sent.length, before);
       expect(remote.server['coke']!.stock, 8); // not 6
+    });
+  });
+
+  group('starter pack', () {
+    const pack = [
+      ProductDraft(name: 'Coke Mismo', sellCentavos: 2200, size: '290ml'),
+      ProductDraft(name: 'Piattos Cheese', sellCentavos: 2000, size: '40g'),
+      ProductDraft(name: 'Surf Powder', sellCentavos: 1000, size: '66g'),
+    ];
+
+    test('adds every item to an empty catalog, each with a SKU', () async {
+      final remote = FakeProductRemote();
+      final repo = await _loaded(remote);
+
+      final result = await repo.addAllMissing(pack);
+      await _settle();
+
+      expect(result.added, 3);
+      expect(result.skipped, 0);
+      expect(remote.server.length, 3);
+      final skus = remote.server.values.map((p) => p.sku).toSet();
+      expect(skus, hasLength(3));
+      expect(skus.contains(null), isFalse);
+    });
+
+    test('skips what the catalog already has, by name and size', () async {
+      final remote = FakeProductRemote([
+        const Product(
+          id: 'coke',
+          name: 'coke mismo', // same product, typed differently
+          size: '290ml',
+          stock: 4,
+          sellCentavos: 2200,
+        ),
+      ]);
+      final repo = await _loaded(remote);
+
+      final result = await repo.addAllMissing(pack);
+      await _settle();
+
+      expect(result.added, 2);
+      expect(result.skipped, 1);
+      expect(remote.server.length, 3);
+      expect(remote.server['coke']!.stock, 4); // untouched
+    });
+
+    test('a second run adds nothing', () async {
+      final remote = FakeProductRemote();
+      final repo = await _loaded(remote);
+
+      await repo.addAllMissing(pack);
+      await _settle();
+      final again = await repo.addAllMissing(pack);
+      await _settle();
+
+      expect(again.added, 0);
+      expect(again.skipped, 3);
+      expect(remote.server.length, 3);
+    });
+
+    test('the real pack carries prices and bundled artwork', () async {
+      expect(starterPack.length, greaterThanOrEqualTo(50));
+      for (final draft in starterPack) {
+        expect(draft.sellCentavos, greaterThan(0), reason: draft.name);
+        expect(draft.buyCentavos, isNotNull, reason: draft.name);
+        expect(
+          draft.buyCentavos,
+          lessThan(draft.sellCentavos),
+          reason: '${draft.name} must leave a margin',
+        );
+        expect(draft.stock, 0, reason: '${draft.name} counts its own shelf');
+        expect(
+          draft.stockAlerts,
+          isFalse,
+          reason: '${draft.name} must not raise an alert before it is stocked',
+        );
+        expect(draft.categories, hasLength(1), reason: draft.name);
+        expect(
+          draft.imageUrl,
+          startsWith('asset:assets/images/starter/'),
+          reason: draft.name,
+        );
+      }
+    });
+
+    test('no two pack items share a name and size', () {
+      final keys = starterPack
+          .map((d) => d.toProduct('x').displayName.toLowerCase())
+          .toList();
+      expect(keys.toSet(), hasLength(keys.length));
     });
   });
 

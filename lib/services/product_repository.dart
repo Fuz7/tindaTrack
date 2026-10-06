@@ -5,6 +5,7 @@ import 'dart:typed_data';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'product_service.dart';
+import 'sku.dart';
 
 /// How this device's changes stand with the server, as Firestore reports it.
 class SyncStatus {
@@ -28,6 +29,16 @@ class SyncStatus {
   final DateTime? lastSyncedAt;
 
   bool get isSynced => online && pending == 0;
+}
+
+/// What [ProductRepository.addAllMissing] did, for the message afterwards.
+class StarterPackResult {
+  const StarterPackResult({required this.added, required this.skipped});
+
+  final int added;
+
+  /// Already in the catalog under the same name and size.
+  final int skipped;
 }
 
 /// A store's products and sales, live from Firestore.
@@ -137,6 +148,37 @@ class ProductRepository {
     await remote.send(ProductOp.create(product, image: image));
     return product;
   }
+
+  /// Adds every draft in [drafts] that the catalog doesn't already carry,
+  /// giving each a SKU that avoids the ones in use.
+  ///
+  /// Matching is on name and size — "Surf Powder Rose 66g" — so running this
+  /// twice, or on two phones, tops the catalog up instead of doubling it.
+  /// A product the owner deleted on purpose comes back, which is the point:
+  /// this is a top-up, not a one-time switch.
+  Future<StarterPackResult> addAllMissing(List<ProductDraft> drafts) async {
+    final catalog = _products ?? const <Product>[];
+    final have = {for (final p in catalog) _key(p.displayName)};
+    final taken = {for (final p in catalog) ?p.sku};
+
+    var added = 0;
+    for (final draft in drafts) {
+      final key = _key(draft.toProduct('').displayName);
+      if (!have.add(key)) continue;
+      final sku = generateSku(
+        name: draft.name,
+        size: draft.size,
+        mainCategory: draft.categories.firstOrNull,
+        taken: taken,
+      );
+      if (sku != null) taken.add(sku);
+      await add(draft.withSku(sku));
+      added++;
+    }
+    return StarterPackResult(added: added, skipped: drafts.length - added);
+  }
+
+  static String _key(String displayName) => displayName.trim().toLowerCase();
 
   /// Saves the edits that turn [original] — the product as the edit form
   /// opened it — into [draft].

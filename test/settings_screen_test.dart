@@ -23,6 +23,7 @@ class _Harness {
   var members = <StaffMember>[];
   final savedStaff = <List<StaffMember>>[];
   var upgrades = 0;
+  var packLoads = 0;
 
   /// Like Firestore, echoes a local write straight back to the listeners.
   Future<void> _write(List<StaffMember> next) async {
@@ -61,6 +62,10 @@ class _Harness {
         upgrades++;
         // Like Firestore, the store reads as Pro straight away.
         staff.add(StoreStaff(isPro: true, members: members));
+      },
+      onLoadStarterPack: () async {
+        packLoads++;
+        return const StarterPackResult(added: 90, skipped: 7);
       },
     ),
   );
@@ -445,6 +450,56 @@ void main() {
       expect(find.text('Waiting to join'), findsOneWidget);
     });
   });
+
+  group('starter pack', () {
+    testWidgets('without Pro, offers the upgrade instead', (tester) async {
+      _smallPhone(tester);
+      final h = _Harness();
+      await tester.pumpWidget(h.build());
+      h.profile.add(_profile);
+      h.staff.add(const StoreStaff(isPro: false, members: []));
+      await tester.pump();
+
+      expect(find.text('Unlock Pro & Load Pack'), findsOneWidget);
+      expect(find.text('Load Starter Pack'), findsNothing);
+      expect(h.packLoads, 0);
+    });
+
+    testWidgets('with Pro, asks before adding', (tester) async {
+      final h = await _proStore(tester);
+      await _tapLoadPack(tester);
+
+      // The dialog stands in for the purchase: nothing is written yet.
+      expect(find.text('Load the starter pack?'), findsOneWidget);
+      expect(h.packLoads, 0);
+
+      await tester.tap(find.text('Cancel'));
+      await tester.pumpAndSettle();
+      expect(h.packLoads, 0);
+    });
+
+    testWidgets('confirming loads it and says what it did', (tester) async {
+      final h = await _proStore(tester);
+      await _tapLoadPack(tester);
+      await tester.tap(find.text('Add products'));
+      await tester.pumpAndSettle();
+
+      expect(h.packLoads, 1);
+      expect(
+        find.text('Added 90 products. 7 were already in your catalog.'),
+        findsOneWidget,
+      );
+    });
+  });
+}
+
+/// Taps "Load Starter Pack", below the fold on a small phone.
+Future<void> _tapLoadPack(WidgetTester tester) async {
+  final load = find.text('Load Starter Pack');
+  await tester.ensureVisible(load);
+  await tester.pumpAndSettle();
+  await tester.tap(load);
+  await tester.pumpAndSettle();
 }
 
 /// Taps the helper list's Add, which sits below the fold on a small phone.

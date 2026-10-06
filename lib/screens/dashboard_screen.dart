@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import '../services/auth_service.dart';
 import '../services/product_repository.dart';
 import '../services/product_service.dart';
+import '../services/starter_pack.dart';
 import '../services/store_service.dart';
 import '../theme/app_theme.dart';
 import 'home_screen.dart';
@@ -201,6 +202,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
             remove: (member) => StoreService.removeStaff(id, member.email),
           ),
           onUpgradePro: () => StoreService.upgradeToPro(id),
+          onLoadStarterPack: () => _products.addAllMissing(starterPack),
           userId: widget.user.uid,
         ),
       ),

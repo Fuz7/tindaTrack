@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../services/product_repository.dart';
+import '../services/starter_pack.dart';
 import '../services/store_service.dart';
 import '../theme/app_theme.dart';
 
@@ -22,6 +23,7 @@ class SettingsScreen extends StatefulWidget {
     required this.staff,
     required this.staffActions,
     required this.onUpgradePro,
+    required this.onLoadStarterPack,
     required this.userId,
   });
 
@@ -48,6 +50,11 @@ class SettingsScreen extends StatefulWidget {
   /// change.
   final Future<void> Function() onUpgradePro;
 
+  /// Adds the starter pack's products that the catalog doesn't carry yet,
+  /// and reports how many of each. Unlike the writes above, this one is
+  /// waited on: the owner is told what it did.
+  final Future<StarterPackResult> Function() onLoadStarterPack;
+
   @override
   State<SettingsScreen> createState() => _SettingsScreenState();
 }
@@ -72,6 +79,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
   final _owner = TextEditingController();
   final _threshold = TextEditingController();
   String _currency = 'PHP';
+
+  /// True while the starter pack is being written, so the button can't be
+  /// pressed twice before the first run has checked the catalog.
+  bool _loadingPack = false;
 
   /// What is saved; null until the first profile arrives.
   StoreProfile? _saved;
@@ -182,6 +193,40 @@ class _SettingsScreenState extends State<SettingsScreen> {
       ..showSnackBar(
         const SnackBar(content: Text('Pro is on. You can now add helpers.')),
       );
+  }
+
+  /// Loads the pack, once the owner has seen what it will add.
+  ///
+  /// This one is awaited rather than fired off, because the count only
+  /// exists after the catalog has been checked for what it already has.
+  Future<void> _confirmStarterPack() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => const _StarterPackDialog(),
+    );
+    if (confirmed != true || !mounted) return;
+
+    final messenger = ScaffoldMessenger.of(context);
+    setState(() => _loadingPack = true);
+    try {
+      final result = await widget.onLoadStarterPack();
+      final skipped = result.skipped == 0
+          ? ''
+          : ' ${result.skipped} were already in your catalog.';
+      messenger
+        ..hideCurrentSnackBar()
+        ..showSnackBar(
+          SnackBar(content: Text('Added ${result.added} products.$skipped')),
+        );
+    } on Object catch (error) {
+      messenger
+        ..hideCurrentSnackBar()
+        ..showSnackBar(
+          SnackBar(content: Text('Could not load the starter pack: $error')),
+        );
+    } finally {
+      if (mounted) setState(() => _loadingPack = false);
+    }
   }
 
   static String? _required(String? value) =>
@@ -357,6 +402,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                 onUnlockPro: _confirmUpgrade,
                               ),
                               const SizedBox(height: 24),
+                              _Field(
+                                label: 'STARTER PACK',
+                                child: _StarterPackCard(
+                                  staff: widget.staff,
+                                  busy: _loadingPack,
+                                  onLoad: _confirmStarterPack,
+                                  onUnlockPro: _confirmUpgrade,
+                                ),
+                              ),
                             ],
                             _Field(
                               label: 'SYNC STATUS',
@@ -476,6 +530,161 @@ const _amber50 = Color(0xFFFFFBEB);
 const _amber100 = Color(0xFFFEF3C7);
 const _amber200 = Color(0xFFFDE68A);
 const _amber300 = Color(0xFFFCD34D);
+
+/// The starter pack row: a Pro feature, so it's locked until the store is on
+/// Pro and offers the upgrade instead.
+///
+/// It stays available after the store exists, not only at setup — an owner
+/// who skipped it then is exactly the one who later finds themselves typing
+/// a hundred products by hand.
+class _StarterPackCard extends StatelessWidget {
+  const _StarterPackCard({
+    required this.staff,
+    required this.busy,
+    required this.onLoad,
+    required this.onUnlockPro,
+  });
+
+  final Stream<StoreStaff> staff;
+  final bool busy;
+  final VoidCallback onLoad;
+  final VoidCallback onUnlockPro;
+
+  @override
+  Widget build(BuildContext context) {
+    return StreamBuilder<StoreStaff>(
+      stream: staff,
+      builder: (context, snapshot) {
+        final isPro = snapshot.data?.isPro ?? false;
+        return Container(
+          padding: const EdgeInsets.all(AppSpacing.gutter),
+          decoration: BoxDecoration(
+            color: AppColors.surfaceContainerLowest,
+            borderRadius: BorderRadius.circular(AppRadius.base),
+            border: Border.all(color: AppColors.outlineVariant),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Row(
+                children: [
+                  Icon(
+                    isPro ? Icons.inventory_2_outlined : Icons.lock_outline,
+                    size: 20,
+                    color: isPro ? AppColors.primary : AppColors.statusLowStock,
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      'Pinoy Sari-Sari Starter Pack',
+                      style: AppTypography.bodyLg.copyWith(
+                        color: AppColors.onSurface,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 6),
+              Text(
+                '${starterPack.length} popular snacks, sachets, drinks and '
+                'household items, ready to sell. Items already in your '
+                'catalog are left alone.',
+                style: AppTypography.bodySm.copyWith(
+                  color: AppColors.onSurfaceVariant,
+                  height: 1.375,
+                ),
+              ),
+              const SizedBox(height: 12),
+              SizedBox(
+                height: 44,
+                child: isPro
+                    ? FilledButton.icon(
+                        onPressed: busy ? null : onLoad,
+                        icon: busy
+                            ? const SizedBox.square(
+                                dimension: 18,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  color: AppColors.onPrimary,
+                                ),
+                              )
+                            : const Icon(Icons.playlist_add),
+                        label: Text(busy ? 'Adding…' : 'Load Starter Pack'),
+                        style: FilledButton.styleFrom(
+                          backgroundColor: AppColors.primary,
+                          foregroundColor: AppColors.onPrimary,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(AppRadius.base),
+                          ),
+                        ),
+                      )
+                    : FilledButton.icon(
+                        onPressed: onUnlockPro,
+                        icon: const Icon(
+                          Icons.stars_outlined,
+                          color: _amber300,
+                        ),
+                        label: const Text(
+                          'Unlock Pro & Load Pack',
+                          style: TextStyle(fontWeight: FontWeight.w700),
+                        ),
+                        style: FilledButton.styleFrom(
+                          backgroundColor: AppColors.primary,
+                          foregroundColor: AppColors.onPrimary,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(AppRadius.base),
+                          ),
+                        ),
+                      ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+}
+
+/// Asked before the pack is written, since it can add a hundred products to
+/// a catalog the owner may already have built up.
+class _StarterPackDialog extends StatelessWidget {
+  const _StarterPackDialog();
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      backgroundColor: AppColors.surfaceContainerLowest,
+      title: const Text('Load the starter pack?'),
+      content: Text(
+        'This adds up to ${starterPack.length} products with prices you can '
+        'edit, no stock counted yet, and low-stock alerts off until you '
+        'stock them.\n\n'
+        'Anything already in your catalog under the same name and size is '
+        'skipped, so nothing is duplicated.',
+        style: AppTypography.bodySm.copyWith(
+          color: AppColors.onSurfaceVariant,
+          height: 1.4,
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context, false),
+          child: const Text('Cancel'),
+        ),
+        FilledButton(
+          onPressed: () => Navigator.pop(context, true),
+          style: FilledButton.styleFrom(
+            backgroundColor: AppColors.primary,
+            foregroundColor: AppColors.onPrimary,
+          ),
+          child: const Text('Add products'),
+        ),
+      ],
+    );
+  }
+}
+
 const _amber700 = Color(0xFFB45309);
 const _amber800 = Color(0xFF92400E);
 const _amber900 = Color(0xFF78350F);

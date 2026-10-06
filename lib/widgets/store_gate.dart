@@ -7,6 +7,7 @@ import '../screens/dashboard_screen.dart';
 import '../screens/join_store_screen.dart';
 import '../screens/onboarding_choice_screen.dart';
 import '../services/auth_service.dart';
+import '../services/starter_pack.dart';
 import '../services/store_service.dart';
 import '../theme/app_theme.dart';
 
@@ -67,10 +68,26 @@ class StoreGate extends StatelessWidget {
             MaterialPageRoute<void>(
               builder: (_) => CreateStoreStarterScreen(
                 storeName: draft.name,
-                onCreate: () async {
-                  await StoreService.createStore(user.uid, draft);
-                  navigator.popUntil((route) => route.isFirst);
-                },
+                // The store does not exist while that screen is open, so
+                // everything chosen there is applied here, in order, the
+                // moment it does.
+                onCreate:
+                    ({
+                      required isPro,
+                      required withStarterPack,
+                      required helpers,
+                    }) async {
+                      final storeId = await StoreService.createStore(
+                        user.uid,
+                        draft,
+                      );
+                      if (isPro) await StoreService.upgradeToPro(storeId);
+                      if (withStarterPack) await seedStarterPack(storeId);
+                      for (final helper in helpers) {
+                        await StoreService.addStaff(storeId, helper);
+                      }
+                      navigator.popUntil((route) => route.isFirst);
+                    },
               ),
             ),
           ),
